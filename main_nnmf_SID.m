@@ -1,5 +1,7 @@
 %% fish timeseries extraction
-
+%
+%
+%
 %% Input
 Input.LFM_folder='/ssd_raid_4TB/oliver.s/fish-7-10-2016/fish1_LFM_20x05NA_exc12pc/';
 Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_olympus_20x_05NA_water__20FN__on_scientifica_from-100_to100_zspacing4_Nnum11_lambda520_OSR3_';
@@ -13,12 +15,12 @@ Input.step=1;
 Input.step_=3;
 Input.bg_iter=2;
 Input.rectify=1;
-Input.Junk_size=100;
+Input.Junk_size=1000;
 Input.bg_sub=1;
 Input.prime=40000;
 Input.prime_=4800;
 Input.gpu_ids=[1 2 4];
-Input.num_iter=10;
+Input.num_iter=4;
 Input.native_focal_plane=26;
 psf_ballistic=matfile(Input.psf_filename_ballistic);
 
@@ -47,9 +49,12 @@ end
 disp('Loading LFM movie');
 tic
 sensor_movie=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.step_,Input.rectify,Input.prime_);
-A=[([1:size(sensor_movie,2)].^2)',[1:size(sensor_movie,2)]',ones(size(sensor_movie,2),1)];
-c_=inv(A'*A)*A';
-baseline=A*c_*mean(sensor_movie,1)';
+toc
+tic
+disp('Detrending LFM movie');
+baseline=mean(sensor_movie,1)';
+baseline=fit([1:length(baseline)]',baseline,'exp2');
+baseline=baseline.a*exp(baseline.b*[1:size(sensor_movie,2)])+baseline.c*exp(baseline.d*[1:size(sensor_movie,2)]);
 sensor_movie=sensor_movie*diag(1./baseline);
 toc
 
@@ -306,8 +311,9 @@ bg_spatial_=bg_spatial_(output.idx);
 bg_spatial_=bg_spatial_/norm(bg_spatial_(:));
 output.forward_model_(end+1,:)=bg_spatial_;
 % output.timeseries=NONnegLSQ_gpu(output.forward_model_',bg_spatial_,sensor_movie,[],opts);
-disp('Temporal update')
+disp('Starting Temporal update')
 output.timeseries=fast_nnls(output.forward_model_',sensor_movie,opts);
+disp('Temporal update completed');
 
 output.timeseries_=output.timeseries;
 toc
@@ -327,7 +333,7 @@ for iter=1:Input.num_iter
     output.centers=output.centers(id2(1:end-Input.bg_sub),:);
     output.forward_model=output.forward_model(id2(1:end-Input.bg_sub),:);
     tic
-    disp('Spatial update');
+    disp('Starting Spatial update');
     output.timeseries_=diag(1./(sqrt(sum(output.timeseries_.^2,2))))*output.timeseries_;
     output.forward_model_=update_spatial_component(output.timeseries_, sensor_movie, template_, optz);
     toc
@@ -348,6 +354,7 @@ for iter=1:Input.num_iter
         end
         %         disp(k);
     end
+    output.timeseries_=output.timeseries_(id2,:);
     output.forward_model_=output.forward_model_(id2,:);
     template_=template_(id2(1:end-Input.bg_sub),:);
     output.centers=output.centers(id2(1:end-Input.bg_sub),:);
@@ -355,27 +362,29 @@ for iter=1:Input.num_iter
     tic
     output.forward_model_=diag(1./(sqrt(sum(output.forward_model_.^2,2))))*output.forward_model_;
     %     output.timeseries_=NONnegLSQ_gpu(output.forward_model_',[],sensor_movie,[],opts);
-    disp('Temporal update');
+    disp('Starting Temporal update');
+    opts.warm_start=output.timeseries_;
     output.timeseries_=fast_nnls(output.forward_model_',sensor_movie,opts);
-    disp('Temporal update competed');
+    disp('Temporal update completed');
     toc
     disp([num2str(iter) '. iteration completed']);
 end
 output.template_=template_;
 output.Input=Input;
+opts.warm_start=[];
 clear sensor_movie;
 disp('Model optimization completed');
 
 %% extract time series at location LFM_folder
 disp('Extracting Timeseries');
-mean_signal=par_mean_signal(Input.LFM_folder,10, Input.x_offset,Input.y_offset,Input.dx,Nnum,Input.prime);
-
+mean_signal=par_mean_signal(Input.LFM_folder,Input.step, Input.x_offset,Input.y_offset,Input.dx,Nnum,Input.prime);
+opts.step=Input.step;
 output.forward_model_=diag(1./(sqrt(sum(output.forward_model_.^2,2))))*output.forward_model_;
 bg_spatial_=bg_spatial_/norm(bg_spatial_);
 tic
-output.timeseries_1=incremental_temporal_update_gpu(output.forward_model_, Input.LFM_folder, [], 1000, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts,output.idx,mean_signal);
+output.timeseries_1=incremental_temporal_update_gpu(output.forward_model_, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts,output.idx,mean_signal);
 toc
-disp('COMPLETE');
+disp('Extraction complete');
 %% save output
 
 disp('Saving data')
@@ -385,3 +394,4 @@ end
 
 save([Input.output_folder Input.output_name '.mat'],'-struct','output','-v7.3');
 
+disp('COMPLETE!')

@@ -59,7 +59,9 @@ for neur=1:size(template,1)
             S=[S' iS']';
         end
     end
+    if strcmp(opts.display,'on')
     disp(neuron);
+    end
 end
 
 gpuDevice([]);

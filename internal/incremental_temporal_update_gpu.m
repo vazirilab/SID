@@ -1,4 +1,4 @@
-function timeseries=incremental_temporal_update_gpu(forward_model, indir, bg_spatial, Junk_size, x_offset,y_offset,dx,Nnum,opts,idx, bg_temporal)
+function timeseries=incremental_temporal_update_gpu(forward_model, indir, bg_spatial, Junk_size, x_offset,y_offset,dx,Nnum,opts,idx, mean_signal)
 
 if exist(indir, 'dir')
     infiles_struct = dir(fullfile(indir, '/*.tif*'));
@@ -22,11 +22,9 @@ while num>0
         disp(num2str(img_ix));
         img_rect =  ImageRect(double(imread(fullfile(indir, infiles_struct(img_ix).name), 'tiff')), x_offset, y_offset, dx, Nnum,0);
         if ((img_ix==1)&&(nargin==11))
-            bg_temporal=bg_temporal*mean(mean(img_rect))/bg_temporal(1);
-            A=[([1:length(bg_temporal)].^2)',[1:length(bg_temporal)]',ones(length(bg_temporal),1)];
-            c_=inv(A'*A)*A';
-            A=[([1:length(infiles_struct)].^2)',[1:length(infiles_struct)]',ones(length(infiles_struct),1)];
-            baseline=A*c_*bg_temporal';
+            mean_signal=mean_signal*mean(mean(img_rect))/mean_signal(1);
+            baseline=fit([1:opts.step:length(infiles_struct)]',mean_signal','exp2');
+            baseline=baseline.a*exp(baseline.b*[1:length(infiles_struct)])+baseline.c*exp(baseline.d*[1:length(infiles_struct)]);
         end
         if img_ix == mig(1)
             sensor_movie = ones(size(img_rect, 1)*size(img_rect, 2), length(mig), 'double');

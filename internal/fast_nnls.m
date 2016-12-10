@@ -18,6 +18,10 @@ end
 if ~isfield(opts,'tol')
     opts.tol=1e-12;
 end
+
+if ~isfield(opts,'warm_start')
+    opts.warm_start=[];
+end
 %%
 if nargin<=3
     H=full(A'*A);
@@ -29,7 +33,12 @@ else
     end
 end
 
-x=zeros(size(A,2),size(Y,2));
+if isempty(opts.warm_start)
+    x=zeros(size(A,2),size(Y,2));
+else
+    x=opts.warm_start;
+    df=df+Q*x;
+end
 
 if strcmp(opts.gpu,'on')
     gpu = gpuDevice(opts.gpu_ids);
