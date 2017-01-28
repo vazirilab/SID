@@ -193,7 +193,8 @@ end
 output.segmm=segmm;
 clearvars -except sensor_movie Input output mean_signal psf_ballistic Hsize m
 
-output.centers(:,1:2)=(output.centers(:,1:2)-1)/2+1;%% Initiate forward_model
+output.centers(:,1:2)=(output.centers(:,1:2)-1)/2+1;
+%% Initiate forward_model
 psf_ballistic=load(Input.psf_filename_ballistic);
 
 output.forward_model=generate_foward_model(output.centers,psf_ballistic,8,3,size(output.recon{1})); %replace 8 by 1 if _7r psf
