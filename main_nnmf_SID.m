@@ -193,159 +193,91 @@ end
 output.segmm=segmm;
 clearvars -except sensor_movie Input output mean_signal psf_ballistic Hsize m
 
-output.centers(:,1:2)=(output.centers(:,1:2)-1)/2+1;
+output.centers(:,1:2)=(output.centers(:,1:2)-1)/2+1;%% Initiate forward_model
+psf_ballistic=load(Input.psf_filename_ballistic);
 
-%% Initiate forward_model
-disp('Initiate forward_model');
-forward_model_indices=cell(1,size(output.centers,1));
-forward_model_values=forward_model_indices;
-N=0;
+output.forward_model=generate_foward_model(output.centers,psf_ballistic,8,3,size(output.recon{1})); %replace 8 by 1 if _7r psf
 
-rr=3;
-r=4;
-BW=[];
-BWW=[];
-W=zeros(2*r,2*r,2*rr);
-for ii=1:2*r
-    for jj=1:2*r
-        for kk=1:2*r
-            if  ((ii-((2*r-1)/2+1))^2/r^2+(jj-((2*r-1)/2+1))^2/r^2+(kk-((2*rr-1)/2+1))^2/rr^2)<=1
-                W(ii,jj,kk)=1;
-            end
-        end
-    end
-end
-BW=bwconncomp(W);
-[BWW(:,1) BWW(:,2) BWW(:,3)]=ind2sub([2*r,2*r,2*rr],BW.PixelIdxList{1,1});
-
-for k=1:size(output.centers,1)
-    B=[];
-    for j=1:size(BWW,1)
-        bbb=round(BWW(j,:)-[((2*r-1)/2+1)*[1 1] ((2*rr-1)/2+1)]+output.centers(k,:));
-        if (bbb(1)<=m(1))&&(bbb(1)>0)&&(bbb(2)<=m(2))&&(bbb(2)>0)&&(bbb(3)<=Hsize(5))&&(bbb(3)>0)
-            B=[B' bbb']';
-        end
-    end
-    gt{1,1}=B;
-    Q=forwardproject(gt,psf_ballistic,size(output.std_image));
-    Q=Q/norm(Q);
-    forward_model_indices{1,k}=find(Q);
-    forward_model_values{1,k}=Q(forward_model_indices{1,k});
-    N=N+length(forward_model_values{1,k});
-    %     disp(k);
-end
-I=zeros(N,1);
-J=I;
-S=I;
-jj=0;
-for k=1:size(forward_model_indices,2)
-    J(jj+1:jj+size(forward_model_values{1,k},2))= forward_model_indices{1,k};
-    I(jj+1:jj+size(forward_model_values{1,k},2))=k*ones(size(forward_model_values{1,k}));
-    S(jj+1:jj+size(forward_model_values{1,k},2))=forward_model_values{1,k};
-    jj=jj+size(forward_model_values{1,k},2);
-    %     disp(k)
-end
-output.forward_model=sparse(I,J,S,size(output.centers,1),size(output.std_image,1)*size(output.std_image,2));
-toc;
-disp([num2str(neuron) ' NSFs generated']);
 %% generate template
-disp('Generate template');
-Nnum=psf_ballistic.Nnum;
-II=[];JJ=[];
-tic
-for neuron=1:size(output.forward_model,1)
-    img=reshape(output.forward_model(neuron,:),size(output.std_image));
-    img_=zeros(size(output.std_image)/Nnum);
-    for k=1:size(output.std_image,1)/Nnum
-        for j=1:size(output.std_image,2)/Nnum
-            img_(k,j)=mean(mean(img((k-1)*Nnum+1:k*Nnum,(j-1)*Nnum+1:j*Nnum)));
-        end
-    end
-    img_=img_/max(img_(:));
-    img_(img_<0.07)=0;
-    [I_,J_,~]=find(img_);
-    I=[];J=[];
-    for k=1:length(I_)
-        s=(I_(k)-1)*Nnum+1:I_(k)*Nnum;
-        for l=1:Nnum
-            I=[I' (ones(Nnum,1)*s(l))']';
-            J=[J' ((J_(k)-1)*Nnum+1:J_(k)*Nnum)]';
-        end
-    end
-    II=[II' (ones(size(I))*neuron)']';
-    JJ=[JJ' sub2ind(size(img),I,J)']';
-    %     disp(neuron);
-end
-toc
-template=sparse(II,JJ,ones(size(II)),size(output.forward_model,1),size(output.std_image,1)*size(output.std_image,2));
-output.template=template;
-toc
-disp([num2str(neuron) ' templates generated']);
+output.template=generate_template(output.forward_model,psf_ballistic.Nnum,0.005,size(output.std_image));
 %% croping model
-
 neur=find(squeeze(max(output.forward_model(:,output.idx),[],2)>0));
 output.forward_model_=output.forward_model(neur,output.idx);
 
-template_=template(neur,output.idx);
+template_=output.template(neur,output.idx);
+Nnum=psf_ballistic.Nnum;
 clearvars -except sensor_movie Input output mean_signal template_ neur Nnum neur
-
 
 %% optimize model
 disp('Start optimizing model')
 
 tic
 opts=[];
-opts.tol=1e-7;
-% opts.tol_=8e-5;
-opts.gpu_ids=5;
-% opts.sample=1000;
-% opts.wait=1000;
-% opts.max_iter=Input.temporal_iterations;
+opts.tol=1e-3;
+opts.tol_=1e-2;
+opts.sample=1000;
+opts.gpu_ids=4;
 opts.display='on';
 opts.gpu='on';
-% opts.skip=100;
-optz.exact=1;
+opts.max_iter=5000;
+optz.solver=1;
+optz.display='on';
+optz.bg_sub=Input.bg_sub;
+opts.lambda=0;
 
-bg_spatial_=average_ML(reshape(output.bg_spatial,size(output.bg_spatial)),Nnum);
-bg_spatial_=bg_spatial_(output.idx);
-bg_spatial_=bg_spatial_/norm(bg_spatial_(:));
-output.forward_model_(end+1,:)=bg_spatial_;
-% output.timeseries=NONnegLSQ_gpu(output.forward_model_',bg_spatial_,sensor_movie,[],opts);
+if Input.bg_sub
+    bg_spatial_=average_ML(reshape(output.bg_spatial,size(output.bg_spatial)),Nnum);
+    bg_spatial_=bg_spatial_(output.idx);
+    bg_spatial_=bg_spatial_/norm(bg_spatial_(:));
+    output.forward_model_(end+1,:)=bg_spatial_;
+end
+
 disp('Starting Temporal update')
 output.timeseries=fast_nnls(output.forward_model_',sensor_movie,opts);
 disp('Temporal update completed');
 
 output.timeseries_=output.timeseries;
+output.centers_=output.centers;
 toc
+opts.max_iter=10000;
 
 for iter=1:Input.num_iter
     id2=[];
     disp('Pruning neurons');
     for k=1:size(output.forward_model_,1)
-        trace=output.timeseries_(k,:)>1e-12;
+        trace=output.timeseries_(k,:)>1e-7;
         if sum(trace)>1
             id2=[id2 k];
         end
-        %         disp(k);
     end
+    
+   
     output.timeseries_=output.timeseries_(id2,:);
     template_=template_(id2(1:end-Input.bg_sub),:);
-    output.centers=output.centers(id2(1:end-Input.bg_sub),:);
+    output.centers_=output.centers_(id2(1:end-Input.bg_sub),:);
     output.forward_model=output.forward_model(id2(1:end-Input.bg_sub),:);
     tic
     disp('Starting Spatial update');
     output.timeseries_=diag(1./(sqrt(sum(output.timeseries_.^2,2))))*output.timeseries_;
     output.forward_model_=update_spatial_component(output.timeseries_, sensor_movie, template_, optz);
     toc
+   
     disp('Spatial update completed')
-    disp('Pruning neurons');
-    if Input.bg_sub==1                                                      % perturb bg_spatial
-        bg_spatial_=zeros(size(output.bg_spatial(:)));
-        bg_spatial_(output.idx)=output.forward_model_(end,:);
-        bg_spatial_=average_ML(reshape(bg_spatial_,size(output.bg_spatial)),Nnum);
-        bg_spatial_=bg_spatial_(:);
-        output.forward_model_(end,:)=bg_spatial_(output.idx);
-    end
+    
+    if Input.update_template
+        if iter==2
+            for neuron=1:size(template_,1)
+                crop=zeros(size(output.std_image));
+                crop(output.idx)=template_(neuron,:);
+                img=reshape(crop,size(output.std_image));
+                img=conv2(img,ones(2*Nnum),'same')>0;
+                img=img(:);
+                template_(neuron,:)=(img(output.idx)>0.1);
+                disp(neuron)
+            end
+        end
+    end      
+    disp('Pruning neurons');  
     id2=[];
     for k=1:size(output.forward_model_,1)
         trace=output.forward_model_(k,:)>1e-12;
@@ -360,8 +292,7 @@ for iter=1:Input.num_iter
     output.centers=output.centers(id2(1:end-Input.bg_sub),:);
     output.forward_model=output.forward_model(id2(1:end-Input.bg_sub),:);
     tic
-    output.forward_model_=diag(1./(sqrt(sum(output.forward_model_.^2,2))))*output.forward_model_;
-    %     output.timeseries_=NONnegLSQ_gpu(output.forward_model_',[],sensor_movie,[],opts);
+%     output.forward_model_=diag(1./(sqrt(sum(output.forward_model_.^2,2))))*output.forward_model_;
     disp('Starting Temporal update');
     opts.warm_start=output.timeseries_;
     output.timeseries_=fast_nnls(output.forward_model_',sensor_movie,opts);
@@ -377,13 +308,21 @@ disp('Model optimization completed');
 
 %% extract time series at location LFM_folder
 disp('Extracting Timeseries');
-mean_signal=par_mean_signal(Input.LFM_folder,Input.step, Input.x_offset,Input.y_offset,Input.dx,Nnum,Input.prime);
 opts.step=Input.step;
-output.forward_model_=diag(1./(sqrt(sum(output.forward_model_.^2,2))))*output.forward_model_;
-bg_spatial_=bg_spatial_/norm(bg_spatial_);
+opts.prime=Input.prime;
+opts.warm_start=[];
+opts.frame=Input.frames_for_model_optimization;
+opts.idx=output.idx;
+opts.max_iter=20000;
+if Input.de_trend
+    opts.mean_signal=output.mean_signal;
+end
 tic
-output.timeseries_1=incremental_temporal_update_gpu(output.forward_model_, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts,output.idx,mean_signal);
+[timeseries_1,Varg]=incremental_temporal_update_gpu(output.forward_model_, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts);
 toc
+output.timeseries_total=zeros(size(timeseries_1,1),length(Varg));
+output.timeseries_total(:,find(Varg))=timeseries_1;
+output.timeseries_total(:,find(~Varg))=output.timeseries_;
 disp('Extraction complete');
 %% save output
 
@@ -392,6 +331,6 @@ if ~(exist(Input.output_folder)==7)
     mkdir(Input.output_folder);
 end
 
-save([Input.output_folder Input.output_name '.mat'],'-struct','output','-v7.3');
+save([Input.output_folder Input.output_name '007' '.mat'],'-struct','output','-v7.3');
 
 disp('COMPLETE!')
