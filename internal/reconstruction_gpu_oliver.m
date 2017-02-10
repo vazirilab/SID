@@ -1,4 +1,4 @@
-function Xguess = reconstruction_gpu_oliver(in_file, psf_file, save_dir, tmp_dir, maxIter, options,opts)
+function Xguess = reconstruction_gpu_oliver(in_file, psf_file, tmp_dir, maxIter, options,opts)
 
 if nargin < 7
     options = struct;
@@ -29,13 +29,6 @@ cluster = parcluster('local')
 edgeSuppress = 0;
 
 disp('Iteration method: ISRA');
-
-if ~(exist(save_dir)==7)
-    mkdir(save_dir);
-end
-if ~(exist(tmp_dir)==7)
-    mkdir(tmp_dir);
-end
 
 %% REPARE PARALLEL COMPUTING
 pool = gcp('nocreate')

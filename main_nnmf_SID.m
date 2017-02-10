@@ -106,7 +106,7 @@ for kk=1:nn:size(S,1)
         infile.LFmovie=(img{worker});
         options{worker}.gpu_ids=mod((worker-1),nn)+1;
         options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
-        recon{worker}= reconstruction_gpu_oliver(infile, psf_ballistic, '/home/oliver.skocek/Desktop/zm200', '/tmp', 16, options{worker},options_rec);
+        recon{worker}= reconstruction_gpu_oliver(infile, psf_ballistic, '/tmp', 16, options{worker},options_rec);
         gpuDevice([]);
     end
     for kp=1:min(nn,size(S,1)-(kk-1))
