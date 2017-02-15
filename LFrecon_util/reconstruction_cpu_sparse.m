@@ -1,4 +1,4 @@
-function Xguess=reconstruction_cpu_new(psf_ballistic,infile,opts)
+function Xguess=reconstruction_cpu_sparse(psf_ballistic,infile,opts)
 
 if ~isfield(opts,'maxIter')
     opts.maxIter=8;
@@ -6,29 +6,28 @@ end
 
 forwardFUN_ =  @(Volume) forwardProjectACC( psf_ballistic.H, Volume, psf_ballistic.CAindex );
 backwardFUN_ = @(projection) backwardProjectACC_new(psf_ballistic.H, projection, psf_ballistic.CAindex);
+%% generate kernel
 
-
-if ~isfield(options,'rad')
-    options.rad=[2,2];
+if ~isfield(opts,'rad')
+    opts.rad=[2,2];
 end
 
-W=zeros(2*options.rad(1)+1,2*options.rad(1)+1,2*options.rad(2)+1);
-for ii=1:2*options.rad(1)+1
-    for jj=1:2*options.rad(1)+1
-        for kk=1:2*options.rad(2)+1
-            if  ((ii-(options.rad(1)+1))^2/options.rad(1)^2+(jj-(options.rad(1)+1))^2/options.rad(1)^2+(kk-(options.rad(2)+1))^2/options.rad(2)^2)<=1
+W=zeros(2*opts.rad(1)+1,2*opts.rad(1)+1,2*opts.rad(2)+1);
+for ii=1:2*opts.rad(1)+1
+    for jj=1:2*opts.rad(1)+1
+        for kk=1:2*opts.rad(2)+1
+            if  ((ii-(opts.rad(1)+1))^2/opts.rad(1)^2+(jj-(opts.rad(1)+1))^2/opts.rad(1)^2+(kk-(opts.rad(2)+1))^2/opts.rad(2)^2)<=1
                 W(ii,jj,kk)=1;
             end
         end
     end
 end
-kernel=gpuArray(W);
+kernel=W;
 
 forwardFUN = @(Xguess) forwardFUN_(convn(Xguess,kernel,'same'));
 backwardFUN = @(projection) convn(backwardFUN_(projection),kernel,'same');
 
-
-
+%% Reconstruction
 disp('Backprojecting...');
 Htf = backwardFUN(single(infile.LFmovie));
 disp('Backprojection completed');
