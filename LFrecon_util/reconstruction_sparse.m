@@ -1,4 +1,4 @@
-function Xguess = reconstruction_new(in_file, psf_ballistic, options)
+function Xguess = reconstruction_sparse(in_file, psf_ballistic, options)
 
 if nargin < 3
     options = struct;
