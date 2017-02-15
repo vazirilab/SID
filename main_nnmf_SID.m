@@ -85,17 +85,19 @@ gimp=Input.gpu_ids;
 parpool(nn);
 
 options_rec.p=2;
+options_rec.maxIter=8;
 options_rec.mode='TV';
-options_rec.lambda=[ 0.1, 0.1, 5];
+options_rec.lambda=[ 0, 0, 10];
+options_rec.lambda_=0.1;
 
 for kk=1:nn:size(S,1)
     img=cell(nn,1);
     for worker=1:min(nn,size(S,1)-(kk-1))
         k=kk+worker-1;
-        pre=S(k,:);
-        img_=reshape(pre,size(output.std_image,1),[]);
+        img_=reshape(S(k,:),size(output.std_image,1),[]);
         img_=img_/max(img_(:));
         img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end)));
+        
         img_(img_<0)=0;
         img{worker}=full(img_)/max(img_(:));
     end
@@ -104,9 +106,11 @@ for kk=1:nn:size(S,1)
     parfor worker=1:min(nn,size(S,1)-(kk-1))
         infile=struct;
         infile.LFmovie=(img{worker});
+        options{worker}=options_rec;
         options{worker}.gpu_ids=mod((worker-1),nn)+1;
         options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
-        recon{worker}= reconstruction_gpu_oliver(infile, psf_ballistic, '/tmp', 16, options{worker},options_rec);
+        
+        recon{worker}= reconstruction_sparse(infile, psf_ballistic, options{worker});
         gpuDevice([]);
     end
     for kp=1:min(nn,size(S,1)-(kk-1))

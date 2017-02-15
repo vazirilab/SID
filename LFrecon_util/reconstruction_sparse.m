@@ -91,7 +91,7 @@ disp(['  iter ' num2str(0) ' | ' num2str(options.maxIter) ', took ' num2str(ttim
 
 %%
 if strcmp(options.whichSolver,'ISRA')
-    Xguess = deconvRL(forwardFUN, backwardFUN, Xguess, maxIter, Xguess ,options);
+    Xguess = deconvRL(forwardFUN, backwardFUN, Xguess, options.maxIter, Xguess ,options);
 elseif strcmp(options.whichSolver,'fast_nnls')
     Xguess=fast_deconv(forwardFUN, backwardFUN, Xguess, options.maxIter,options);
 end

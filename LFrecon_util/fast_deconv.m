@@ -1,6 +1,6 @@
 function Xguess = fast_deconv(forwardFUN, backwardFUN, df, maxIter, opts)
 
-if nargin=5
+if nargin<=5
     opts.lambda=0;
     opts.p=1;
     opts.mode='basic';
@@ -17,7 +17,7 @@ Xguess=df;
 if strcmp(opts.mode,'TV')
     if opts.p==2
         if length(opts.p)==1
-            opts.p=opts.p[1,1,1];
+            opts.p=opts.p*[1,1,1];
         end
         filt=zeros(3,3,3);
         filt(2,2,1)=opts.lambda(3);
@@ -52,21 +52,23 @@ elseif strcmp(opts.mode,'basic')
 end
 
 
-for iter=1maxIter
+for iter=1:maxIter
     tic;
-    passive=max(Xguess0,df0);
-    df_=passive.df;
+    passive=max(Xguess>0,df<0);
+    df_=passive.*df;
     if strcmp(opts.mode,'basic')
-        alpha=sum(sum(sum(df_.^2)))sum(sum(sum(forwardFUN(df_).^2)));
+        alpha=sum(sum(sum(df_.^2,1),2),3)/sum(sum(sum(forwardFUN(df_).^2,1),2),3);
     else
-        alpha=sum(sum(sum(df_.^2)))sum(sum(sum(df_.Q(df_))));
+        alpha=sum(sum(sum(df_.^2,1),2),3)/sum(sum(sum(df_.*Q(df_),1),2),3);
     end
-    df_=Xguess-alphadf_;
-    df_(df_0)=0;
+    for id=1:length(alpha)
+        df_(:,:,:,id)=Xguess(:,:,:,id)-alpha(id)*df_(:,:,:,id);
+    end
+    df_(df_<0)=0;
     df=df+Q(df_-Xguess);
     Xguess=df_;
     ttime = toc;
-    disp(['  Iteration ' num2str(iter) '' num2str(maxIter) ' took ' num2str(ttime) ' secs']);
+    disp(['  Iteration ' num2str(iter) '/' num2str(maxIter) ' took ' num2str(ttime) ' secs']);
 end
 
 end
