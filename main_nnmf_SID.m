@@ -9,7 +9,7 @@ Input.output_folder='/ssd_raid_4TB/oliver.s/Desktop/new_method/LFM-factorization
 Input.output_name='fish1_LFM_20x05NA_exc12pc';
 Input.x_offset=1277.700000;
 Input.y_offset=1082.00000;
-Input.rank=30;
+Input.rank=30; % If Input.rank==0 SID classic instead of SID_nmf
 Input.dx=22.7;
 Input.step=1;
 Input.step_=3;
@@ -119,85 +119,55 @@ for kk=1:nn:size(S,1)
     disp(kk)
 end
 
-%% filter reconstructed spatial filters
-disp('Filtering reconstructed spatial filters');
-Hsize = size(psf_ballistic.H);
-m=[size(output.std_image,1),size(output.std_image,2),Hsize(5)];
-bordz = 15;
-bord=1;
-cellSize = 25;
-
-[X,Y,Z]=meshgrid(1:2:2*size(output.std_image,2)-1,1:2:2*size(output.std_image,1)-1,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:Hsize(5)]);
-[Xq,Yq,Zq]=meshgrid(1:2*size(output.std_image,2)-1,1:2*size(output.std_image,1)-1,1:Hsize(5));
-
-for kk=1:nn:size(S,1)
-    img=cell(nn,1);
-    for worker=1:min(nn,size(S,1)-(kk-1))
-        k=kk+worker-1;
-        V=interp3(X,Y,Z,output.recon{k}(:,:,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:Hsize(5)]),Xq,Yq,Zq);
-        
-        I=zeros(size(V)+[0 0 2*bordz],'single');
-        I(:,:,bordz+1:bordz+Hsize(5))=single(V);
-        for k=0:bordz-1
-            I(:,:,bordz-k)=I(:,:,bordz+1-k)*0.96;
-            I(:,:,bordz+Hsize(5)+k)=I(:,:,bordz+Hsize(5)-1+k)*0.96;
-        end
-        Ifiltered = I/max(I(:));
-        img{worker}=full(Ifiltered);
-    end
-    segm_=zeros(min(nn,size(S,1)-(kk-1)),size(Ifiltered,1)-2*bord+1,size(Ifiltered,2)-2*bord+1,Hsize(5));
-    parfor worker=1:min(nn,size(S,1)-(kk-1))
-        filtered_Image_=band_pass_filter(img{worker}, cellSize, 8, gimp(worker),1.8);
-        segm_(worker,:,:,:)=filtered_Image_(bord:size(filtered_Image_,1)-bord,bord:size(filtered_Image_,2)-bord,bordz+1:bordz+Hsize(5));
-        
-        gpuDevice([]);
-    end
-    for kp=1:min(nn,size(S,1)-(kk-1))
-        filtered_Image=zeros(size(Ifiltered)-[0 0 2*bordz]);
-        filtered_Image(bord:size(Ifiltered,1)-bord,bord:size(Ifiltered,2)-bord,:)=squeeze(segm_(kp,:,:,:));
-        segmm{kk+kp-1}=filtered_Image;
-    end
-    disp(kk)
-end
-%% generate brain model
-disp('Generate brain model');
-segm=zeros(size(segmm{1}));
-
-for kk=1:size(S,1)
-    segm_=segmm{kk}-0.035;
-    segm_(segm_<0)=0;
-    %                                                                       %newly added please evaluate first
-    beads=bwconncomp(segm_);                                                %purpose is to get rid of small islands
-    segm_=segm_(:);
-    segm__=zeros(size(segm_));
-    for k=1:beads.NumObjects
-        if numel(beads.PixelIdxList{k})>20
-            segm__(beads.PixelIdxList{k})=segm_(beads.PixelIdxList{k});
-        end
-    end
-    segm_=reshape(segm__,size(segm));
-    %
-    segm=segm+segm_;
-    disp(kk);
-end
-
-output.segm=segm;
-
-%% extract neuron centers
-disp('Extract neuronal centers from brain model');
+%% generate initial brain model
 output.centers=[];
-B=reshape(segm,[],1);
-beads=bwconncomp(imregionalmax(segm));
-for k=1:beads.NumObjects
-    qu=B(beads.PixelIdxList{1,k});
-    q=sum(B(beads.PixelIdxList{1,k}));
-    [a,b,c]=ind2sub(size(segm),beads.PixelIdxList{1,k});
-    output.centers(k,:)=([a,b,c]'*qu/q)';
+for ii=1:size(output.recon,2)
+    segm=output.recon{ii};
+    for kk=1:size(segm,3)
+       segm(:,:,kk)=segm(:,:,kk).*(sub_image>0); 
+    end
+    segm=segm/max(segm(:));
+    segm=segm-0.01;
+    segm(segm<0)=0;
+    centers=[];
+    B=reshape(segm,[],1);
+    beads=bwconncomp(imregionalmax(segm));
+    for k=1:beads.NumObjects
+        qu=B(beads.PixelIdxList{1,k});
+        q=sum(B(beads.PixelIdxList{1,k}));
+        [a,b,c]=ind2sub(size(segm),beads.PixelIdxList{1,k});
+        centers(k,:)=([a,b,c]'*qu/q)';
+    end
+    
+    if (ii==1)
+        output.centers=centers;
+    else
+        id=[];
+        for k=1:size(centers,1)
+            flag=1;
+            for j=1:size(output.centers,1)
+                if norm((output.centers(j,:)-centers(k,:))*diag([1 1 4]))<Input.thres
+                    flag=0;
+                end
+            end
+            if flag
+                id=[id k];
+            end
+        end
+        
+        output.centers=[output.centers' centers(id,:)']';
+    end
+    
+    disp(ii);
 end
-output.segmm=segmm;
+
+segm=0*output.recon{1};
+for ii=1:size(output.centers,1)
+    segm(ceil(output.centers(ii,1)),ceil(output.centers(ii,2)),ceil(output.centers(ii,3)))=1;
+end
+
 clearvars -except sensor_movie Input output mean_signal psf_ballistic Hsize m
 
-output.centers(:,1:2)=(output.centers(:,1:2)-1)/2+1;
 %% Initiate forward_model
 psf_ballistic=load(Input.psf_filename_ballistic);
 
