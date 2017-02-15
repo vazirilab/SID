@@ -68,11 +68,13 @@ output.idx=find(sub_image>0);
 
 %% generate NNMF
 disp(['Generating rank-' num2str(Input.rank) '-factorization']);
-[S,T]=nnmf(sensor_movie,Input.rank);
-S=S(:,squeeze(max(S,[],1))>0);
-S=[S output.std_image(:)];
+opts.max_iter=1000;
+opts.lambda=5;
+output.centers=[];
+ops.bg_temporal=squeeze(mean(sensor_movie,1));
+[S, T]=fast_NMF(sensor_movie,Input.rank,opts);
+S=[S' output.std_image(:)]';
 sensor_movie=sensor_movie(output.idx,:);
-S=S';
 
 %% reconstruct spatial filters
 disp('Reconstructing spatial filters');
