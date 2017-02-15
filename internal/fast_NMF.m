@@ -10,7 +10,7 @@ if isfield(opts,'bg_temporal')
 end
 
 end
-
+opts.warm_start=[];
 option=opts;
 option.max_iter=3;
 for iter=1:opts.max_iter
