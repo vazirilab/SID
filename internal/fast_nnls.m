@@ -11,6 +11,10 @@ if ~isfield(opts,'gpu')
     opts.gpu='off';
 end
 
+if ~isfield(opts,'tol_p')
+    opts.tol_p=1;
+end
+
 if ~isfield(opts,'display')
     opts.display='off';
 end
@@ -32,11 +36,7 @@ if ~isfield(opts,'warm_start')
 end
 %%
 if nargin<=3
-    if strcmp(opts.gpu,'on')
-        Q=full(A'*A);
-    else
-        Q=A'*A;
-    end
+    Q=A'*A;
     h=1./sqrt(diag(Q));
     Q=Q./sqrt(diag(Q)*diag(Q)');
     df=diag(h)*(-A'*Y + opts.lambda);
@@ -48,6 +48,11 @@ end
 
 if isempty(opts.warm_start)
     x=zeros(size(A,2),size(Y,2));
+elseif opts.warm_start==1
+    x=inv(Q)*(-df);
+    x(x<0)=0;
+    df=df+Q*x;
+    disp('warm_start');
 else
     x=diag(1./h)*opts.warm_start;
     df=df+Q*x;
@@ -92,7 +97,12 @@ while ~isempty(x)
     df=df+Q*(x_-x);
     
     if mod(s,2)==1
-        test=[test' log(sqrt(sum((x_-x).^2,1)))']';
+        if opts.tol_p==2
+            test=[test' log(sqrt(sum((x_-x).^2,1)))']';
+        elseif opts.tol_p==1
+            test=[test' log(sqrt(sum(abs(x_-x),1)))']';
+        end
+
         if size(test,1)>opts.sample
             test=test(2:end,:);
         end
