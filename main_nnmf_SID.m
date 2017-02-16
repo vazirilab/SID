@@ -4,7 +4,7 @@
 %
 %% Input
 Input.LFM_folder='/ssd_raid_4TB/oliver.s/fish-7-10-2016/fish1_LFM_20x05NA_exc12pc/';
-Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_olympus_20x_05NA_water__20FN__on_scientifica_from-100_to100_zspacing4_Nnum11_lambda520_OSR3_';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_olympus_20x_05NA_water_117pm18mm_20FN_on_relay_stfica_pm100_from-100_to100_zspacing4_Nnum11_lambda520_OSR3_normed';
 Input.output_folder='/ssd_raid_4TB/oliver.s/Desktop/new_method/LFM-factorization/';
 Input.output_name='fish1_LFM_20x05NA_exc12pc';
 Input.x_offset=1277.700000;
@@ -82,45 +82,56 @@ psf_ballistic=load(Input.psf_filename_ballistic);
 poolobj = gcp('nocreate');
 delete(poolobj);
 
-nn=length(Input.gpu_ids);
-gimp=Input.gpu_ids;
-parpool(nn);
-
 options_rec.p=2;
 options_rec.maxIter=8;
 options_rec.mode='TV';
 options_rec.lambda=[ 0, 0, 10];
 options_rec.lambda_=0.1;
 
-for kk=1:nn:size(S,1)
-    img=cell(nn,1);
-    for worker=1:min(nn,size(S,1)-(kk-1))
-        k=kk+worker-1;
+if isempty(Input.gpu_ids)    
+    infile=struct;
+    for k=1:size(S,1)
         img_=reshape(S(k,:),size(output.std_image,1),[]);
         img_=img_/max(img_(:));
         img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end)));
-        
         img_(img_<0)=0;
-        img{worker}=full(img_)/max(img_(:));
+        infile.LFmovie=full(img_)/max(img_(:));
+        output.recon{k} = reconstruction_cpu_sparse(psf_ballistic,infile,options_rec);
+        disp(k);
+    end   
+else
+    nn=length(Input.gpu_ids);
+    gimp=Input.gpu_ids;
+    parpool(nn);
+    
+    for kk=1:nn:size(S,1)
+        img=cell(nn,1);
+        for worker=1:min(nn,size(S,1)-(kk-1))
+            k=kk+worker-1;
+            img_=reshape(S(k,:),size(output.std_image,1),[]);
+            img_=img_/max(img_(:));
+            img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end)));
+            img_(img_<0)=0;
+            img{worker}=full(img_)/max(img_(:));
+        end
+        options=cell(min(nn,size(S,1)-(kk-1)),1);
+        recon=cell(min(nn,size(S,1)-(kk-1)),1);
+        parfor worker=1:min(nn,size(S,1)-(kk-1))
+            infile=struct;
+            infile.LFmovie=(img{worker});
+            options{worker}=options_rec;
+            options{worker}.gpu_ids=mod((worker-1),nn)+1;
+            options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
+            
+            recon{worker}= reconstruction_sparse(infile, psf_ballistic, options{worker});
+            gpuDevice([]);
+        end
+        for kp=1:min(nn,size(S,1)-(kk-1))
+            output.recon{kk+kp-1}=recon{kp};
+        end
+        disp(kk)
     end
-    options=cell(min(nn,size(S,1)-(kk-1)),1);
-    recon=cell(min(nn,size(S,1)-(kk-1)),1);
-    parfor worker=1:min(nn,size(S,1)-(kk-1))
-        infile=struct;
-        infile.LFmovie=(img{worker});
-        options{worker}=options_rec;
-        options{worker}.gpu_ids=mod((worker-1),nn)+1;
-        options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
-        
-        recon{worker}= reconstruction_sparse(infile, psf_ballistic, options{worker});
-        gpuDevice([]);
-    end
-    for kp=1:min(nn,size(S,1)-(kk-1))
-        output.recon{kk+kp-1}=recon{kp};
-    end
-    disp(kk)
 end
-
 %% generate initial brain model
 output.centers=[];
 for ii=1:size(output.recon,2)
