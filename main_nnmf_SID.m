@@ -61,10 +61,18 @@ toc
 %% find crop space
 disp('Finding crop space');
 sub_image=output.std_image(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end);
-sub_image=output.std_image-mean(sub_image(:))-6*std(sub_image(:));
+sub_image=output.std_image-mean(sub_image(:))-2*std(sub_image(:));
 sub_image(sub_image<0)=0;
-
+beads=bwconncomp(sub_image>0);
+for kk=1:beads.NumObjects
+    if numel(beads.PixelIdxList{kk})<8
+        sub_image(beads.PixelIdxList{kk})=0;
+    end
+end
+h = fspecial('average', 2*psf_ballistic.Nnum);
+sub_image=conv2(sub_image,h,'same');
 output.idx=find(sub_image>0);
+
 
 %% generate NNMF
 disp(['Generating rank-' num2str(Input.rank) '-factorization']);

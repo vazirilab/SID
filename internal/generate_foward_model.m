@@ -1,5 +1,5 @@
 function forward_model=generate_foward_model(centers,psf_ballistic,r,rr,m)
-
+tic
 dim=m(1:2);
 Hsize=size(psf_ballistic.H);
 disp('Initiate forward_model');
