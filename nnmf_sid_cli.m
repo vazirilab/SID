@@ -25,7 +25,7 @@ parser.addParameter('native_focal_plane', 26, @is_positive_integer_or_zero);
 parser.addParameter('testing', 0, @is_positive_integer_or_zero);
 parser.addParameter('tmp_dir', tempdir(), @is_in_existing_dir);
 parser.addParameter('out_filename', '');
-parser.addParameter('out_param_filename', 'input_and_derived_parameters.json');
+parser.addParameter('out_param_file', 'input_and_derived_parameters.json');
 parser.addParameter('gpu_ids', '[]');
 
 parser.parse(indir, outdir, psffile, make_double(offset_x), make_double(offset_y), make_double(dx), varargin{:});
@@ -43,28 +43,28 @@ if ~exist(p.outdir, 'dir')
 end
 
 [~, rand_string] = fileparts(tempname());
-p.tmpdir = fullfile(p.tmpdir, ['nnmf_sid_' rand_string]);
-disp(['Creating tmp dir: ' p.tmpdir]);
+p.tmp_dir = fullfile(p.tmp_dir, ['nnmf_sid_' rand_string]);
+disp(['Creating tmp dir: ' p.tmp_dir]);
+mkdir(p.tmp_dir);
 
 disp('All input and derived parameters: ');
 disp(p);
 
 %% Call nnmf_sid function
 disp([datestr(now) ': Calling main_nnmf_SID()']);
-if ~testing
+if ~p.testing
     main_nnmf_SID(p.indir, p.outdir, p.psffile, p.offset_x, p.offset_y, p.dx, p);
 end
 
 %%
 disp([datestr(now) ': main_nnmf_SID() complete.']);
-if p.is_first_frame
-    disp([datestr(now) ': Writing output parameter file']);
-    savejson('input_and_derived_parameters', p, p.output_parameter_file);
-end
 
-if ~strcmp(p.tmpdir, '')
+disp([datestr(now) ': Writing output parameter file']);
+savejson('input_and_derived_parameters', p, p.out_param_file);
+
+if ~strcmp(p.tmp_dir, '')
     disp([datestr(now) ': Deleting job tmp dir']);
-    rmdir(p.tmpdir, 's');
+    rmdir(p.tmp_dir, 's');
 end
 
 ret = 0;

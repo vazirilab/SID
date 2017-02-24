@@ -66,7 +66,9 @@ while num>0
         %         [timeseries(:,mig),B]=NONnegLSQ_gpu(forward_model,bg_spatial,sensor_movie,[],opts,B);
         [timeseries(:,mig)]=fast_nnls(forward_model,sensor_movie,opts,Q,[],h);
     end
-    save('/tmp/timeseries.mat','timeseries');
+    if hasattr(opts, 'outfile')
+        save(opts.outfile, 'timeseries');
+    end
     num=num-length(mig);
     mig=(mig(length(mig)))+1:(mig(length(mig))+min(Junk_size, length(infiles_struct)-mig(length(mig))));
 end

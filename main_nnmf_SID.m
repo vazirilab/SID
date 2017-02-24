@@ -22,6 +22,12 @@ else
     Input.output_name = ['nnmf_sid_result_' datestr(now, 'YY-mm-ddTHHMM') '.mat'];
 end
 
+if isfield(optional_args, 'tmp_dir')
+    Input.tmp_dir = optional_args.tmp_dir;
+else
+    Input.output_name = tempdir();
+end
+
 if isfield(optional_args, 'step')
     Input.step = optional_args.step;
 else
@@ -377,6 +383,7 @@ opts.warm_start=[];
 opts.frame=Input.frames_for_model_optimization;
 opts.idx=output.idx;
 opts.max_iter=20000;
+opts.outfile = fullfile(Input.outdir, 'timeseries_debug_out.mat');
 if Input.de_trend
     opts.mean_signal=output.mean_signal;
 end
