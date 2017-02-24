@@ -1,27 +1,93 @@
+function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_args)
 %% fish timeseries extraction
-%
-%
-%
-%% Input
-Input.LFM_folder='/ssd_raid_4TB/oliver.s/fish-7-10-2016/fish1_LFM_20x05NA_exc12pc/';
-Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_olympus_20x_05NA_water_117pm18mm_20FN_on_relay_stfica_pm100_from-100_to100_zspacing4_Nnum11_lambda520_OSR3_normed';
-Input.output_folder='/ssd_raid_4TB/oliver.s/Desktop/new_method/LFM-factorization/';
-Input.output_name='fish1_LFM_20x05NA_exc12pc';
-Input.x_offset=1277.700000;
-Input.y_offset=1082.00000;
-Input.rank=30; % If Input.rank==0 SID classic instead of SID_nmf
-Input.dx=22.7;
-Input.step=1;
-Input.step_=3;
-Input.bg_iter=2;
-Input.rectify=1;
-Input.Junk_size=1000;
-Input.bg_sub=1;
-Input.prime=40000;
-Input.prime_=4800;
-Input.gpu_ids=[1 2 4];
-Input.num_iter=4;
-Input.native_focal_plane=26;
+
+%% Required parameters
+Input.LFM_folder = indir;
+Input.psf_filename_ballistic = psffile;
+Input.output_folder = outdir;
+Input.x_offset = x_offset;
+Input.y_offset = y_offset;
+Input.dx = dx;
+
+%% Optional parameters
+if isfield(optional_args, 'rank')
+    Input.rank = optional_args.rank;
+else
+    Input.rank = 30; % If Input.rank==0 SID classic instead of SID_nmf
+end
+
+if isfield(optional_args, 'out_filename')
+    Input.output_name = optional_args.out_filename;
+else
+    Input.output_name = ['nnmf_sid_result_' datestr(now, 'YY-mm-ddTHHMM') '.mat'];
+end
+
+if isfield(optional_args, 'step')
+    Input.step = optional_args.step;
+else
+    Input.step = 1;
+end
+
+if isfield(optional_args, 'step_')
+    Input.step_ = optional_args.step_;
+else
+    Input.step_ = 3;
+end
+
+if isfield(optional_args, 'bg_iter')
+    Input.bg_iter = optional_args.bg_iter;
+else
+    Input.bg_iter = 2;
+end
+
+if isfield(optional_args, 'rectify')
+    Input.rectify = optional_args.rectify;
+else
+    Input.rectify = 1;
+end
+
+if isfield(optional_args, 'junk_size')
+    Input.Junk_size = optional_args.junk_size;
+else
+    Input.Junk_size = 1000;
+end
+
+if isfield(optional_args, 'bg_sub')
+    Input.bg_sub = optional_args.bg_sub;
+else
+    Input.bg_sub = 1;
+end
+
+if isfield(optional_args, 'prime')
+    Input.prime = optional_args.prime;
+else
+    Input.prime = 40000;
+end
+
+if isfield(optional_args, 'prime_')
+    Input.prime_ = optional_args.prime_;
+else
+    Input.prime_ = 4800;
+end
+
+if isfield(optional_args, 'gpu_ids')
+    Input.gpu_ids = optional_args.gpu_ids;
+else
+    Input.gpu_ids = [];
+end
+
+if isfield(optional_args, 'n_iter')
+    Input.num_iter = optional_args.n_iter;
+else
+    Input.num_iter = 4;
+end
+
+if isfield(optional_args, 'native_focal_plane')
+    Input.native_focal_plane = optional_args.native_focal_plane;
+else
+    Input.native_focal_plane = 26;
+end
+
 psf_ballistic=matfile(Input.psf_filename_ballistic);
 
 %% Compute bg components via rank-1-factorization
@@ -53,8 +119,8 @@ toc
 tic
 disp('Detrending LFM movie');
 baseline=mean(sensor_movie,1)';
-baseline=fit([1:length(baseline)]',baseline,'exp2');
-baseline=baseline.a*exp(baseline.b*[1:size(sensor_movie,2)])+baseline.c*exp(baseline.d*[1:size(sensor_movie,2)]);
+baseline=fit((1:length(baseline))', baseline, 'exp2');
+baseline=baseline.a*exp(baseline.b* (1:size(sensor_movie,2)))+baseline.c*exp(baseline.d * 1:size(sensor_movie,2));
 sensor_movie=sensor_movie*diag(1./baseline);
 toc
 
@@ -79,8 +145,8 @@ disp(['Generating rank-' num2str(Input.rank) '-factorization']);
 opts.max_iter=1000;
 opts.lambda=5;
 output.centers=[];
-ops.bg_temporal=squeeze(mean(sensor_movie,1));
-[S, T]=fast_NMF(sensor_movie,Input.rank,opts);
+opts.bg_temporal=squeeze(mean(sensor_movie,1));
+[S, ~]=fast_NMF(sensor_movie,Input.rank,opts);
 S=[S' output.std_image(:)]';
 sensor_movie=sensor_movie(output.idx,:);
 
@@ -122,14 +188,15 @@ else
             img_(img_<0)=0;
             img{worker}=full(img_)/max(img_(:));
         end
-        options=cell(min(nn,size(S,1)-(kk-1)),1);
+        
         recon=cell(min(nn,size(S,1)-(kk-1)),1);
         parfor worker=1:min(nn,size(S,1)-(kk-1))
             infile=struct;
             infile.LFmovie=(img{worker});
+            options=cell(min(nn,size(S,1)-(kk-1)),1);
             options{worker}=options_rec;
             options{worker}.gpu_ids=mod((worker-1),nn)+1;
-            options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
+            options{worker}.gpu_ids=gimp(options{worker}.gpu_ids); %#ok<PFBNS>
             
             recon{worker}= reconstruction_sparse(infile, psf_ballistic, options{worker});
             gpuDevice([]);
@@ -323,10 +390,10 @@ disp('Extraction complete');
 %% save output
 
 disp('Saving data')
-if ~(exist(Input.output_folder)==7)
+if ~exist(Input.output_folder, 'dir')
     mkdir(Input.output_folder);
 end
 
-save([Input.output_folder Input.output_name '007' '.mat'],'-struct','output','-v7.3');
+save(fullfile(Input.output_folder, Input.output_name), '-struct', 'output', '-v7.3');
 
 disp('COMPLETE!')
