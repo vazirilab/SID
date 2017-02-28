@@ -21,6 +21,7 @@ parser.addParameter('prime', 40000, @is_positive_integer_or_zero);
 parser.addParameter('prime_', 4800, @is_positive_integer_or_zero);
 parser.addParameter('n_iter', 4, @is_positive_integer_or_zero);
 parser.addParameter('native_focal_plane', 26, @is_positive_integer_or_zero);
+parser.addParameter('neuron_radius_px', 10, @is_positive_integer_or_zero);
 
 parser.addParameter('testing', 0, @is_positive_integer_or_zero);
 parser.addParameter('tmp_dir', tempdir(), @is_in_existing_dir);
@@ -32,7 +33,7 @@ parser.parse(indir, outdir, psffile, make_double(offset_x), make_double(offset_y
 
 p = parser.Results;
 for parameter = {'offset_x' 'offset_y' 'dx' 'step' 'step_' 'rank' 'rectify' 'bg_iter' ...
-        'junk_size' 'bg_sub' 'prime' 'prime_' 'n_iter' 'native_focal_plane'}
+        'junk_size' 'bg_sub' 'prime' 'prime_' 'n_iter' 'native_focal_plane', 'neuron_radius_px'}
     p.(parameter{:}) = make_double(parser.Results.(parameter{:}));
 end
 

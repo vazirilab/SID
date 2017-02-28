@@ -94,6 +94,27 @@ else
     Input.native_focal_plane = 26;
 end
 
+% typical neuron radius in px. Typically 6 for fish using 20x/0.5
+% objective, 9-12 for mouse cortex and 16x/0.8
+if isfield(optional_args, 'neuron_radius_px')
+    Input.thres = optional_args.neuron_radius_px;
+else
+    Input.thres = 10;
+end
+
+do_crop = 0;
+crop_thresh_coord_x = 0.5;
+crop_thresh_coord_y = 0.5;
+Input.nnmf_opts.max_iter = 1000;
+Input.nnmf_opts.lambda = 0.1;
+
+Input.recon_opts.p = 2;
+Input.recon_opts.maxIter = 8;
+Input.recon_opts.mode = 'TV';
+Input.recon_opts.lambda = [0, 0, 10];
+Input.recon_opts.lambda_ = 0.1;
+
+%%
 psf_ballistic=matfile(Input.psf_filename_ballistic);
 
 %% Compute bg components via rank-1-factorization
@@ -131,28 +152,30 @@ sensor_movie=sensor_movie*diag(1./baseline);
 toc
 
 %% find crop space
-disp('Finding crop space');
-sub_image=output.std_image(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end);
-sub_image=output.std_image-mean(sub_image(:))-2*std(sub_image(:));
-sub_image(sub_image<0)=0;
-beads=bwconncomp(sub_image>0);
-for kk=1:beads.NumObjects
-    if numel(beads.PixelIdxList{kk})<8
-        sub_image(beads.PixelIdxList{kk})=0;
+if do_crop
+    disp('Finding crop space');
+    sub_image=output.std_image(ceil(crop_thresh_coord_x * size(output.std_image,1)):end, ceil(crop_thresh_coord_y * size(output.std_image,2)):end);
+    sub_image=output.std_image-mean(sub_image(:))-2*std(sub_image(:));
+    sub_image(sub_image<0)=0;
+    beads=bwconncomp(sub_image>0);
+    for kk=1:beads.NumObjects
+        if numel(beads.PixelIdxList{kk})<8
+            sub_image(beads.PixelIdxList{kk})=0;
+        end
     end
+    h = fspecial('average', 2*psf_ballistic.Nnum);
+    sub_image=conv2(sub_image,h,'same');
+    output.idx=find(sub_image>0);
+else
+    sub_image = output.std_image * 0 + 1;
 end
-h = fspecial('average', 2*psf_ballistic.Nnum);
-sub_image=conv2(sub_image,h,'same');
-output.idx=find(sub_image>0);
 
 
 %% generate NNMF
 disp(['Generating rank-' num2str(Input.rank) '-factorization']);
-opts.max_iter=1000;
-opts.lambda=5;
 output.centers=[];
-opts.bg_temporal=squeeze(mean(sensor_movie,1));
-[S, ~]=fast_NMF(sensor_movie,Input.rank,opts);
+Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
+[S, ~]=fast_NMF(sensor_movie, Input.rank, Input.nnmf_opts);
 S=[S' output.std_image(:)]';
 sensor_movie=sensor_movie(output.idx,:);
 
@@ -162,12 +185,6 @@ psf_ballistic=load(Input.psf_filename_ballistic);
 poolobj = gcp('nocreate');
 delete(poolobj);
 
-options_rec.p=2;
-options_rec.maxIter=8;
-options_rec.mode='TV';
-options_rec.lambda=[ 0, 0, 10];
-options_rec.lambda_=0.1;
-
 if isempty(Input.gpu_ids)    
     infile=struct;
     for k=1:size(S,1)
@@ -176,7 +193,7 @@ if isempty(Input.gpu_ids)
         img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end)));
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));
-        output.recon{k} = reconstruction_cpu_sparse(psf_ballistic,infile,options_rec);
+        output.recon{k} = reconstruction_cpu_sparse(psf_ballistic,infile, Input.recon_opts);
         disp(k);
     end   
 else
