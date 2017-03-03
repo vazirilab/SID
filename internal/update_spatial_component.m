@@ -4,6 +4,10 @@ if ~isfield(opts,'bg_sub')
     opts.bg_sub=1;
 end
 
+if ~isfield(opts,'exact')
+    opts.exact=0;
+end
+
 [~, order]=sort(sum(template,2));
 
 I=[];

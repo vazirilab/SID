@@ -116,6 +116,7 @@ Input.recon_opts.lambda_ = 0.1;
 
 %%
 psf_ballistic=matfile(Input.psf_filename_ballistic);
+Input.fluoslide_fn = ['fluoslide_Nnum' num2str(psf_ballistic.Nnum) '.mat'];
 
 %% Compute bg components via rank-1-factorization
 disp('Computing background components');
@@ -312,10 +313,10 @@ optz.bg_sub=Input.bg_sub;
 opts.lambda=0;
 
 if Input.bg_sub
-    bg_spatial_=average_ML(reshape(output.bg_spatial,size(output.bg_spatial)),Nnum);
-    bg_spatial_=bg_spatial_(output.idx);
-    bg_spatial_=bg_spatial_/norm(bg_spatial_(:));
-    output.forward_model_(end+1,:)=bg_spatial_;
+%     bg_spatial_=average_ML(reshape(output.bg_spatial,size(output.bg_spatial)),Nnum, Input.fluoslide_fn);
+%     bg_spatial_=bg_spatial_(output.idx);
+%     bg_spatial_=bg_spatial_/norm(bg_spatial_(:));
+    output.forward_model_(end+1,:) = output.bg_spatial(output.idx);
 end
 
 disp('Starting Temporal update')
@@ -384,7 +385,9 @@ for iter=1:Input.num_iter
     output.timeseries_=fast_nnls(output.forward_model_',sensor_movie,opts);
     disp('Temporal update completed');
     toc
-    disp([num2str(iter) '. iteration completed']);
+    if mod(iter, 10_ == 0
+        disp([num2str(iter) '. iteration completed']);
+    end
 end
 output.template_=template_;
 output.Input=Input;
