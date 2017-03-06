@@ -102,6 +102,7 @@ else
     Input.thres = 10;
 end
 
+%%
 do_crop = 0;
 crop_thresh_coord_x = 0.5;
 crop_thresh_coord_y = 0.5;
@@ -117,6 +118,7 @@ Input.recon_opts.lambda_ = 0.1;
 %%
 psf_ballistic=matfile(Input.psf_filename_ballistic);
 Input.fluoslide_fn = ['fluoslide_Nnum' num2str(psf_ballistic.Nnum) '.mat'];
+mkdir(Input.output_folder);
 
 %% Compute bg components via rank-1-factorization
 disp('Computing background components');
@@ -126,6 +128,10 @@ else
     output.bg_temporal=[];
     output.bg_spatial=[];
 end
+figure; imagesc(output.bg_spatial); axis image; colorbar;
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.pdf']), '-dpdf', '-r300');
+figure; plot(output.bg_temporal);
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.pdf']), '-dpdf', '-r300');
 
 %% Compute standard-deviation image (std. image)
 disp('Computing standard deviation image');
@@ -138,18 +144,31 @@ end
 if (Input.bg_sub==1)&&(Input.rectify==1)
     output.bg_spatial =  ImageRect(output.bg_spatial, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum,0);
 end
+figure; imagesc(output.std_image); axis image; colorbar;
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.pdf']), '-dpdf', '-r300');
 
 %% load sensor movie and de-trend
 disp('Loading LFM movie');
-tic
+tic;
 sensor_movie=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.step_,Input.rectify,Input.prime_);
 toc
-tic
-disp('Detrending LFM movie');
+
+tic;
 baseline=mean(sensor_movie,1)';
-baseline=fit((1:length(baseline))', baseline, 'exp2');
-baseline=baseline.a*exp(baseline.b* (1:size(sensor_movie,2)))+baseline.c*exp(baseline.d * 1:size(sensor_movie,2));
-sensor_movie=sensor_movie*diag(1./baseline);
+disp('Detrending LFM movie');
+figure; plot(baseline); title('Frame means after background subtraction');
+
+baseline_fit = fit((1:length(baseline))', baseline, 'exp2');
+disp(baseline_fit);
+if baseline_fit.b > 0 || baseline_fit.d > 0
+    disp('WARNING: Baseline fit with sum of exponentials failed: At least one exponent is positive. Will not de-trend.');
+    baseline_fit_vals = ones(size(sensor_movie,2)) * mean(baseline);
+else
+    baseline_fit_vals = baseline_fit.a * exp(baseline_fit.b* (1:size(sensor_movie,2))) + baseline_fit.c * exp(baseline_fit.d * 1:size(sensor_movie,2));
+end
+figure; hold on; plot(baseline); plot(baseline_fit_vals); hold off; title('Frame means and trend fit');
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
+sensor_movie = sensor_movie * diag(1./baseline_fit_vals);
 toc
 
 %% find crop space
@@ -166,17 +185,16 @@ if do_crop
     end
     h = fspecial('average', 2*psf_ballistic.Nnum);
     sub_image=conv2(sub_image,h,'same');
-    output.idx=find(sub_image>0);
 else
     sub_image = output.std_image * 0 + 1;
 end
-
+output.idx=find(sub_image>0);
 
 %% generate NNMF
 disp(['Generating rank-' num2str(Input.rank) '-factorization']);
 output.centers=[];
 Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
-[S, ~]=fast_NMF(sensor_movie, Input.rank, Input.nnmf_opts);
+[S, ~] = fast_NMF(sensor_movie, Input.rank, Input.nnmf_opts);
 S=[S' output.std_image(:)]';
 sensor_movie=sensor_movie(output.idx,:);
 
@@ -214,11 +232,12 @@ else
         end
         
         recon=cell(min(nn,size(S,1)-(kk-1)),1);
+        tmp_recon_opts = Input.recon_opts;
         parfor worker=1:min(nn,size(S,1)-(kk-1))
             infile=struct;
             infile.LFmovie=(img{worker});
             options=cell(min(nn,size(S,1)-(kk-1)),1);
-            options{worker}=options_rec;
+            options{worker}=tmp_recon_opts;
             options{worker}.gpu_ids=mod((worker-1),nn)+1;
             options{worker}.gpu_ids=gimp(options{worker}.gpu_ids); %#ok<PFBNS>
             
@@ -385,7 +404,7 @@ for iter=1:Input.num_iter
     output.timeseries_=fast_nnls(output.forward_model_',sensor_movie,opts);
     disp('Temporal update completed');
     toc
-    if mod(iter, 10_ == 0
+    if mod(iter, 50) == 0
         disp([num2str(iter) '. iteration completed']);
     end
 end
