@@ -113,7 +113,7 @@ while ~isempty(x)
         if isfield(opts,'max_iter')
             if s>opts.max_iter
                 ids=1:size(x,2);
-                disp('max number of iterations is reached');
+                fprintf('max_iter! ');
             end
         end
     else
