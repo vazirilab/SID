@@ -1,5 +1,32 @@
 function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_args)
 %% fish timeseries extraction
+% all Input fields used in the rest of the script:
+% Input.LFM_folder
+% Input.psf_filename_ballistic
+% Input.output_folder
+% Input.x_offset
+% Input.y_offset
+% Input.dx
+% Input.rank
+% Input.output_name
+% Input.tmp_dir
+% Input.step
+% Input.step_
+% Input.bg_iter
+% Input.rectify
+% Input.Junk_size
+% Input.bg_sub
+% Input.prime
+% Input.prime_
+% Input.gpu_ids
+% Input.num_iter
+% Input.native_focal_plane
+% Input.thres
+% Input.nnmf_opts
+% Input.recon_opts
+% Input.update_template
+% Input.detrend
+% Input.fluoslide_fn
 
 %% Required parameters
 Input.LFM_folder = indir;
@@ -115,13 +142,18 @@ Input.recon_opts.mode = 'TV';
 Input.recon_opts.lambda = [0, 0, 10];
 Input.recon_opts.lambda_ = 0.1;
 
+Input.update_template = false;
+Input.detrend = false;
+
 %%
 psf_ballistic=matfile(Input.psf_filename_ballistic);
 Input.fluoslide_fn = ['fluoslide_Nnum' num2str(psf_ballistic.Nnum) '.mat'];
-mkdir(Input.output_folder);
+if ~exist(Input.output_folder, 'dir')
+    mkdir(Input.output_folder);
+end
 
 %% Compute bg components via rank-1-factorization
-disp('Computing background components');
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing background components']);
 if Input.bg_sub==1
     [output.bg_temporal,output.bg_spatial]=par_rank_1_factorization(Input.LFM_folder,Input.step, Input.bg_iter,Input.prime);
 else
@@ -134,7 +166,7 @@ figure; plot(output.bg_temporal);
 print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.pdf']), '-dpdf', '-r300');
 
 %% Compute standard-deviation image (std. image)
-disp('Computing standard deviation image');
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing standard deviation image']);
 if Input.rectify==1
     [output.std_image,~]=par_compute_std_image(Input.LFM_folder,Input.step,output.bg_temporal,output.bg_spatial,Input.prime, Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum);
 else
@@ -148,20 +180,20 @@ figure; imagesc(output.std_image); axis image; colorbar;
 print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.pdf']), '-dpdf', '-r300');
 
 %% load sensor movie and de-trend
-disp('Loading LFM movie');
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
 tic;
 sensor_movie=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.step_,Input.rectify,Input.prime_);
 toc
 
 tic;
 baseline=mean(sensor_movie,1)';
-disp('Detrending LFM movie');
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
 figure; plot(baseline); title('Frame means after background subtraction');
 
 baseline_fit = fit((1:length(baseline))', baseline, 'exp2');
-disp(baseline_fit);
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' baseline_fit]);
 if baseline_fit.b > 0 || baseline_fit.d > 0
-    disp('WARNING: Baseline fit with sum of exponentials failed: At least one exponent is positive. Will not de-trend.');
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'WARNING: Baseline fit with sum of exponentials failed: At least one exponent is positive. Will not de-trend.']);
     baseline_fit_vals = ones(size(sensor_movie,2)) * mean(baseline);
 else
     baseline_fit_vals = baseline_fit.a * exp(baseline_fit.b* (1:size(sensor_movie,2))) + baseline_fit.c * exp(baseline_fit.d * 1:size(sensor_movie,2));
@@ -173,7 +205,7 @@ toc
 
 %% find crop space
 if do_crop
-    disp('Finding crop space');
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
     sub_image=output.std_image(ceil(crop_thresh_coord_x * size(output.std_image,1)):end, ceil(crop_thresh_coord_y * size(output.std_image,2)):end);
     sub_image=output.std_image-mean(sub_image(:))-2*std(sub_image(:));
     sub_image(sub_image<0)=0;
@@ -199,7 +231,7 @@ S=[S' output.std_image(:)]';
 sensor_movie=sensor_movie(output.idx,:);
 
 %% reconstruct spatial filters
-disp('Reconstructing spatial filters');
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Reconstructing spatial filters']);
 psf_ballistic=load(Input.psf_filename_ballistic);
 poolobj = gcp('nocreate');
 delete(poolobj);
@@ -213,7 +245,7 @@ if isempty(Input.gpu_ids)
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));
         output.recon{k} = reconstruction_cpu_sparse(psf_ballistic,infile, Input.recon_opts);
-        disp(k);
+        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
     end   
 else
     nn=length(Input.gpu_ids);
@@ -247,7 +279,7 @@ else
         for kp=1:min(nn,size(S,1)-(kk-1))
             output.recon{kk+kp-1}=recon{kp};
         end
-        disp(kk)
+        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' kk])
     end
 end
 %% generate initial brain model
@@ -289,7 +321,7 @@ for ii=1:size(output.recon,2)
         output.centers=[output.centers' centers(id,:)']';
     end
     
-    disp(ii);
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' ii]);
 end
 
 segm=0*output.recon{1};
@@ -315,7 +347,7 @@ Nnum=psf_ballistic.Nnum;
 clearvars -except sensor_movie Input output mean_signal template_ neur Nnum neur
 
 %% optimize model
-disp('Start optimizing model')
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
 
 tic
 opts=[];
@@ -331,16 +363,16 @@ optz.display='on';
 optz.bg_sub=Input.bg_sub;
 opts.lambda=0;
 
-if Input.bg_sub
+if isfield(Input, 'bg_sub') && Input.bg_sub
 %     bg_spatial_=average_ML(reshape(output.bg_spatial,size(output.bg_spatial)),Nnum, Input.fluoslide_fn);
 %     bg_spatial_=bg_spatial_(output.idx);
 %     bg_spatial_=bg_spatial_/norm(bg_spatial_(:));
     output.forward_model_(end+1,:) = output.bg_spatial(output.idx);
 end
 
-disp('Starting Temporal update')
-output.timeseries=fast_nnls(output.forward_model_',sensor_movie,opts);
-disp('Temporal update completed');
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update'])
+output.timeseries = fast_nnls(output.forward_model_', sensor_movie, opts);
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
 
 output.timeseries_=output.timeseries;
 output.centers_=output.centers;
@@ -349,7 +381,7 @@ opts.max_iter=10000;
 
 for iter=1:Input.num_iter
     id2=[];
-    disp('Pruning neurons');
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Pruning neurons']);
     for k=1:size(output.forward_model_,1)
         trace=output.timeseries_(k,:)>1e-7;
         if sum(trace)>1
@@ -363,14 +395,14 @@ for iter=1:Input.num_iter
     output.centers_=output.centers_(id2(1:end-Input.bg_sub),:);
     output.forward_model=output.forward_model(id2(1:end-Input.bg_sub),:);
     tic
-    disp('Starting Spatial update');
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting spatial update']);
     output.timeseries_=diag(1./(sqrt(sum(output.timeseries_.^2,2))))*output.timeseries_;
     output.forward_model_=update_spatial_component(output.timeseries_, sensor_movie, template_, optz);
     toc
    
-    disp('Spatial update completed')
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Spatial update completed'])
     
-    if Input.update_template
+    if isfield(Input, 'update_template') && Input.update_template
         if iter==2
             for neuron=1:size(template_,1)
                 crop=zeros(size(output.std_image));
@@ -379,18 +411,18 @@ for iter=1:Input.num_iter
                 img=conv2(img,ones(2*Nnum),'same')>0;
                 img=img(:);
                 template_(neuron,:)=(img(output.idx)>0.1);
-                disp(neuron)
+                disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' neuron])
             end
         end
     end      
-    disp('Pruning neurons');  
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Pruning neurons']);  
     id2=[];
     for k=1:size(output.forward_model_,1)
         trace=output.forward_model_(k,:)>1e-12;
         if sum(trace)>(Nnum^2)/3
             id2=[id2 k];
         end
-        %         disp(k);
+        %         disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
     end
     output.timeseries_=output.timeseries_(id2,:);
     output.forward_model_=output.forward_model_(id2,:);
@@ -399,48 +431,43 @@ for iter=1:Input.num_iter
     output.forward_model=output.forward_model(id2(1:end-Input.bg_sub),:);
     tic
 %     output.forward_model_=diag(1./(sqrt(sum(output.forward_model_.^2,2))))*output.forward_model_;
-    disp('Starting Temporal update');
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting Temporal update']);
     opts.warm_start=output.timeseries_;
     output.timeseries_=fast_nnls(output.forward_model_',sensor_movie,opts);
-    disp('Temporal update completed');
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
     toc
     if mod(iter, 50) == 0
         disp([num2str(iter) '. iteration completed']);
     end
 end
 output.template_=template_;
-output.Input=Input;
 opts.warm_start=[];
 clear sensor_movie;
-disp('Model optimization completed');
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Model optimization completed']);
 
 %% extract time series at location LFM_folder
-disp('Extracting Timeseries');
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Extracting Timeseries']);
 opts.step=Input.step;
 opts.prime=Input.prime;
 opts.warm_start=[];
-opts.frame=Input.frames_for_model_optimization;
 opts.idx=output.idx;
 opts.max_iter=20000;
-opts.outfile = fullfile(Input.outdir, 'timeseries_debug_out.mat');
-if Input.de_trend
+%TODO: define opts.frame here?
+opts.outfile = fullfile(Input.output_folder, 'timeseries_debug_out.mat');
+if isfield(Input, 'detrend') && Input.detrend
     opts.mean_signal=output.mean_signal;
 end
 tic
-[timeseries_1,Varg]=incremental_temporal_update_gpu(output.forward_model_, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts);
+[timeseries_1, Varg] = incremental_temporal_update_gpu(output.forward_model_, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts);
 toc
 output.timeseries_total=zeros(size(timeseries_1,1),length(Varg));
-output.timeseries_total(:,find(Varg))=timeseries_1;
-output.timeseries_total(:,find(~Varg))=output.timeseries_;
-disp('Extraction complete');
+output.timeseries_total(:, Varg==1) = timeseries_1;
+output.timeseries_total(:, Varg==0) = output.timeseries_;
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Extraction complete']);
+
 %% save output
-
-disp('Saving data')
-if ~exist(Input.output_folder, 'dir')
-    mkdir(Input.output_folder);
-end
-
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Saving result'])
+output.Input = Input;
 save(fullfile(Input.output_folder, Input.output_name), '-struct', 'output', '-v7.3');
-
-disp('COMPLETE!')
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'main_nnmf_SID() returning'])
 end
