@@ -152,6 +152,21 @@ if ~exist(Input.output_folder, 'dir')
     mkdir(Input.output_folder);
 end
 
+%% Prepare cluster object
+pctconfig('portrange', [27400 27500] + randi(100)*100);
+cluster = parcluster('local');
+if ~isfield(Input, 'job_storage_location')
+    Input.job_storage_location = tempdir();    
+end
+[~, rand_string] = fileparts(tempname());
+Input.job_storage_location_unique = fullfile(Input.job_storage_location, ['nnmf_sid_' rand_string]);
+if ~exist(Input.job_storage_location_unique, 'dir')
+    mkdir(Input.job_storage_location_unique);
+end
+cluster.JobStorageLocation = Input.job_storage_location_unique;
+disp(cluster);
+delete(gcp('nocreate'));
+
 %% Compute bg components via rank-1-factorization
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing background components']);
 if Input.bg_sub==1
@@ -160,9 +175,9 @@ else
     output.bg_temporal=[];
     output.bg_spatial=[];
 end
-figure; imagesc(output.bg_spatial); axis image; colorbar;
+figure; imagesc(output.bg_spatial); axis image; colorbar; title('Spatial background');
 print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.pdf']), '-dpdf', '-r300');
-figure; plot(output.bg_temporal);
+figure; plot(output.bg_temporal); title('Temporal background');
 print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.pdf']), '-dpdf', '-r300');
 
 %% Compute standard-deviation image (std. image)
@@ -190,17 +205,21 @@ baseline=mean(sensor_movie,1)';
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
 figure; plot(baseline); title('Frame means after background subtraction');
 
-baseline_fit = fit((1:length(baseline))', baseline, 'exp2');
-disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' baseline_fit]);
-if baseline_fit.b > 0 || baseline_fit.d > 0
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'WARNING: Baseline fit with sum of exponentials failed: At least one exponent is positive. Will not de-trend.']);
-    baseline_fit_vals = ones(size(sensor_movie,2)) * mean(baseline);
+[baseline_fit, gof, ~] = fit((1:length(baseline))', baseline, 'poly3');
+disp(baseline_fit);
+disp(gof);
+if gof.adjrsquare < 0.9
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'WARNING: Goodness of baseline fit seems bad. De-trending disabled.']);
+    baseline_fit_vals = ones(size(sensor_movie,2), 1) * mean(baseline(:));
 else
-    baseline_fit_vals = baseline_fit.a * exp(baseline_fit.b* (1:size(sensor_movie,2))) + baseline_fit.c * exp(baseline_fit.d * 1:size(sensor_movie,2));
+    baseline_fit_vals = feval(baseline_fit, 1:size(sensor_movie,2));
 end
 figure; hold on; plot(baseline); plot(baseline_fit_vals); hold off; title('Frame means and trend fit');
 print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
 sensor_movie = sensor_movie * diag(1./baseline_fit_vals);
+sensor_movie_min = min(sensor_movie(:));
+sensor_movie_max = max(sensor_movie(:));
+sensor_movie = (sensor_movie - sensor_movie_min) ./ (sensor_movie_max - sensor_movie_min);
 toc
 
 %% find crop space
@@ -223,10 +242,17 @@ end
 output.idx=find(sub_image>0);
 
 %% generate NNMF
-disp(['Generating rank-' num2str(Input.rank) '-factorization']);
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.rank) '-factorization']);
 output.centers=[];
 Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
-[S, ~] = fast_NMF(sensor_movie, Input.rank, Input.nnmf_opts);
+[S, T] = fast_NMF(sensor_movie, Input.rank, Input.nnmf_opts);
+
+timestr = datestr(now, 'YYmmddTHHMM');
+for i = 1 : size(S, 1)
+    figure; imagesc(reshape(S(i,:), size(sub_image))); axis image; colormap('parula'); colorbar; title(['NNMF component' num2str(i)]);
+    print(fullfile(Input.output_folder, [timestr '_nnmf_component_' num2str(3, '%05d') '.pdf']), '-dpdf', '-r300');
+end
+
 S=[S' output.std_image(:)]';
 sensor_movie=sensor_movie(output.idx,:);
 
@@ -241,7 +267,7 @@ if isempty(Input.gpu_ids)
     for k=1:size(S,1)
         img_=reshape(S(k,:),size(output.std_image,1),[]);
         img_=img_/max(img_(:));
-        img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end)));
+        img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end))); % TN TODO: hardcoded vals
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));
         output.recon{k} = reconstruction_cpu_sparse(psf_ballistic,infile, Input.recon_opts);
@@ -258,7 +284,7 @@ else
             k=kk+worker-1;
             img_=reshape(S(k,:),size(output.std_image,1),[]);
             img_=img_/max(img_(:));
-            img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end)));
+            img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end))); % TN TODO: hardcoded vals
             img_(img_<0)=0;
             img{worker}=full(img_)/max(img_(:));
         end
@@ -279,7 +305,7 @@ else
         for kp=1:min(nn,size(S,1)-(kk-1))
             output.recon{kk+kp-1}=recon{kp};
         end
-        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' kk])
+        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' num2str(kk)])
     end
 end
 %% generate initial brain model
@@ -321,7 +347,7 @@ for ii=1:size(output.recon,2)
         output.centers=[output.centers' centers(id,:)']';
     end
     
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' ii]);
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' num2str(ii)]);
 end
 
 segm=0*output.recon{1};
@@ -411,7 +437,7 @@ for iter=1:Input.num_iter
                 img=conv2(img,ones(2*Nnum),'same')>0;
                 img=img(:);
                 template_(neuron,:)=(img(output.idx)>0.1);
-                disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' neuron])
+                disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' num2str(neuron)])
             end
         end
     end      

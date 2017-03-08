@@ -83,7 +83,7 @@ Xi=inv(X'*X)*X';
 while ~isempty(x)
     x_=x;
     if strcmp(opts.display,'on')
-        disp(s)
+        fprintf([num2str(s) ' ']);
     end
     s=s+1;
     df_=df.*passive;
@@ -159,6 +159,8 @@ else
         xx=diag(h)*xx;
     end
 end
+
+fprintf('\n');
 
 end
 

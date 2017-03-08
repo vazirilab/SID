@@ -16,11 +16,13 @@ if ~isfield(options, 'gpu_ids')
     options.gpu_ids = [4 5]; %the GPU ids to use for this job (valid on pcl-imp-2: 1,2,4,5)
 end
 
-%%
+if ~isfield(options,'rad')
+    options.rad = [2,2]; % radius of kernel [lateral, axial] with which volume gets convolved during reconstruction (akin to minimum expected feature size)
+end
+
 eqtol = 1e-10;
 cluster = parcluster('local');
 edgeSuppress = 0;
-
 
 %% REPARE PARALLEL COMPUTING
 pool = gcp('nocreate')
@@ -60,11 +62,6 @@ zeroImageEx = gpuArray(zeros(exsize, 'single'));
 disp(['FFT size is ' num2str(exsize(1)) 'X' num2str(exsize(2))]);
 
 %% generate kernel
-
-if ~isfield(options,'rad')
-    options.rad=[2,2];
-end
-
 W=zeros(2*options.rad(1)+1,2*options.rad(1)+1,2*options.rad(2)+1);
 for ii=1:2*options.rad(1)+1
     for jj=1:2*options.rad(1)+1
@@ -77,8 +74,8 @@ for ii=1:2*options.rad(1)+1
 end
 kernel=gpuArray(W);
 
-forwardFUN = @(Xguess) forwardFUN_(convn(Xguess,kernel,'same'));
-backwardFUN = @(projection) convn(backwardFUN_(projection),kernel,'same');
+forwardFUN = @(Xguess) forwardFUN_(convn(Xguess, kernel, 'same'));
+backwardFUN = @(projection) convn(backwardFUN_(projection), kernel, 'same');
 
 %% Reconstruction
 LFIMG = single(in_file.LFmovie);
@@ -86,8 +83,6 @@ tic;
 Xguess = backwardFUN(LFIMG);
 ttime = toc;
 disp(['  iter ' num2str(0) ' | ' num2str(options.maxIter) ', took ' num2str(ttime) ' secs']);
-
-
 
 %%
 if strcmp(options.whichSolver,'ISRA')
@@ -97,5 +92,5 @@ elseif strcmp(options.whichSolver,'fast_nnls')
 end
 
 Xguess=gather(Xguess);
-disp(['Volume reconstruction complete.']);
+disp('Volume reconstruction complete.');
 end
