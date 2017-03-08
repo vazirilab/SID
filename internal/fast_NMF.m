@@ -18,6 +18,7 @@ else
     option=opts;
     option.max_iter=3;
     for iter=1:opts.max_iter
+        tic
         option.lambda=opts.lambda;
         if iter>1
             option.warm_start=S;
@@ -30,6 +31,7 @@ else
         end
         T=fast_nnls(S',Y,option);
         T(isnan(T))=rand(size(T(isnan(T))));
+        toc
         disp(iter);
     end
 end

@@ -4,6 +4,14 @@ if ~isfield(opts,'bg_sub')
     opts.bg_sub=1;
 end
 
+if ~isfield(opts,'lambda')
+    opts.lambda=0;
+end
+
+if ~isfield(opts,'display')
+    opts.display=0;
+end
+
 [~, order]=sort(sum(template,2));
 
 I=[];
@@ -32,22 +40,27 @@ for neur=1:size(template,1)
             end
         end
         Y=sensor_movie(space,:);
-        opts.anti=1;        
-        if opts.exact==0
+        if opts.solver==0
+            opts.anti=1;
             F=NONnegLSQ_gpu(timeseries(involved_neurons,:),[],Y,temp,opts);
-        else
+        elseif opts.solver==1
+            opts.Accy=0;
             A=timeseries(involved_neurons,:)';
             F=zeros(length(involved_neurons),size(space,2));
             for k_=1:length(space)
-                
                 idx=find(squeeze(temp(:,k_)));
                 y=squeeze(Y(k_,:))';
-                opts.Accy=0;
                 x_=nnls(A(:,idx),y,opts);
                 F(idx,k_)=x_;
             end
-        end
-        
+        elseif opts.solver==2                                               %memory saving
+            A=timeseries(involved_neurons,:)';
+            H=full(A'*A);
+            Q=H./sqrt(diag(H)*diag(H)');
+            option=opts;
+            option.display='off';
+            F=fast_nnls(A,Y',option,Q,[],H,temp);
+        end       
         if size(involved_neurons,2)>=1
             template(:,space)=0;
             [iI, iJ, iS]=find(F);
@@ -60,11 +73,15 @@ for neur=1:size(template,1)
         end
     end
     if strcmp(opts.display,'on')
-    disp(neuron);
+        disp(neuron);
     end
 end
 
-gpuDevice([]);
+if isfield(opts,'gpu')
+    if strcmp(opts.gpu,'on')
+        gpuDevice([]);
+    end
+end
 S=double(S);
 forward_model=sparse(I,J,S,size(timeseries,1),size(sensor_movie,1));
 

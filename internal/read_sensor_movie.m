@@ -1,4 +1,4 @@
-function sensor_movie=read_sensor_movie(LFM_folder,x_offset,y_offset,dx,Nnum,sample,rect,prime)
+function sensor_movie=read_sensor_movie(LFM_folder,x_offset,y_offset,dx,Nnum,rect,frames)
 
 
 %%
@@ -16,12 +16,14 @@ end
 
 
 %%
-if nargin<8
-    prime=size(infiles_struct,1);
+if nargin<7
+    frames.start=1;
+    frames.steps=1;
+    frames.end=size(infiles_struct,1);
 end
-prime=min(prime,size(infiles_struct,1));
+frames.end=min(frames.end,size(infiles_struct,1));
 
-infiles_struct = infiles_struct(1:sample:prime);
+infiles_struct = infiles_struct(frames.start:frames.steps:frames.end);
 
 %%
 for img_ix = 1:size(infiles_struct,1)
@@ -32,7 +34,7 @@ for img_ix = 1:size(infiles_struct,1)
         img_rect = double(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff'));
     end
     if img_ix == 1
-%         sensor_movie = ones(size(img_rect, 1), size(img_rect, 2), prime, 'single');
+%         sensor_movie = ones(size(img_rect, 1), size(img_rect, 2), size(infiles_struct,1), 'double');
         sensor_movie = ones(numel(img_rect), size(infiles_struct,1), 'double');
 
     end
