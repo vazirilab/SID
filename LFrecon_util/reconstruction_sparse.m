@@ -16,11 +16,13 @@ if ~isfield(options, 'gpu_ids')
     options.gpu_ids = [4 5]; %the GPU ids to use for this job (valid on pcl-imp-2: 1,2,4,5)
 end
 
-%%
+if ~isfield(options,'rad')
+    options.rad = [2,2]; % radius of kernel [lateral, axial] with which volume gets convolved during reconstruction (akin to minimum expected feature size)
+end
+
 eqtol = 1e-10;
 cluster = parcluster('local');
 edgeSuppress = 0;
-
 
 %% REPARE PARALLEL COMPUTING
 pool = gcp('nocreate')
@@ -60,6 +62,7 @@ zeroImageEx = gpuArray(zeros(exsize, 'single'));
 disp(['FFT size is ' num2str(exsize(1)) 'X' num2str(exsize(2))]);
 
 %% generate kernel
+<<<<<<< HEAD
 if ~isfield(options,'form')
     options.form='spherical';
 end
@@ -76,6 +79,14 @@ if isfield(options,'rad')
                         end
                     end
                 end
+=======
+W=zeros(2*options.rad(1)+1,2*options.rad(1)+1,2*options.rad(2)+1);
+for ii=1:2*options.rad(1)+1
+    for jj=1:2*options.rad(1)+1
+        for kk=1:2*options.rad(2)+1
+            if  ((ii-(options.rad(1)+1))^2/options.rad(1)^2+(jj-(options.rad(1)+1))^2/options.rad(1)^2+(kk-(options.rad(2)+1))^2/options.rad(2)^2)<=1
+                W(ii,jj,kk)=1;
+>>>>>>> refs/remotes/origin/master
             end
         elseif strcmp(options.form,'gaussian')
             gaussian=fspecial('gaussian',ceil(10*options.rad(1))+1,options.rad(1));
@@ -99,6 +110,13 @@ else
     forwardFUN = forwardFUN_;
     backwardFUN = backwardFUN_;
 end
+<<<<<<< HEAD
+=======
+kernel=gpuArray(W);
+
+forwardFUN = @(Xguess) forwardFUN_(convn(Xguess, kernel, 'same'));
+backwardFUN = @(projection) convn(backwardFUN_(projection), kernel, 'same');
+>>>>>>> refs/remotes/origin/master
 
 %% Reconstruction
 LFIMG = single(in_file.LFmovie);
@@ -106,8 +124,6 @@ tic;
 Xguess = backwardFUN(LFIMG);
 ttime = toc;
 disp(['  iter ' num2str(0) ' | ' num2str(options.maxIter) ', took ' num2str(ttime) ' secs']);
-
-
 
 %%
 if strcmp(options.whichSolver,'ISRA')
@@ -117,5 +133,5 @@ elseif strcmp(options.whichSolver,'fast_nnls')
 end
 
 Xguess=gather(Xguess);
-disp(['Volume reconstruction complete.']);
+disp('Volume reconstruction complete.');
 end

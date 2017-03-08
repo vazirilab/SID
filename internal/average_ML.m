@@ -1,9 +1,9 @@
-function aver=average_ML(LFM_picture,Nnum)
+function aver=average_ML(LFM_picture, Nnum, fluoslide_fn)
 
 LFM_picture=LFM_picture-quantile(LFM_picture(:),0.36686);
 LFM_picture(LFM_picture<0)=0;
 
-fluoslide=load(['fluoslide_Nnum' num2str(Nnum) '.mat']);
+fluoslide=load(fluoslide_fn);
 fluoslide=fluoslide.fluo_slide;
 fluoslide=fluoslide-quantile(fluoslide(:),0.15);
 fluoslide(fluoslide<0)=0;

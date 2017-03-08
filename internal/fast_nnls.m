@@ -83,7 +83,7 @@ Xi=inv(X'*X)*X';
 while ~isempty(x)
     x_=x;
     if strcmp(opts.display,'on')
-        disp(s)
+        fprintf([num2str(s) ' ']);
     end
     s=s+1;
     df_=df.*passive;
@@ -113,7 +113,7 @@ while ~isempty(x)
         if isfield(opts,'max_iter')
             if s>opts.max_iter
                 ids=1:size(x,2);
-                disp('max number of iterations is reached');
+                fprintf('max_iter! ');
             end
         end
     else
@@ -159,6 +159,8 @@ else
         xx=diag(h)*xx;
     end
 end
+
+fprintf('\n');
 
 end
 

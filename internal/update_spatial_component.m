@@ -4,12 +4,17 @@ if ~isfield(opts,'bg_sub')
     opts.bg_sub=1;
 end
 
+
 if ~isfield(opts,'lambda')
     opts.lambda=0;
 end
 
 if ~isfield(opts,'display')
     opts.display=0;
+end
+
+if ~isfield(opts,'exact')
+    opts.exact=0;
 end
 
 [~, order]=sort(sum(template,2));

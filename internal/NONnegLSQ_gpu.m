@@ -33,6 +33,10 @@ if ~isfield(opts,'max_iter')
     opts.max_iter=100000;
 end
 
+if ~isfield(opts,'tol')
+    opts.tol = 1e-3;
+end
+
 if ~isfield(opts,'tol_')
     opts.tol_=1e-3;
 end
