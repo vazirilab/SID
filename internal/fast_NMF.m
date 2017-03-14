@@ -30,7 +30,7 @@ else
             option.warm_start=T;
         end
         T=fast_nnls(S',Y,option);
-        T(isnan(T))=rand(size(T(isnan(T))))
+        T(isnan(T))=rand(size(T(isnan(T))));
         if mod(iter, 20) == 1
             fprintf([num2str(iter) ' ']);
         end

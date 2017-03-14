@@ -135,15 +135,15 @@ crop_thresh_coord_x = 0.5;
 crop_thresh_coord_y = 0.5;
 Input.nnmf_opts.max_iter = 1000;
 Input.nnmf_opts.lambda = 0.1;
+Input.update_template = false;
+Input.detrend = false;
 
+%%
 Input.recon_opts.p = 2;
 Input.recon_opts.maxIter = 8;
 Input.recon_opts.mode = 'TV';
 Input.recon_opts.lambda = [0, 0, 10];
 Input.recon_opts.lambda_ = 0.1;
-
-Input.update_template = false;
-Input.detrend = false;
 
 %%
 psf_ballistic=matfile(Input.psf_filename_ballistic);
@@ -191,13 +191,15 @@ end
 if (Input.bg_sub==1)&&(Input.rectify==1)
     output.bg_spatial =  ImageRect(output.bg_spatial, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum,0);
 end
-figure; imagesc(output.std_image); axis image; colorbar;
-print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.pdf']), '-dpdf', '-r300');
+
+%%
+figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 99.5)]); axis image; colorbar;
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
 
 %% load sensor movie and de-trend
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
 tic;
-sensor_movie=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.step_,Input.rectify,Input.prime_);
+sensor_movie=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.rectify,Input.frames);
 toc
 
 tic;
@@ -208,7 +210,7 @@ figure; plot(baseline); title('Frame means after background subtraction');
 [baseline_fit, gof, ~] = fit((1:length(baseline))', baseline, 'poly3');
 disp(baseline_fit);
 disp(gof);
-if gof.adjrsquare < 0.9
+if gof.adjrsquare < 0.8
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'WARNING: Goodness of baseline fit seems bad. De-trending disabled.']);
     baseline_fit_vals = ones(size(sensor_movie,2), 1) * mean(baseline(:));
 else
@@ -246,15 +248,22 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.ran
 output.centers=[];
 Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
 [S, T] = fast_NMF(sensor_movie, Input.rank, Input.nnmf_opts);
-
-timestr = datestr(now, 'YYmmddTHHMM');
-for i = 1 : size(S, 1)
-    figure; imagesc(reshape(S(i,:), size(sub_image))); axis image; colormap('parula'); colorbar; title(['NNMF component' num2str(i)]);
-    print(fullfile(Input.output_folder, [timestr '_nnmf_component_' num2str(3, '%05d') '.pdf']), '-dpdf', '-r300');
-end
-
 S=[S' output.std_image(:)]';
 sensor_movie=sensor_movie(output.idx,:);
+output.S = S;
+output.T = T;
+
+%% Plot NMF results
+timestr = datestr(now, 'YYmmddTHHMM');
+for i=1:size(output.T, 1)
+    figure( 'Position', [100 100 800 800]);
+    subplot(4,1,[1,2,3]);
+    imagesc(reshape(output.S(i,:), size(sub_image))); axis image; colormap('parula'); colorbar;
+    title(['NMF component ' num2str(i)]);
+    subplot(4,1,4);
+    plot(output.T(i,:));
+    print(fullfile(Input.output_folder, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+end
 
 %% reconstruct spatial filters
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Reconstructing spatial filters']);
@@ -262,7 +271,7 @@ psf_ballistic=load(Input.psf_filename_ballistic);
 poolobj = gcp('nocreate');
 delete(poolobj);
 
-if isempty(Input.gpu_ids)    
+if isempty(Input.gpu_ids)
     infile=struct;
     for k=1:size(S,1)
         img_=reshape(S(k,:),size(output.std_image,1),[]);
@@ -308,6 +317,21 @@ else
         disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' num2str(kk)])
     end
 end
+
+%% Plot reconstructed spatial filters
+timestr = datestr(now, 'YYmmddTHHMM');
+for i = 1:size(output.recon)
+    figure('Position', [50 50 1200 600]); 
+    subplot(1,4,[1:3])
+    imagesc(squeeze(max(output.recon{i}, [], 3)));
+    axis image;
+    colorbar;
+    subplot(1,4,4)
+    imagesc(squeeze(max(output.recon{i}, [], 2)));
+    colorbar;
+    print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+end
+
 %% generate initial brain model
 output.centers=[];
 for ii=1:size(output.recon,2)
@@ -355,6 +379,7 @@ for ii=1:size(output.centers,1)
     segm(ceil(output.centers(ii,1)),ceil(output.centers(ii,2)),ceil(output.centers(ii,3)))=1;
 end
 
+%%
 clearvars -except sensor_movie Input output mean_signal psf_ballistic Hsize m
 
 %% Initiate forward_model
@@ -364,7 +389,7 @@ output.forward_model=generate_foward_model(output.centers,psf_ballistic,8,3,size
 
 %% generate template
 output.template=generate_template(output.forward_model,psf_ballistic.Nnum,0.005,size(output.std_image));
-%% croping model
+%% crop model
 neur=find(squeeze(max(output.forward_model(:,output.idx),[],2)>0));
 output.forward_model_=output.forward_model(neur,output.idx);
 

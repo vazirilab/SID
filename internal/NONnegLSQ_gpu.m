@@ -207,7 +207,7 @@ if opts.lambda==0
         end
         %%
         if strcmp(opts.display,'on')
-            disp(iter);
+            fprintf([num2str(iter) ' ']);
         end
     end
 else
@@ -256,7 +256,7 @@ else
         end
         %%
         if strcmp(opts.display,'on')
-            disp(iter);
+            fprintf([num2str(iter) ' ']);
         end
     end
 end

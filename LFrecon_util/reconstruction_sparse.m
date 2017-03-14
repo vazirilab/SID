@@ -20,9 +20,7 @@ if ~isfield(options,'rad')
     options.rad = [2,2]; % radius of kernel [lateral, axial] with which volume gets convolved during reconstruction (akin to minimum expected feature size)
 end
 
-eqtol = 1e-10;
 cluster = parcluster('local');
-edgeSuppress = 0;
 
 %% REPARE PARALLEL COMPUTING
 pool = gcp('nocreate')

@@ -35,7 +35,9 @@ for k=1:size(centers,1)
     forward_model_indices{k}=find(Q);
     forward_model_values{k}=Q(forward_model_indices{k});
     N=N+length(forward_model_values{k});
-        disp(k);
+    if mod(k,20)==1
+        fprintf([num2str(k) ' ']);
+    end
 end
 I=zeros(N,1);
 J=I;
