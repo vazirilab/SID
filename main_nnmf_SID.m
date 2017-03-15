@@ -129,6 +129,16 @@ else
     Input.thres = 10;
 end
 
+if isfield(optional_args, 'recon_opts')
+    Input.recon_opts = optional_args.recon_opts;
+else
+    Input.recon_opts.p = 2;
+    Input.recon_opts.maxIter = 8;
+    Input.recon_opts.mode = 'TV';
+    Input.recon_opts.lambda = [0, 0, 10];
+    Input.recon_opts.lambda_ = 0.1;
+end
+
 %%
 do_crop = 0;
 crop_thresh_coord_x = 0.5;
@@ -137,13 +147,6 @@ Input.nnmf_opts.max_iter = 1000;
 Input.nnmf_opts.lambda = 0.1;
 Input.update_template = false;
 Input.detrend = false;
-
-%%
-Input.recon_opts.p = 2;
-Input.recon_opts.maxIter = 8;
-Input.recon_opts.mode = 'TV';
-Input.recon_opts.lambda = [0, 0, 10];
-Input.recon_opts.lambda_ = 0.1;
 
 %%
 psf_ballistic=matfile(Input.psf_filename_ballistic);
