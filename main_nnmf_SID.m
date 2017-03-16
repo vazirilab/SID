@@ -28,6 +28,10 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % Input.detrend
 % Input.fluoslide_fn
 
+% Input.frames.start = 1;%frames_for_model_optimization
+% Input.frames.steps = 10;
+% Input.frames.end = 1e6;
+
 %% Required parameters
 Input.LFM_folder = indir;
 Input.psf_filename_ballistic = psffile;
@@ -195,7 +199,7 @@ if (Input.bg_sub==1)&&(Input.rectify==1)
     output.bg_spatial =  ImageRect(output.bg_spatial, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum,0);
 end
 
-%%
+
 figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 99.5)]); axis image; colorbar;
 print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
 
@@ -323,7 +327,7 @@ end
 
 %% Plot reconstructed spatial filters
 timestr = datestr(now, 'YYmmddTHHMM');
-for i = 1:size(output.recon)
+for i = 1:length(output.recon)
     figure('Position', [50 50 1200 600]); 
     subplot(1,4,[1:3])
     imagesc(squeeze(max(output.recon{i}, [], 3)));
