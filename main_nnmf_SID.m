@@ -409,17 +409,18 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
 
 tic
 opts=[];
-opts.tol=1e-3;
-opts.tol_=1e-2;
-opts.sample=1000;
-opts.gpu_ids=4;
-opts.display='on';
-opts.gpu='on';
-opts.max_iter=5000;
+opts.tol=1e-2; 
+opts.tol_=5*1e-1;
+opts.gpu_ids=1;
+opts.sample=600;
+opts.display='off';
+opts.gpu='off';
 optz.solver=1;
-optz.display='on';
+optz.display='off';
 optz.bg_sub=Input.bg_sub;
-opts.lambda=0;
+opts.max_iter=10000;
+opts.idx=output.idx;
+opts.lambda = 0;
 
 if isfield(Input, 'bg_sub') && Input.bg_sub
 %     bg_spatial_=average_ML(reshape(output.bg_spatial,size(output.bg_spatial)),Nnum, Input.fluoslide_fn);
@@ -435,10 +436,15 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
 output.timeseries_=output.timeseries;
 output.centers_=output.centers;
 toc
-opts.max_iter=10000;
+
+disp('---');
+disp('---');
+
+
 
 for iter=1:Input.num_iter
     id2=[];
+    disp([num2str(iter) '. iteration started']);
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Pruning neurons']);
     for k=1:size(output.forward_model_,1)
         trace=output.timeseries_(k,:)>1e-7;
@@ -494,9 +500,10 @@ for iter=1:Input.num_iter
     output.timeseries_=fast_nnls(output.forward_model_',sensor_movie,opts);
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
     toc
-    if mod(iter, 50) == 0
-        disp([num2str(iter) '. iteration completed']);
-    end
+%     if mod(iter, 50) == 0
+%         disp([num2str(iter) '. iteration completed']);
+%     end
+    disp([num2str(iter) '. iteration completed']);
 end
 output.template_=template_;
 opts.warm_start=[];
