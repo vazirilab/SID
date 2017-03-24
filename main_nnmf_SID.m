@@ -516,7 +516,7 @@ opts.step=Input.step;
 opts.prime=Input.prime;
 opts.warm_start=[];
 opts.idx=output.idx;
-opts.max_iter=20000;
+% opts.max_iter=20000; % already defined in the last section
 %TODO: define opts.frame here?
 opts.outfile = fullfile(Input.output_folder, 'timeseries_debug_out.mat');
 if isfield(Input, 'detrend') && Input.detrend
