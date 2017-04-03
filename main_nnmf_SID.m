@@ -182,10 +182,12 @@ else
     output.bg_temporal=[];
     output.bg_spatial=[];
 end
+temp_folder = [Input.output_folder '/' Input.output_name '/'];
+mkdir(temp_folder)
 figure; imagesc(output.bg_spatial); axis image; colorbar; title('Spatial background');
-print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.pdf']), '-dpdf', '-r300');
+print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.pdf']), '-dpdf', '-r300');
 figure; plot(output.bg_temporal); title('Temporal background');
-print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.pdf']), '-dpdf', '-r300');
+print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.pdf']), '-dpdf', '-r300');
 
 %% Compute standard-deviation image (std. image)
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing standard deviation image']);
@@ -201,7 +203,7 @@ end
 
 
 figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 99.5)]); axis image; colorbar;
-print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
+print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
 
 %% load sensor movie and de-trend
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
@@ -224,7 +226,7 @@ else
     baseline_fit_vals = feval(baseline_fit, 1:size(sensor_movie,2));
 end
 figure; hold on; plot(baseline); plot(baseline_fit_vals); hold off; title('Frame means and trend fit');
-print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
+print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
 sensor_movie = sensor_movie * diag(1./baseline_fit_vals);
 sensor_movie_min = min(sensor_movie(:));
 sensor_movie_max = max(sensor_movie(:));
@@ -269,7 +271,7 @@ for i=1:size(output.T, 1)
     title(['NMF component ' num2str(i)]);
     subplot(4,1,4);
     plot(output.T(i,:));
-    print(fullfile(Input.output_folder, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+    print(fullfile(temp_folder, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 end
 
 %% reconstruct spatial filters
@@ -336,7 +338,7 @@ for i = 1:length(output.recon)
     subplot(1,4,4)
     imagesc(squeeze(max(output.recon{i}, [], 2)));
     colorbar;
-    print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+    print(fullfile(temp_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 end
 
 %% generate initial brain model
@@ -518,7 +520,7 @@ opts.warm_start=[];
 % opts.idx=output.idx;
 % opts.max_iter=20000; % already defined in the last section
 opts.frame=Input.frames; %frames for model optimization;
-opts.outfile = fullfile(Input.output_folder, 'timeseries_debug_out.mat');
+opts.outfile = fullfile(temp_folder, 'timeseries_debug_out.mat');
 if isfield(Input, 'detrend') && Input.detrend
     opts.mean_signal=output.mean_signal;
 end
