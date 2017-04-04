@@ -272,6 +272,7 @@ for i=1:size(output.T, 1)
     subplot(4,1,4);
     plot(output.T(i,:));
     print(fullfile(temp_folder, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+    close;
 end
 
 %% reconstruct spatial filters
