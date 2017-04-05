@@ -343,6 +343,7 @@ for i = 1:length(output.recon)
 end
 pause;close all;
 %% generate initial brain model
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': generate initial brain model'])
 output.centers=[];
 for ii=1:size(output.recon,2)
     segm=output.recon{ii};
