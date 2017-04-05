@@ -341,7 +341,7 @@ for i = 1:length(output.recon)
     colorbar;
     print(fullfile(temp_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 end
-
+pause;close all;
 %% generate initial brain model
 output.centers=[];
 for ii=1:size(output.recon,2)
