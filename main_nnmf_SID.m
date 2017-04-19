@@ -139,12 +139,12 @@ else
     Input.recon_opts.p = 2;
     Input.recon_opts.maxIter = 8;
     Input.recon_opts.mode = 'TV';
-    Input.recon_opts.lambda = [0, 0, 10];
-    Input.recon_opts.lambda_ = 0.1;
+    Input.recon_opts.lambda = [0, 0, 10];% Z smoother, TV
+    Input.recon_opts.lambda_ = 0.1; % sparse, L-1
 end
 
 %%
-do_crop = 0;
+do_crop = 1; %% Oliver suggest = 1
 crop_thresh_coord_x = 0.5;
 crop_thresh_coord_y = 0.5;
 Input.nnmf_opts.max_iter = 1000;
@@ -351,7 +351,7 @@ for ii=1:size(output.recon,2)
        segm(:,:,kk)=segm(:,:,kk).*(sub_image>0); 
     end
     segm=segm/max(segm(:));
-    segm=segm-0.01;
+    segm=segm-0.04; % Tobias, this should be made in to a parameter so that it can be adjust flexiably,
     segm(segm<0)=0;
     centers=[];
     B=reshape(segm,[],1);
@@ -445,7 +445,7 @@ disp('---');
 disp('---');
 
 
-
+%%
 for iter=1:Input.num_iter
     id2=[];
     disp([num2str(iter) '. iteration started']);
