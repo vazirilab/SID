@@ -262,17 +262,15 @@ else
     sub_image = output.std_image * 0 + 1;
 end
 output.idx=find(sub_image>0);
-sensor_movie = sensor_movie(output.idx,:);
 
 %% generate NNMF
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.rank) '-factorization']);
 ops.bg_temporal=squeeze(mean(sensor_movie,1));
 Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
 output.centers=[];
-[S1, T]=fast_NMF_2(sensor_movie,Input.rank,Input.nnmf_opts);
-S = zeros(Input.rank,length(output.std_image(:)));
-S(:,output.idx) = S1';
+[S, T]=fast_NMF_2(sensor_movie,Input.rank,Input.nnmf_opts);
 S=[S output.std_image(:)]';
+sensor_movie = sensor_movie(output.idx,:);
 output.S = S;
 output.T = T;
 
