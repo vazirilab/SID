@@ -11,13 +11,11 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % Input.output_name
 % Input.tmp_dir
 % Input.step
-% Input.step_
 % Input.bg_iter
 % Input.rectify
 % Input.Junk_size
 % Input.bg_sub
 % Input.prime
-% Input.prime_
 % Input.gpu_ids
 % Input.num_iter
 % Input.native_focal_plane
@@ -27,6 +25,7 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % Input.update_template
 % Input.detrend
 % Input.fluoslide_fn
+% Input.delta
 
 % Input.frames.start = 1;%frames_for_model_optimization
 % Input.frames.steps = 10;
@@ -101,10 +100,12 @@ else
     Input.prime = 40000;
 end
 
-if isfield(optional_args, 'prime_')
-    Input.prime_ = optional_args.prime_;
+if isfield(optional_args, 'frames')
+    Input.frames = optional_args.frames;
 else
-    Input.prime_ = 4800;
+   Input.frames.start = 1;
+   Input.frames.steps = 10;
+   Input.frames.end = inf;
 end
 
 if isfield(optional_args, 'gpu_ids')
@@ -125,12 +126,18 @@ else
     Input.native_focal_plane = 26;
 end
 
+if isfield(optional_args, 'delta')
+    Input.delta = optional_args.delta;
+else
+    Input.delta = 600;
+end
+
 % typical neuron radius in px. Typically 6 for fish using 20x/0.5
 % objective, 9-12 for mouse cortex and 16x/0.8
 if isfield(optional_args, 'neuron_radius_px')
     Input.thres = optional_args.neuron_radius_px;
 else
-    Input.thres = 10;
+    Input.thres = 8;
 end
 
 if isfield(optional_args, 'recon_opts')
@@ -189,6 +196,9 @@ print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.pdf']), '-
 figure; plot(output.bg_temporal); title('Temporal background');
 print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.pdf']), '-dpdf', '-r300');
 
+%% Compute mean_signal
+output.mean_signal=par_mean_signal(Input.LFM_folder,Input.step, Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.prime);
+
 %% Compute standard-deviation image (std. image)
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing standard deviation image']);
 if Input.rectify==1
@@ -211,23 +221,23 @@ tic;
 sensor_movie=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.rectify,Input.frames);
 toc
 
-tic;
-baseline=mean(sensor_movie,1)';
-disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
-figure; plot(baseline); title('Frame means after background subtraction');
-
-[baseline_fit, gof, ~] = fit((1:length(baseline))', baseline, 'poly3');
-disp(baseline_fit);
-disp(gof);
-if gof.adjrsquare < 0.8
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'WARNING: Goodness of baseline fit seems bad. De-trending disabled.']);
-    baseline_fit_vals = ones(size(sensor_movie,2), 1) * mean(baseline(:));
-else
-    baseline_fit_vals = feval(baseline_fit, 1:size(sensor_movie,2));
+tic
+if Input.de_trend
+    disp('Detrending LFM movie');
+    output.baseline=output.mean_signal';
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
+    figure; plot(baseline); title('Frame means after background subtraction');
+    output.baseline=smooth(output.baseline,70);
+    delta=Input.delta;
+    for t=1:size(output.baseline,1)
+        base(t)=min(output.baseline(max(1,t-delta):min(size(output.baseline,1),t+delta)));
+    end    
+    output.baseline=exp2fit([1:length(output.baseline)],base,1);
+    output.baseline=output.baseline(1)+output.baseline(2)*exp(-[1:length(output.mean_signal)]/output.baseline(3));
+    figure; hold on; plot(baseline); plot(baseline_fit_vals); hold off; title('Frame means and trend fit');
+    print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
+    sensor_movie=sensor_movie*diag(1./output.baseline(Input.frames_for_model_optimization.start:Input.frames_for_model_optimization.steps:(size(sensor_movie,2)-1)*Input.frames_for_model_optimization.steps+Input.frames_for_model_optimization.start));
 end
-figure; hold on; plot(baseline); plot(baseline_fit_vals); hold off; title('Frame means and trend fit');
-print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
-sensor_movie = sensor_movie * diag(1./baseline_fit_vals);
 sensor_movie_min = min(sensor_movie(:));
 sensor_movie_max = max(sensor_movie(:));
 sensor_movie = (sensor_movie - sensor_movie_min) ./ (sensor_movie_max - sensor_movie_min);
