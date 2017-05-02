@@ -154,8 +154,9 @@ end
 do_crop = 1; %% Oliver suggest = 1
 crop_thresh_coord_x = 0.5;
 crop_thresh_coord_y = 0.5;
-Input.nnmf_opts.max_iter = 1000;
-Input.nnmf_opts.lambda = 0.1;
+Input.nnmf_opts.max_iter = 300;
+Input.nnmf_opts.lambda_t = 0;
+Input.nnmf_opts.lambda_s = 30;
 Input.update_template = false;
 Input.detrend = false;
 
@@ -261,14 +262,17 @@ else
     sub_image = output.std_image * 0 + 1;
 end
 output.idx=find(sub_image>0);
+sensor_movie = sensor_movie(output.idx,:);
 
 %% generate NNMF
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.rank) '-factorization']);
-output.centers=[];
+ops.bg_temporal=squeeze(mean(sensor_movie,1));
 Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
-[S, T] = fast_NMF(sensor_movie, Input.rank, Input.nnmf_opts);
-S=[S' output.std_image(:)]';
-sensor_movie=sensor_movie(output.idx,:);
+output.centers=[];
+[S1, T]=fast_NMF_2(sensor_movie,Input.rank,Input.nnmf_opts);
+S = zeros(Input.rank,length(output.std_image(:)));
+S(:,output.idx) = S1';
+S=[S output.std_image(:)]';
 output.S = S;
 output.T = T;
 
