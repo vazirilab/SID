@@ -1,4 +1,4 @@
-function sensor_movie=read_sensor_movie(LFM_folder,x_offset,y_offset,dx,Nnum,rect,frames)
+function [sensor_movie, num_frames_total]=read_sensor_movie(LFM_folder,x_offset,y_offset,dx,Nnum,rect,frames)
 
 
 %%
@@ -22,7 +22,7 @@ if nargin<7
     frames.end=size(infiles_struct,1);
 end
 frames.end=min(frames.end,size(infiles_struct,1));
-
+num_frames_total=size(infiles_struct,1);
 infiles_struct = infiles_struct(frames.start:frames.steps:frames.end);
 
 %%

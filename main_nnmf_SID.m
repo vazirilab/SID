@@ -129,7 +129,7 @@ end
 if isfield(optional_args, 'delta')
     Input.delta = optional_args.delta;
 else
-    Input.delta = 600;
+    Input.delta = 200;
 end
 
 % typical neuron radius in px. Typically 6 for fish using 20x/0.5
@@ -156,7 +156,7 @@ crop_thresh_coord_x = 0.5;
 crop_thresh_coord_y = 0.5;
 Input.nnmf_opts.max_iter = 300;
 Input.nnmf_opts.lambda_t = 0;
-Input.nnmf_opts.lambda_s = 30;
+Input.nnmf_opts.lambda_s = 0.1;
 Input.update_template = false;
 Input.detrend = false;
 
@@ -197,8 +197,8 @@ print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.pdf']), '-
 figure; plot(output.bg_temporal); title('Temporal background');
 print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.pdf']), '-dpdf', '-r300');
 
-%% Compute mean_signal
-output.mean_signal=par_mean_signal(Input.LFM_folder,Input.step, Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.prime);
+%%% Compute mean_signal
+%output.mean_signal=par_mean_signal(Input.LFM_folder,Input.step, Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.prime);
 
 %% Compute standard-deviation image (std. image)
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing standard deviation image']);
@@ -219,13 +219,53 @@ print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-
 %% load sensor movie and de-trend
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
 tic;
-sensor_movie=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.rectify,Input.frames);
+[sensor_movie,num_frames]=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.rectify,Input.frames_for_model_optimization);
+if isinf(Input.prime)
+    Input.prime=num_frames;
+end
 toc
 
+
+%% find crop space
+if do_crop
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
+    Inside=output.std_image(ceil(crop_thresh_coord_x * size(output.std_image,1)):end, ceil(crop_thresh_coord_y * size(output.std_image,2)):end);
+    Inside=output.std_image-mean(Inside(:))-2*std(Inside(:));
+    Inside(Inside<0)=0;
+    beads=bwconncomp(Inside>0);
+    for kk=1:beads.NumObjects
+        if numel(beads.PixelIdxList{kk})<8
+            Inside(beads.PixelIdxList{kk})=0;
+        end
+    end
+    h = fspecial('average', 3*psf_ballistic.Nnum);
+    Inside=conv2(Inside,h,'same');
+    beads=bwconncomp(Inside);                    %reduce to biggest connected component
+    for kk=2:beads.NumObjects
+        Inside(beads.PixelIdxList{kk})=0;
+    end
+output.idx=find(Inside>0);
+else
+    Inside = output.std_image * 0 + 1;
+end
+output.idx=find(Inside>0);
+
+%% reduce baseline
+
+outside = ~Inside;
+if do_crop
+    baseline = squeeze(mean(sensor_movie(logical(outside),:),1));
+    for ix=1:size(sensor_movie,2)
+        sensor_movie(:,ix)= sensor_movie(:,ix) - baseline(ix);
+    end
+    sensor_movie(sensor_movie<0)=0;
+end
+
+%% de_trend
 tic
 if Input.de_trend
     disp('Detrending LFM movie');
-    output.baseline=output.mean_signal';
+    output.baseline=squeeze(mean(sensor_movie,1));
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
     figure; plot(baseline); title('Frame means after background subtraction');
     output.baseline=smooth(output.baseline,70);
@@ -233,8 +273,9 @@ if Input.de_trend
     for t=1:size(output.baseline,1)
         base(t)=min(output.baseline(max(1,t-delta):min(size(output.baseline,1),t+delta)));
     end    
-    output.baseline=exp2fit([1:length(output.baseline)],base,1);
-    output.baseline=output.baseline(1)+output.baseline(2)*exp(-[1:length(output.mean_signal)]/output.baseline(3));
+
+    output.baseline=exp2fit([Input.frames_for_model_optimization.start:Input.frames_for_model_optimization.steps:(size(sensor_movie,2)-1)*Input.frames_for_model_optimization.steps+Input.frames_for_model_optimization.start],base,1);
+    output.baseline=output.baseline(1)+output.baseline(2)*exp(-[1:Input.prime]/output.baseline(3));
     figure; hold on; plot(baseline); plot(baseline_fit_vals); hold off; title('Frame means and trend fit');
     print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
     sensor_movie=sensor_movie*diag(1./output.baseline(Input.frames_for_model_optimization.start:Input.frames_for_model_optimization.steps:(size(sensor_movie,2)-1)*Input.frames_for_model_optimization.steps+Input.frames_for_model_optimization.start));
@@ -243,25 +284,6 @@ sensor_movie_min = min(sensor_movie(:));
 sensor_movie_max = max(sensor_movie(:));
 sensor_movie = (sensor_movie - sensor_movie_min) ./ (sensor_movie_max - sensor_movie_min);
 toc
-
-%% find crop space
-if do_crop
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
-    sub_image=output.std_image(ceil(crop_thresh_coord_x * size(output.std_image,1)):end, ceil(crop_thresh_coord_y * size(output.std_image,2)):end);
-    sub_image=output.std_image-mean(sub_image(:))-2*std(sub_image(:));
-    sub_image(sub_image<0)=0;
-    beads=bwconncomp(sub_image>0);
-    for kk=1:beads.NumObjects
-        if numel(beads.PixelIdxList{kk})<8
-            sub_image(beads.PixelIdxList{kk})=0;
-        end
-    end
-    h = fspecial('average', 2*psf_ballistic.Nnum);
-    sub_image=conv2(sub_image,h,'same');
-else
-    sub_image = output.std_image * 0 + 1;
-end
-output.idx=find(sub_image>0);
 
 %% generate NNMF
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.rank) '-factorization']);
@@ -279,7 +301,7 @@ timestr = datestr(now, 'YYmmddTHHMM');
 for i=1:size(output.T, 1)
     figure( 'Position', [100 100 800 800]);
     subplot(4,1,[1,2,3]);
-    imagesc(reshape(output.S(i,:), size(sub_image))); axis image; colormap('parula'); colorbar;
+    imagesc(reshape(output.S(i,:), size(Inside))); axis image; colormap('parula'); colorbar;
     title(['NMF component ' num2str(i)]);
     subplot(4,1,4);
     plot(output.T(i,:));
@@ -360,7 +382,7 @@ output.centers=[];
 for ii=1:size(output.recon,2)
     segm=output.recon{ii};
     for kk=1:size(segm,3)
-       segm(:,:,kk)=segm(:,:,kk).*(sub_image>0); 
+       segm(:,:,kk)=segm(:,:,kk).*(Inside>0); 
     end
     segm=segm/max(segm(:));
     segm=segm-0.04; % Tobias, this should be made in to a parameter so that it can be adjust flexiably,
