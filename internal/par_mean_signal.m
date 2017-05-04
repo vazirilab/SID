@@ -38,7 +38,7 @@ if nargin<8
 end
 
 prime=min(prime,size(infiles_struct,1));
-
+n_=length(infiles_struct);
 infiles_struct = infiles_struct(1:step:prime);
 N=par_C.NumWorkers;
 
@@ -55,5 +55,7 @@ end
 for worker=1:par_C.NumWorkers
     mean_signal(worker:N:length(infiles_struct))=mean_signal_par(worker,1:length(worker:N:length(infiles_struct)))';
 end
+
+mean_signal=interp1([1:step:prime],mean_signal,[1:n_]);
 
 end
