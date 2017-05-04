@@ -323,16 +323,18 @@ timestr = datestr(now, 'YYmmddTHHMM');
 for i = 1:size(output.recon)
     figure('Position', [50 50 1200 600]); 
     subplot(1,4,[1:3])
+    hold on;
     imagesc(squeeze(max(output.recon{i}, [], 3)));
     axis image;
     colorbar;
+    hold off;
     subplot(1,4,4)
     imagesc(squeeze(max(output.recon{i}, [], 2)));
     colorbar;
     print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 end
 
-%% generate initial brain model
+%% Segment reconstructed components
 output.centers=[];
 for ii=1:size(output.recon,2)
     segm=output.recon{ii};
@@ -351,7 +353,6 @@ for ii=1:size(output.recon,2)
         [a,b,c]=ind2sub(size(segm),beads.PixelIdxList{1,k});
         centers(k,:)=([a,b,c]'*qu/q)';
     end
-    
     if (ii==1)
         output.centers=centers;
     else
@@ -371,12 +372,33 @@ for ii=1:size(output.recon,2)
         output.centers=[output.centers' centers(id,:)']';
     end
     
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' num2str(ii)]);
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Segmentation of component ' num2str(ii) ' resulted in ' num2str(size(output.centers, 1)) ' neuron candidates']);
 end
 
 segm=0*output.recon{1};
 for ii=1:size(output.centers,1)
     segm(ceil(output.centers(ii,1)),ceil(output.centers(ii,2)),ceil(output.centers(ii,3)))=1;
+end
+
+%% Plot segmentation result
+timestr = datestr(now, 'YYmmddTHHMM');
+for i = 1:size(output.recon)
+    figure('Position', [50 50 1200 600]); 
+    subplot(1,4,[1:3])
+    hold on;
+    imagesc(squeeze(max(output.recon{i}, [], 3)));
+    scatter(centers(:,2), centers(:,1), 'r.');
+    axis image;
+    colorbar;
+    hold off;
+    subplot(1,4,4)
+    hold on;
+    imagesc(squeeze(max(output.recon{i}, [], 2)));
+    scatter(centers(:,3), centers(:,1), 'r.');
+    xlim([1 size(output.recon{i}, 3)]);
+    ylim([1 size(output.recon{i}, 1)]);
+    colorbar;
+    print(fullfile(Input.output_folder, [timestr '_nnmf_component_segmentation_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 end
 
 %%
@@ -389,6 +411,7 @@ output.forward_model=generate_foward_model(output.centers,psf_ballistic,8,3,size
 
 %% generate template
 output.template=generate_template(output.forward_model,psf_ballistic.Nnum,0.005,size(output.std_image));
+
 %% crop model
 neur=find(squeeze(max(output.forward_model(:,output.idx),[],2)>0));
 output.forward_model_=output.forward_model(neur,output.idx);
@@ -513,7 +536,9 @@ tic
 toc
 output.timeseries_total=zeros(size(timeseries_1,1),length(Varg));
 output.timeseries_total(:, Varg==1) = timeseries_1;
-output.timeseries_total(:, Varg==0) = output.timeseries_;
+if nnz(Varg==0) > 0
+    output.timeseries_total(:, Varg==0) = output.timeseries_;
+end
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Extraction complete']);
 
 %% save output
