@@ -16,7 +16,7 @@ end
 
 
 %%
-if nargin<7
+if nargin<7 || isempty(frames)
     frames.start=1;
     frames.steps=1;
     frames.end=size(infiles_struct,1);

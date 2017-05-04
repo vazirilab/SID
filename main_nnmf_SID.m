@@ -150,6 +150,14 @@ else
     Input.recon_opts.lambda_ = 0.1; % sparse, L-1
 end
 
+if isfield(optional_args, 'frames_for_model_optimization')
+    Input.frames_for_model_optimization = optional_args.frames_for_model_optimization;
+else
+    Input.frames_for_model_optimization.start = 1;
+    Input.frames_for_model_optimization.steps = 1;
+    Input.frames_for_model_optimization.stop = inf;
+end
+
 %%
 do_crop = 1; %% Oliver suggest = 1
 crop_thresh_coord_x = 0.5;
@@ -159,6 +167,7 @@ Input.nnmf_opts.lambda_t = 0;
 Input.nnmf_opts.lambda_s = 0.1;
 Input.update_template = false;
 Input.detrend = false;
+Input.de_trend = true;
 
 %%
 psf_ballistic=matfile(Input.psf_filename_ballistic);
@@ -216,7 +225,7 @@ end
 figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 99.5)]); axis image; colorbar;
 print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
 
-%% load sensor movie and de-trend
+%% load sensor movie
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
 tic;
 [sensor_movie,num_frames]=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.rectify,Input.frames_for_model_optimization);
@@ -224,7 +233,6 @@ if isinf(Input.prime)
     Input.prime=num_frames;
 end
 toc
-
 
 %% find crop space
 if do_crop
@@ -250,8 +258,7 @@ else
 end
 output.idx=find(Inside>0);
 
-%% reduce baseline
-
+%% subtract baseline outside of brain
 outside = ~Inside;
 if do_crop
     baseline = squeeze(mean(sensor_movie(logical(outside),:),1));
@@ -261,20 +268,21 @@ if do_crop
     sensor_movie(sensor_movie<0)=0;
 end
 
-%% de_trend
+%% de-trend
 tic
 if Input.de_trend
     disp('Detrending LFM movie');
     output.baseline=squeeze(mean(sensor_movie,1));
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
-    figure; plot(baseline); title('Frame means after background subtraction');
+    figure; plot(output.baseline); title('Frame means after background subtraction');
     output.baseline=smooth(output.baseline,70);
     delta=Input.delta;
     for t=1:size(output.baseline,1)
         base(t)=min(output.baseline(max(1,t-delta):min(size(output.baseline,1),t+delta)));
     end    
 
-    output.baseline=exp2fit([Input.frames_for_model_optimization.start:Input.frames_for_model_optimization.steps:(size(sensor_movie,2)-1)*Input.frames_for_model_optimization.steps+Input.frames_for_model_optimization.start],base,1);
+    output.baseline = exp2fit([Input.frames_for_model_optimization.start : Input.frames_for_model_optimization.steps : (size(sensor_movie,2)-1)*Input.frames_for_model_optimization.steps + Input.frames_for_model_optimization.start], ...
+        base, 1);
     output.baseline=output.baseline(1)+output.baseline(2)*exp(-[1:Input.prime]/output.baseline(3));
     figure; hold on; plot(baseline); plot(baseline_fit_vals); hold off; title('Frame means and trend fit');
     print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');

@@ -115,3 +115,18 @@ Input.recon_opts.p = 1;
 Input.recon_opts.maxIter = 8;
 Input.recon_opts.mode = 'TV';
 Input.recon_opts.whichSolver = 'fast_nnls';
+
+%%
+Input.LFM_folder='/ssd_raid_4TB/tobias/2017-04-26_m29/tif/';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/data/FM_miniLFM_recordings/m29/042617_miniLFM_sid/';
+Input.output_name='2017-04-26_m29_wd200_';
+Input.x_offset = 638.2;
+Input.y_offset = 522.9;
+Input.dx = 19.65;
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+do_crop = 0;
+Input.detrend = false;
+Input.de_trend = true;
+Input.rank=10;
+Input.thres=20
+Input.frames_for_model_optimization = [];
