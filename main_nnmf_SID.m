@@ -108,6 +108,12 @@ else
    Input.frames.end = inf;
 end
 
+if isfield(optional_arg, 'optimize_kernel')
+    Input.optimize_kernel = optional_args.optimize_kernel;
+else
+    Input.optimize_kernel = 1;
+end
+
 if isfield(optional_args, 'gpu_ids')
     Input.gpu_ids = optional_args.gpu_ids;
 else
@@ -143,11 +149,18 @@ end
 if isfield(optional_args, 'recon_opts')
     Input.recon_opts = optional_args.recon_opts;
 else
-    Input.recon_opts.p = 2;
-    Input.recon_opts.maxIter = 8;
-    Input.recon_opts.mode = 'TV';
-    Input.recon_opts.lambda = [0, 0, 10];% Z smoother, TV
-    Input.recon_opts.lambda_ = 0.1; % sparse, L-1
+    Input.recon_opts.p=2;
+    Input.recon_opts.maxIter=8;
+    Input.recon_opts.mode='TV';
+    Input.recon_opts.lambda=[ 0, 0, 10];
+    Input.recon_opts.lambda_=0.1;
+    Input.recon_opts.form='free';    
+end
+ 
+if isfield(Input,'filter')
+    Input.filter = optional_args.filter;
+else
+    Input.filter=0;
 end
 
 if isfield(optional_args, 'frames_for_model_optimization')
@@ -339,6 +352,23 @@ else
     gimp=Input.gpu_ids;
     parpool(nn);
     
+    if Input.optimize_kernel
+        infile=struct;
+        options{1}=Input.recon_opts;
+        options{1}.gpu_ids=gimp(1);
+        
+        img_=reshape(S(1,:),size(output.std_image,1),[]);
+        img_=img_/max(img_(:));
+        img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end)));
+        img_(img_<0)=0;
+        infile.LFmovie=full(img_)/max(img_(:));        
+        test = reconstruction_new(infile, psf_ballistic, options{1});
+              
+        [~,kernel] = total_deconv(test);
+        Input.form = 'free';
+        Input.recon_opts.rad=kernel;
+    end
+    
     for kk=1:nn:size(S,1)
         img=cell(nn,1);
         for worker=1:min(nn,size(S,1)-(kk-1))
@@ -346,19 +376,19 @@ else
             img_=reshape(S(k,:),size(output.std_image,1),[]);
             img_=img_/max(img_(:));
             img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end))); % TN TODO: hardcoded vals
+            
             img_(img_<0)=0;
             img{worker}=full(img_)/max(img_(:));
         end
-        
+        options=cell(min(nn,size(S,1)-(kk-1)),1);
         recon=cell(min(nn,size(S,1)-(kk-1)),1);
         tmp_recon_opts = Input.recon_opts;
         parfor worker=1:min(nn,size(S,1)-(kk-1))
             infile=struct;
             infile.LFmovie=(img{worker});
-            options=cell(min(nn,size(S,1)-(kk-1)),1);
             options{worker}=tmp_recon_opts;
             options{worker}.gpu_ids=mod((worker-1),nn)+1;
-            options{worker}.gpu_ids=gimp(options{worker}.gpu_ids); %#ok<PFBNS>
+            options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
             
             recon{worker}= reconstruction_sparse(infile, psf_ballistic, options{worker});
             gpuDevice([]);
@@ -388,26 +418,81 @@ end
 pause(10);
 close all;
 
+%% filter reconstructed spatial filters
+if Input.filter
+    disp('Filtering reconstructed spatial filters');
+    Hsize = size(psf_ballistic.H);
+    m=[size(output.std_image,1),size(output.std_image,2),Hsize(5)];
+    bordz = 15;
+    bord=1;
+    cellSize = 14;
+    gpu = ~isempty(Input.gpu_ids);
+    [X,Y,Z]=meshgrid(1:2:2*size(output.std_image,2)-1,1:2:2*size(output.std_image,1)-1,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:Hsize(5)]);
+    [Xq,Yq,Zq]=meshgrid(1:2:2*size(output.std_image,2)-1,1:2:2*size(output.std_image,1)-1,[1:Hsize(5)]);
+    
+    for kk=1:nn:size(S,1)
+        img=cell(nn,1);
+        for worker=1:min(nn,size(S,1)-(kk-1))
+            k=kk+worker-1;
+            V=interp3(X,Y,Z,output.recon{k}(:,:,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:Hsize(5)]),Xq,Yq,Zq);
+            
+            I=zeros(size(V)+[0 0 2*bordz],'single');
+            I(:,:,bordz+1:bordz+Hsize(5))=single(V);
+            for k=0:bordz-1
+                I(:,:,bordz-k)=I(:,:,bordz+1-k)*0.96;
+                I(:,:,bordz+Hsize(5)+k)=I(:,:,bordz+Hsize(5)-1+k)*0.96;
+            end
+            Ifiltered = I/max(I(:));
+            img{worker}=full(Ifiltered);
+        end
+        segm_=zeros(min(nn,size(S,1)-(kk-1)),size(Ifiltered,1)-2*bord+1,size(Ifiltered,2)-2*bord+1,Hsize(5));
+        parfor worker=1:min(nn,size(S,1)-(kk-1))
+            filtered_Image_=band_pass_filter(img{worker}, cellSize, 8, gimp(worker),1.2);
+            segm_(worker,:,:,:)=filtered_Image_(bord:size(filtered_Image_,1)-bord,bord:size(filtered_Image_,2)-bord,bordz+1:bordz+Hsize(5));                      
+            if gpu
+                gpuDevice([]);
+            end
+        end
+        for kp=1:min(nn,size(S,1)-(kk-1))
+            filtered_Image=zeros(size(Ifiltered)-[0 0 2*bordz]);
+            filtered_Image(bord:size(Ifiltered,1)-bord,bord:size(Ifiltered,2)-bord,:)=squeeze(segm_(kp,:,:,:));
+            output.segmm{kk+kp-1}=filtered_Image;
+        end
+        disp(kk)
+    end
+    
+    for ix=1:size(S,1)
+        Vol = output.segmm{1}*0;
+        Vol(bordz:end-bordz,bordz:end-bordz,:) = output.segmm{ix}(bordz:end-bordz,bordz:end-bordz,:);
+        output.segmm{ix} = Vol;
+    end
+else
+    output.segmm = output.recon;
+end
+
 %% Segment reconstructed components
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': generate initial brain model'])
 output.centers=[];
-for ii=1:size(output.recon,2)
-    segm=output.recon{ii};
+for ii=1:size(output.segmm,2)
+    segm=output.segmm{ii};
     for kk=1:size(segm,3)
-       segm(:,:,kk)=segm(:,:,kk).*(Inside>0); 
+        segm(:,:,kk)=segm(:,:,kk).*(Inside>0);
     end
     segm=segm/max(segm(:));
-    segm=segm-0.04; % Tobias, this should be made in to a parameter so that it can be adjust flexiably,
+    segm=segm-0.02; % Tobias, this should be made in to a parameter so that it can be adjust flexiably,
     segm(segm<0)=0;
     centers=[];
     B=reshape(segm,[],1);
-    beads=bwconncomp(imregionalmax(segm));
+    beads=bwconncomp((segm));
     for k=1:beads.NumObjects
         qu=B(beads.PixelIdxList{1,k});
         q=sum(B(beads.PixelIdxList{1,k}));
         [a,b,c]=ind2sub(size(segm),beads.PixelIdxList{1,k});
         centers(k,:)=([a,b,c]'*qu/q)';
     end
+    size(centers)
+    
+    
     if (ii==1)
         output.centers=centers;
     else
@@ -426,6 +511,7 @@ for ii=1:size(output.recon,2)
         
         output.centers=[output.centers' centers(id,:)']';
     end
+    
     
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Segmentation of component ' num2str(ii) ' resulted in ' num2str(size(output.centers, 1)) ' neuron candidates']);
 end
