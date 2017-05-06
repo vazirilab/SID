@@ -171,6 +171,12 @@ else
     Input.frames_for_model_optimization.stop = inf;
 end
 
+if isfield(optional_args, 'total_deconv_opts')
+	Input.total_deconv_opts = optional_args.total_deconv_opts;
+else
+	Input.total_deconv_opts = [];
+end
+
 %%
 do_crop = 1; %% Oliver suggest = 1
 crop_thresh_coord_x = 0.5;
@@ -363,8 +369,7 @@ else
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));        
         test = reconstruction_new(infile, psf_ballistic, options{1});
-              
-        [~,kernel] = total_deconv(test);
+        [~,kernel] = total_deconv(test,Input.total_deonv_opts);
         Input.form = 'free';
         Input.recon_opts.rad=kernel;
     end
