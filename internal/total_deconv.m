@@ -4,6 +4,7 @@ if nargin<2
     opts.max_iter=8;
     opts.size=[13,13,5];
     opts.thres=0.08;
+    opts.gpu_ids=1;
 else
     if ~isfield(opts,'max_iter')
         opts.max_iter=8;
@@ -13,6 +14,9 @@ else
     end
     if ~isfield(opts,'thres')
         opts.thres=0.08;
+    end
+    if ~isfield(opts,'gpu_ids')
+        opts.gpu_ids=1;
     end
 end
 
