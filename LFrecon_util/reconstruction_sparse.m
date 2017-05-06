@@ -83,10 +83,11 @@ if isfield(options,'rad')
     elseif strcmp(options.form,'lorentz')
         [X Y Z] = meshgrid([-ceil(5*options.rad(1)):ceil(5*options.rad(1))],[-ceil(5*options.rad(1)):ceil(5*options.rad(1))],[-ceil(5*options.rad(2)):ceil(5*options.rad(2))]);
         W = 1./(1 + (options.rad(1)*(X.^2 + Y.^2) + options.rad(2)*Z.^2));    
+    elseif strcmp(options.form,'free')
+        W=options.rad;
     end
-    W = W/norm(W(:));
+        W = W/norm(W(:));
     kernel=gpuArray(W);
-    
     forwardFUN = @(Xguess) forwardFUN_(convn(Xguess,kernel,'same'));
     backwardFUN = @(projection) convn(backwardFUN_(projection),kernel,'same');
     
