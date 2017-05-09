@@ -299,7 +299,7 @@ if Input.de_trend
     for t=1:size(output.baseline,1)
         base(t)=min(output.baseline(max(1,t-delta):min(size(output.baseline,1),t+delta)));
     end    
-
+    base = double(base);
     output.baseline = exp2fit([Input.frames_for_model_optimization.start : Input.frames_for_model_optimization.steps : (size(sensor_movie,2)-1)*Input.frames_for_model_optimization.steps + Input.frames_for_model_optimization.start], ...
         base, 1);
     output.baseline=output.baseline(1)+output.baseline(2)*exp(-[1:Input.prime]/output.baseline(3));
