@@ -2,6 +2,10 @@ function [xx, Q, df, h]=fast_nnls(A,Y,opts,Q,df,h,temp)
 
 
 %%
+if  ~isfield(opts,'total')
+    opts.total=0;
+end
+
 if nargin<3
     opts.gpu='off';
     opts.tol=1e-12;
@@ -81,66 +85,99 @@ X=[[1:2:2*opts.sample]', ones(opts.sample,1)];
 Xi=inv(X'*X)*X';
 
 while ~isempty(x)
+%     tic
     x_=x;
     if strcmp(opts.display,'on')
-        fprintf([num2str(s) ' ']);
+        disp(s)
     end
     s=s+1;
     df_=df.*passive;
-    alpha=sum(df_.^2,1)./sum(df_.*(Q*df_),1);%diag(((df_)'*Q*df_))';
-    alpha(isnan(alpha))=0;
-    for ii=1:size(x,2)
-        x_(:,ii)=x(:,ii)-df_(:,ii)*alpha(ii);
-    end   
-%     x_=x-df_*diag(alpha);
-    x_(x_<0)=0;
-    df=df+Q*(x_-x);
-    
-    if mod(s,2)==1
-        if opts.tol_p==2
-            test=[test' log(sqrt(sum((x_-x).^2,1)))']';
-        elseif opts.tol_p==1
-            test=[test' log(sqrt(sum(abs(x_-x),1)))']';
-        end
-
-        if size(test,1)>opts.sample
-            test=test(2:end,:);
-        end
-        if s>2*opts.sample
-            k=Xi*test;
-            ids=logical(max((max(passive)==0),(h_*exp(test(end,:))./(1-exp(k(1,:)))<opts.tol*size(x,1)*max(x,[],1)).*(sum(abs(X*k-test),1)<opts.tol_*opts.sample).*(exp(k(1,:))<1)));       
-        end
+    if opts.total
+        alpha=sum(sum(df_.^2,1),2)./sum(sum(df_.*(Q*df_),1),2);
+        alpha(isnan(alpha))=0;
+        x_=x-df_*alpha;
+        x_(x_<0)=0;
+        df=df+Q*(x_-x);
+        x=x_;
+        passive=max(x>0,df<0);
+        
         if isfield(opts,'max_iter')
             if s>opts.max_iter
-                ids=1:size(x,2);
-                fprintf('max_iter! '); % what does this mean? 
+                disp('max number of iterations is reached');
+                break;
             end
         end
     else
-        ids=[];
-    end
-    x=x_;
-    passive=max(x>0,df<0);
-    
-    
-    if max(ids(:))
-        if strcmp(opts.display,'on')
-            disp(find(ids))
-        end
+        alpha=sum(df_.^2,1)./sum(df_.*(Q*df_),1);
+        alpha(isnan(alpha))=0;
         if strcmp(opts.gpu,'on')
-            xx(:,rds(ids))=gather(x(:,ids));
+            x = gather(x);
+            x_ = gather(x_);
+            df_ = gather(df_);
+            alpha = gather(alpha);
+        end
+        for ii=1:size(x,2)
+            x_(:,ii)=x(:,ii)-df_(:,ii)*alpha(ii);
+        end
+        
+        if strcmp(opts.gpu,'on')
+            x = gpuArray(x);
+            x_ = gpuArray(x_);
+        end
+        x_(x_<0)=0;
+        if mod(s,2)==1
+            
+            if opts.tol_p==2
+                test=[test' log(sqrt(sum((x_-x).^2,1)))']';
+            elseif opts.tol_p==1
+                test=[test' log(sum(abs(x_-x),1))']';
+            end
+            
+            
+            if size(test,1)>opts.sample
+                test=test(2:end,:);
+            end
+            if s>2*opts.sample
+                k=Xi*test;
+                ids=logical(max((max(passive)==0),(h_*exp(test(end,:))./(1-exp(k(1,:)))<opts.tol*size(x,1)*max(x,[],1)).*(sum(abs(X*k-test),1)<opts.tol_*opts.sample).*(exp(k(1,:))<1)));
+            end
+            
         else
-            xx(:,rds(ids))=x(:,ids);
+            ids=[];
         end
-        rds=rds(~ids);
-        x=x(:,~ids);
-        df=df(:,~ids);
-        passive=passive(:,~ids);
-        test=test(:,~ids);
-        if nargin==7
-            temp=temp(:,~ids);
+        df=df+Q*(x_-x);
+        
+        if isfield(opts,'max_iter')
+            if s>opts.max_iter
+                ids=1:size(x,2);
+                disp('max number of iterations is reached');
+            end
         end
+        x=x_;
+        
+        passive=max(x>0,df<0);
+        
+        if max(ids(:))
+            if strcmp(opts.display,'on')
+                disp(find(ids))
+            end
+            if strcmp(opts.gpu,'on')
+                xx(:,rds(ids))=gather(x(:,ids));
+            else
+                xx(:,rds(ids))=x(:,ids);
+            end
+            rds=rds(~ids);
+            x=x(:,~ids);
+            df=df(:,~ids);
+            passive=passive(:,~ids);
+            test=test(:,~ids);
+            if nargin==7
+                temp=temp(:,~ids);
+            end
+        end
+        
     end
+%     toc
 end
 
 if strcmp(opts.gpu,'on')
@@ -159,8 +196,6 @@ else
         xx=diag(h)*xx;
     end
 end
-
-fprintf('\n');
 
 end
 
