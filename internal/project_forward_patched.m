@@ -1,4 +1,8 @@
-function [sensor_image] = project_forward_patched(pixels, volume_n_px, n_px_per_ml, H)
+function [sensor_image] = project_forward_patched(pixels, volume_n_px, n_px_per_ml, H,colv,idx)
+
+if nargin < 5
+    colv = ones(pixels);
+end
 
 %% find microlens-multiples that contain all the pixels
 px_min = min(pixels, [], 1);
@@ -22,7 +26,7 @@ n_z = px_max(3) - offset_z;
 %% paint pixels into volume patch
 volume = zeros([n_ml_lateral * n_px_per_ml, n_z]);
 for px_ix = 1:size(pixels,1)
-    volume(pixels(px_ix, 1) - offset_px_lateral(1), pixels(px_ix, 2) - offset_px_lateral(2), pixels(px_ix, 3) - offset_z) = 1;
+    volume(pixels(px_ix, 1) - offset_px_lateral(1), pixels(px_ix, 2) - offset_px_lateral(2), pixels(px_ix, 3) - offset_z) = colv(idx(px_ix, 1),idx(px_ix, 2),idx(px_ix, 3));
 end
 %figure; imagesc(squeeze(volume(:,:,1))); axis image; colorbar
 
