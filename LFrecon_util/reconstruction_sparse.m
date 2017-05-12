@@ -23,10 +23,10 @@ end
 cluster = parcluster('local');
 
 %% REPARE PARALLEL COMPUTING
-pool = gcp('nocreate')
-if ~pool.isvalid % checking to see if my pool is already open
-    pool = parpool(cluster)
-end
+% pool = gcp('nocreate')
+% if ~pool.isvalid % checking to see if my pool is already open
+%     pool = parpool(cluster)
+% end
 
 %% Load Data
 if strcmp(class(psf_ballistic.H), 'double')

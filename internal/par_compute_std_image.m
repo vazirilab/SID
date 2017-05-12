@@ -1,5 +1,5 @@
 
-function [std_image, mean_image]=par_compute_std_image(indir, step, bg_temporal, bg_spatial, prime, x_offset,y_offset,dx,Nnum)
+function [std_image, mean_image]=par_compute_std_image(indir, step, bg_temporal, bg_spatial, prime, x_offset, y_offset, dx, Nnum)
 
 if nargin==2
     step=1;
@@ -93,7 +93,6 @@ std_image = reshape(Ma/(length(infiles_struct)-1),size(img));
 xa=reshape(xa,size(img));
 
 if nargin>6
-    
     std_image =  sqrt(ImageRect(std_image, x_offset, y_offset, dx, Nnum,0));
     xa=ImageRect(xa, x_offset, y_offset, dx, Nnum,0);
 else

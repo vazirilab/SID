@@ -18,12 +18,12 @@ end
 %%
 if nargin<7 || isempty(frames)
     frames.start=1;
-    frames.steps=1;
+    frames.step=1;
     frames.end=size(infiles_struct,1);
 end
 frames.end=min(frames.end,size(infiles_struct,1));
 num_frames_total=size(infiles_struct,1);
-infiles_struct = infiles_struct(frames.start:frames.steps:frames.end);
+infiles_struct = infiles_struct(frames.start:frames.step:frames.end);
 
 %%
 for img_ix = 1:size(infiles_struct,1)

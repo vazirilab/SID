@@ -97,7 +97,7 @@ end
 if isfield(optional_args, 'prime')
     Input.prime = optional_args.prime;
 else
-    Input.prime = 40000;
+    Input.prime = inf;
 end
 
 if isfield(optional_args, 'frames')
@@ -154,8 +154,8 @@ if isfield(optional_args, 'frames_for_model_optimization')
     Input.frames_for_model_optimization = optional_args.frames_for_model_optimization;
 else
     Input.frames_for_model_optimization.start = 1;
-    Input.frames_for_model_optimization.steps = 1;
-    Input.frames_for_model_optimization.stop = inf;
+    Input.frames_for_model_optimization.step = 1;
+    Input.frames_for_model_optimization.end = inf;
 end
 
 %%
@@ -222,7 +222,7 @@ if (Input.bg_sub==1)&&(Input.rectify==1)
 end
 
 
-figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 99.5)]); axis image; colorbar;
+figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 100.0)]); axis image; colorbar;
 print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
 
 %% load sensor movie
@@ -278,15 +278,15 @@ if Input.de_trend
     output.baseline=smooth(output.baseline,70);
     delta=Input.delta;
     for t=1:size(output.baseline,1)
-        base(t)=min(output.baseline(max(1,t-delta):min(size(output.baseline,1),t+delta)));
-    end    
-
-    output.baseline = exp2fit([Input.frames_for_model_optimization.start : Input.frames_for_model_optimization.steps : (size(sensor_movie,2)-1)*Input.frames_for_model_optimization.steps + Input.frames_for_model_optimization.start], ...
-        base, 1);
-    output.baseline=output.baseline(1)+output.baseline(2)*exp(-[1:Input.prime]/output.baseline(3));
-    figure; hold on; plot(baseline); plot(baseline_fit_vals); hold off; title('Frame means and trend fit');
+        base(t) = min(output.baseline(max(1,t-delta):min(size(output.baseline,1),t+delta)));
+    end
+    base = double(base);
+    fit_t_rng = Input.frames_for_model_optimization.start : Input.frames_for_model_optimization.step : (size(sensor_movie,2)-1)*Input.frames_for_model_optimization.step + Input.frames_for_model_optimization.start;
+    output.baseline_fit_params = exp2fit(fit_t_rng, base, 1);
+    output.baseline_fit = output.baseline_fit_params(1) + output.baseline_fit_params(2) * exp(- (1 : Input.prime) / output.baseline_fit_params(3));
+    figure; hold on; plot(output.baseline); plot(output.baseline_fit); hold off; title('Smoothed frame means and trend fit');  %TODO: Input.prime doesn't seem to be the correct range here
     print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
-    sensor_movie=sensor_movie*diag(1./output.baseline(Input.frames_for_model_optimization.start:Input.frames_for_model_optimization.steps:(size(sensor_movie,2)-1)*Input.frames_for_model_optimization.steps+Input.frames_for_model_optimization.start));
+    sensor_movie = sensor_movie * diag(1 ./ output.baseline_fit);
 end
 sensor_movie_min = min(sensor_movie(:));
 sensor_movie_max = max(sensor_movie(:));
@@ -408,6 +408,7 @@ for ii=1:size(output.recon,2)
         [a,b,c]=ind2sub(size(segm),beads.PixelIdxList{1,k});
         centers(k,:)=([a,b,c]'*qu/q)';
     end
+    output.centers_per_component{ii} = centers;
     if (ii==1)
         output.centers=centers;
     else
@@ -423,7 +424,6 @@ for ii=1:size(output.recon,2)
                 id=[id k];
             end
         end
-        
         output.centers=[output.centers' centers(id,:)']';
     end
     
@@ -437,19 +437,20 @@ end
 
 %% Plot segmentation result
 timestr = datestr(now, 'YYmmddTHHMM');
-for i = 1:size(output.recon)
+for i = 1:numel(output.recon)
     figure('Position', [50 50 1200 600]); 
+    colormap parula;
     subplot(1,4,[1:3])
     hold on;
     imagesc(squeeze(max(output.recon{i}, [], 3)));
-    scatter(centers(:,2), centers(:,1), 'r.');
+    scatter(output.centers_per_component{i}(:,2), output.centers_per_component{i}(:,1), 'r.');
     axis image;
     colorbar;
     hold off;
     subplot(1,4,4)
     hold on;
     imagesc(squeeze(max(output.recon{i}, [], 2)));
-    scatter(centers(:,3), centers(:,1), 'r.');
+    scatter(output.centers_per_component{i}(:,3), output.centers_per_component{i}(:,1), 'r.');
     xlim([1 size(output.recon{i}, 3)]);
     ylim([1 size(output.recon{i}, 1)]);
     colorbar;
@@ -501,7 +502,7 @@ if isfield(Input, 'bg_sub') && Input.bg_sub
 end
 
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update'])
-output.timeseries = fast_nnls(output.forward_model_', sensor_movie, opts);
+output.timeseries = fast_nnls(output.forward_model_', double(sensor_movie), opts);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
 
 output.timeseries_=output.timeseries;
