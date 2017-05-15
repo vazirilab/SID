@@ -117,6 +117,7 @@ Input.recon_opts.mode = 'TV';
 Input.recon_opts.whichSolver = 'fast_nnls';
 
 %%
+optional_arg = struct;
 Input.LFM_folder='/ssd_raid_4TB/tobias/2017-04-26_m29/tif/';
 Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/data/FM_miniLFM_recordings/m29/042617_miniLFM_sid/';
 Input.output_name='2017-04-26_m29_wd200_';
@@ -128,7 +129,39 @@ Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_mi
 do_crop = 0;
 Input.detrend = false;
 Input.de_trend = true;
-Input.rank = 10;
+Input.rank = 7;
 Input.thres = 20;
 Input.gpu_ids = [2,5]; %1-based! so 1,2,4,5 are valid
 optional_args = struct;
+Input.optimize_kernel = 0;
+
+%%
+optional_arg = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/2017-05-01_m30_rec2/';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/2017-05-01_m30_rec2';
+Input.output_name='2017-05-01_m30_rec2_wd200';
+Input.x_offset = 639.4;
+Input.y_offset = 500.4;
+Input.dx = 19.565;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+do_crop = 0;
+Input.detrend = false;
+Input.de_trend = true;
+Input.rank = 7;
+Input.thres = 20;
+Input.gpu_ids = [2,5]; %1-based! so 1,2,4,5 are valid
+optional_args = struct;
+Input.optimize_kernel = 0;
+
+%%
+output.recon_sav = output.recon;
+for i=1:numel(output.recon)
+    tmp = output.recon{i};
+    tmp(:,:,64:end) = 0;
+    output.recon{i} = tmp;
+end
+
+%%
+save(fullfile(Input.output_folder, 'checkpoint_post-nmf-recon.mat'), 'Input', 'output');
+

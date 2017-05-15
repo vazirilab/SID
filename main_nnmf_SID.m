@@ -187,6 +187,7 @@ Input.nnmf_opts.lambda_s = 0.1;
 Input.update_template = false;
 Input.detrend = false;
 Input.de_trend = true;
+Input.optimize_kernel = 0;
 
 %%
 psf_ballistic=matfile(Input.psf_filename_ballistic);
@@ -418,10 +419,13 @@ for i = 1:length(output.recon)
     subplot(1,4,4)
     imagesc(squeeze(max(output.recon{i}, [], 2)));
     colorbar;
-    print(fullfile(temp_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+    print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 end
 pause(10);
 close all;
+
+%% Save checkpoint
+save(fullfile(Input.output_folder, 'checkpoint_post-nmf-recon.mat'), 'Input', 'output');
 
 %% filter reconstructed spatial filters
 if Input.filter
@@ -696,6 +700,43 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Extraction complete']);
 %% save output
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Saving result'])
 output.Input = Input;
-save(fullfile(Input.output_folder, Input.output_name), '-struct', 'output', '-v7.3');
+save(fullfile(Input.output_folder, Input.output_name), 'Input', 'output', '-v7.3');
+
+%% Summary figures
+timestr = datestr(now, 'YYmmddTHHMM');
+nmf_mip = output.recon{1};
+for i=2:numel(output.recon)
+    nmf_mip = max(nmf_mip, output.recon{i});
+end
+
+figure('Position', [50 50 1200 600]);
+colormap parula;
+subplot(1,4,[1:3])
+hold on;
+imagesc(squeeze(max(nmf_mip, [], 3)));
+scatter(output.centers_(:,2), output.centers_(:,1), 'r.');
+axis image;
+colorbar;
+hold off;
+subplot(1,4,4)
+hold on;
+imagesc(squeeze(max(nmf_mip, [], 2)));
+scatter(output.centers_(:,3), output.centers_(:,1), 'r.');
+xlim([1 size(output.recon{i}, 3)]);
+ylim([1 size(output.recon{i}, 1)]);
+colorbar;
+print(fullfile(Input.output_folder, [timestr '_nnmf_components_mip.png']), '-dpng', '-r300');
+
+%%
+timestr = datestr(now, 'YYmmddTHHMM');
+figure('Position', [50 50 1200 600]);
+ts = zscore(output.timeseries_, 0, 2);
+limits = [prctile(ts(:), 0.01), prctile(ts(:), 99.9)];
+imagesc(ts, limits); 
+colormap parula;
+colorbar;
+print(fullfile(Input.output_folder, [timestr '_timeseries_zscore.png']), '-dpng', '-r300');
+
+%%    
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'main_nnmf_SID() returning'])
 end
