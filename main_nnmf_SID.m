@@ -217,10 +217,19 @@ cluster.JobStorageLocation = Input.job_storage_location_unique;
 disp(cluster);
 delete(gcp('nocreate'));
 
+%% Load mask image
+if isfield(Input, 'mask_file')
+    Input.mask = logical(imread(Input.mask_file));
+else
+    Input.mask = true;
+end
+figure; imagesc(double(Input.mask), [0 1]); axis image; colorbar;
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_mask.pdf']), '-dpdf', '-r300');
+
 %% Compute bg components via rank-1-factorization
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing background components']);
 if Input.bg_sub==1
-    [output.bg_temporal,output.bg_spatial]=par_rank_1_factorization(Input.LFM_folder,Input.step, Input.bg_iter,Input.prime);
+    [output.bg_temporal,output.bg_spatial] = par_rank_1_factorization(Input.LFM_folder, Input.step, Input.bg_iter, 0, 0, 0, 0, Input.prime, Input.mask);
 else
     output.bg_temporal=[];
     output.bg_spatial=[];
@@ -237,13 +246,13 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.p
 %% Compute standard-deviation image (std. image)
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing standard deviation image']);
 if Input.rectify==1
-    [output.std_image,~]=par_compute_std_image(Input.LFM_folder,Input.step,output.bg_temporal,output.bg_spatial,Input.prime, Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum);
+    [output.std_image,~]=par_compute_std_image(Input.LFM_folder,Input.step,output.bg_temporal,output.bg_spatial,Input.prime, Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum, Input.mask);
 else
-    [output.std_image,~]=par_compute_std_image(Input.LFM_folder,Input.step,output.bg_temporal,output.bg_spatial,Input.prime);
+    [output.std_image,~]=par_compute_std_image(Input.LFM_folder,Input.step,output.bg_temporal,output.bg_spatial,Input.prime, 0, 0, 0, 0, Input.mask);
 end
 
 if (Input.bg_sub==1)&&(Input.rectify==1)
-    output.bg_spatial =  ImageRect(output.bg_spatial, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum,0);
+    output.bg_spatial = ImageRect(output.bg_spatial, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, 0);
 end
 
 
@@ -253,7 +262,7 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.pn
 %% load sensor movie
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
 tic;
-[sensor_movie,num_frames]=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.rectify,Input.frames_for_model_optimization);
+[sensor_movie,num_frames]=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.rectify,Input.frames_for_model_optimization, Input.mask);
 if isinf(Input.prime)
     Input.prime=num_frames;
 end
@@ -288,7 +297,7 @@ figure;
 imagesc(Inside);
 colorbar();
 axis image;
-print(fullfile(Input.output_folder, [timestr '_cropped_stddev_img_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+print(fullfile(Input.output_folder, [timestr '_crop_mask' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 
 %% subtract baseline outside of brain
 outside = ~Inside;
@@ -835,7 +844,7 @@ legend('boxoff');
 print(fullfile(Input.output_folder, [timestr '_timeseries_zscore_stacked.png']), '-dpng', '-r300');
 
 %% Inspect forward model and associated ts
-ix = 200;
+ix = randperm(size(output.timeseries_,1), 1);
 fps = 15;
 figure('Position', [20, 20, 2000, 2000]); 
 subplot(3,1,1:2);
@@ -843,7 +852,7 @@ imagesc(reshape(output.forward_model_(ix,:), size(output.std_image)), [0 max(out
 axis image;
 colorbar();
 subplot(3,1,3);
-plot((1:size(ts,2))/15, output.timeseries_(ix,:));
+plot((1:size(output.timeseries_,2))/15, output.timeseries_(ix,:));
 
 %% Delete cached psf file
 if ~strcmp(Input.psf_cache_dir, '')

@@ -1,12 +1,32 @@
+function [std_image, mean_image] = par_compute_std_image(indir, step, bg_temporal, bg_spatial, prime, x_offset, y_offset, dx, Nnum, mask)
 
-function [std_image, mean_image]=par_compute_std_image(indir, step, bg_temporal, bg_spatial, prime, x_offset, y_offset, dx, Nnum)
-
-if nargin==2
-    step=1;
-elseif nargin<4
-    bg_temporal=[];
+if nargin < 10
+    mask = true;
 end
 
+if nargin < 2
+    step = 1;
+end
+
+if nargin < 4
+    bg_temporal = [];
+    bg_spatial = [];
+end
+
+if nargin < 5
+    prime = inf;
+end
+
+if nargin < 9
+    x_offset = 0;
+    y_offset = 0;
+    dx = 0;
+    Nnum = 0;
+end
+
+if nargin < 10
+    mask = true;
+end
 
 %%
 if exist(indir, 'dir')
@@ -17,11 +37,6 @@ else
     disp('indir does not exist');
     return
 end
-
-% disp('Input files:');
-% for i=1:size(infiles_struct)
-%     disp(infiles_struct(i));
-% end
 
 %%
 FileTif=fullfile(indir, infiles_struct(1).name);
@@ -41,12 +56,7 @@ if isempty(par_C)
     par_C=parpool;
 end
 
-if max((nargin<6),isempty(prime))
-    prime=size(infiles_struct,1);
-end
-
-prime=min(prime,size(infiles_struct,1));
-
+prime = min(prime, size(infiles_struct,1));
 
 infiles_struct = infiles_struct(1:step:prime);
 N=par_C.NumWorkers;
@@ -62,6 +72,8 @@ parfor worker=1:par_C.NumWorkers
                 img_rect(:,:,ii)=double(imread(FileTif,'Index',ii));
             end
         end
+        img_rect = img_rect .* mask;
+        
         if ~isempty(bg_temporal)
             img_rect=img_rect(:)'-bg_spatial*bg_temporal(i);
         else
@@ -75,8 +87,6 @@ parfor worker=1:par_C.NumWorkers
     end
 end
 
-fprintf('\n')
-
 xa=squeeze(mean_image(1,:));
 Ma=squeeze(std_image(1,:));
 na=length(1:N:length(infiles_struct));
@@ -88,15 +98,14 @@ for worker=2:par_C.NumWorkers
     na=na+length(worker:N:length(infiles_struct));
 end
 
-
 std_image = reshape(Ma/(length(infiles_struct)-1),size(img));
 xa=reshape(xa,size(img));
 
-if nargin>6
-    std_image =  sqrt(ImageRect(std_image, x_offset, y_offset, dx, Nnum,0));
-    xa=ImageRect(xa, x_offset, y_offset, dx, Nnum,0);
-else
-    std_image=sqrt(std_image);
+if all([x_offset y_offset dx Nnum])
+    std_image = sqrt(ImageRect(std_image, x_offset, y_offset, dx, Nnum, 0));
+    xa = ImageRect(xa, x_offset, y_offset, dx, Nnum, 0);
 end
+
+std_image=sqrt(std_image);
 mean_image=xa;
 end

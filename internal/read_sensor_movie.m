@@ -1,9 +1,10 @@
-function [sensor_movie, num_frames_total]=read_sensor_movie(LFM_folder,x_offset,y_offset,dx,Nnum,rect,frames)
-
+function [sensor_movie, num_frames_total]=read_sensor_movie(LFM_folder,x_offset,y_offset,dx,Nnum,rect,frames, mask)
+if nargin < 8
+    mask = true;
+end
 
 %%
 p.rect_dir = LFM_folder;
-%%
 if exist(p.rect_dir, 'dir')
     infiles_struct = dir(fullfile(p.rect_dir, '/*.tif*'));
     [~, order] = sort({infiles_struct(:).name});
@@ -13,7 +14,6 @@ else
     [p.rect_dir, ~, ~] = fileparts(p.rect_dir);
     disp('LFM_folder does not exist');
 end
-
 
 %%
 if nargin<7 || isempty(frames)
@@ -31,9 +31,9 @@ for img_ix = 1:size(infiles_struct,1)
         fprintf([num2str(img_ix) ' ']);
     end    
     if rect==1
-        img_rect =  ImageRect(double(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff')), x_offset, y_offset, dx, Nnum,0);
+        img_rect = ImageRect(double(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff')) .* mask, x_offset, y_offset, dx, Nnum, 0);
     else
-        img_rect = single(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff'));
+        img_rect = single(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff')) .* mask;
     end
     if img_ix == 1
 %         sensor_movie = ones(size(img_rect, 1), size(img_rect, 2), size(infiles_struct,1), 'double');

@@ -1,7 +1,26 @@
-function [bg_temporal,bg_spatial]=par_rank_1_factorization(indir,step, max_iter, x_offset,y_offset,dx,Nnum,prime)
+function [bg_temporal, bg_spatial] = par_rank_1_factorization(indir, step, max_iter, x_offset, y_offset, dx, Nnum, prime, mask)
 
-if nargin==2
-    step=1;
+if nargin < 2
+    step = 1;
+end
+
+if nargin < 3
+    max_iter = 1;
+end
+
+if nargin < 4
+    x_offset = 0;
+    y_offset = 0;
+    dx = 0;
+    Nnum = 0;
+end
+
+if nargin < 8
+    prime = inf;
+end
+
+if nargin < 9
+    mask = true;
 end
 
 %%
@@ -14,11 +33,6 @@ else
     return
 end
 
-% disp('Input files:');
-% for i=1:size(infiles_struct)
-%     disp(infiles_struct(i));
-% end
-
 %%
 FileTif=fullfile(indir, infiles_struct(1).name);
 InfoImage=imfinfo(FileTif);
@@ -30,11 +44,7 @@ bg_spatial=ones(nImage,mImage,NumberImages,'double');
 par_C = gcp('nocreate'); 
 
 if isempty(par_C)
-par_C=parpool;
-end
-
-if nargin<8
-    prime=size(infiles_struct,1);
+    par_C=parpool;
 end
 
 prime=min(prime,size(infiles_struct,1));
@@ -48,7 +58,7 @@ for iter=1:max_iter
     parfor worker=1:par_C.NumWorkers
         bg_spatial_par(worker,:,:)=zeros(size(bg_spatial));
         for i=1:length(worker:N:length(infiles_struct))
-            img_rect = double(imread(fullfile(indir, infiles_struct(worker+(i-1)*N).name), 'tiff'));
+            img_rect = double(imread(fullfile(indir, infiles_struct(worker+(i-1)*N).name), 'tiff')) .* mask;
             parvar=zeros(size(squeeze(bg_temporal_par(worker,:))));
             parvar(i)=sum(sum(bg_spatial.*img_rect));
             bg_temporal_par(worker,:)=bg_temporal_par(worker,:)+parvar;
@@ -58,17 +68,16 @@ for iter=1:max_iter
     end
     nrm=sqrt(sum(btn));
     bg_spatial=squeeze(sum(bg_spatial_par,1))/nrm;
-    disp(['finished iteration:' num2str(iter)]);
+    disp(['Finished iteration ' num2str(iter)]);
 end
 
 for worker=1:par_C.NumWorkers
     bg_temporal(worker:N:length(infiles_struct))=bg_temporal_par(worker,1:length(worker:N:length(infiles_struct)))';
 end
 
-if nargin>4    
-    bg_spatial =  ImageRect(bg_spatial, x_offset, y_offset, dx, Nnum,0);    
+if all([x_offset y_offset dx Nnum])
+    bg_spatial = ImageRect(bg_spatial, x_offset, y_offset, dx, Nnum, 0);    
 end
 
 bg_temporal=bg_temporal/nrm;
-
 end

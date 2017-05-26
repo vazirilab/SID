@@ -20,6 +20,7 @@ infiles_struct=infiles_struct(logical(Varg));
 else
     line=1:length(infiles_struct);
 end
+
 %%
 num=length(infiles_struct);
 timeseries=zeros(size(forward_model,1)+(~isempty(bg_spatial)),num);
