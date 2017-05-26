@@ -155,11 +155,63 @@ optional_args = struct;
 Input.optimize_kernel = 0;
 
 %%
-output.recon_sav = output.recon;
-for i=1:numel(output.recon)
-    tmp = output.recon{i};
-    tmp(:,:,64:end) = 0;
-    output.recon{i} = tmp;
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/M24_LFM_WD350_Depth200um_1/tif/';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/M24_LFM_WD350_Depth200um_1';
+Input.output_name='M24_LFM_WD350_Depth200um_1';
+Input.x_offset = 641.0;
+Input.y_offset = 496.8;
+Input.dx = 19.755;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p360_from-50_to360_zspacing4_Nnum15_lambda520_OSR3.mat';
+do_crop = 0;
+Input.detrend = false;
+Input.de_trend = true;
+Input.rank = 7;
+Input.thres = 20;
+Input.gpu_ids = [2,5]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='TV';
+Input.recon_opts.lambda=[ 0, 0, 10];
+Input.recon_opts.lambda_=0.1;
+Input.recon_opts.form='gaussian';
+Input.recon_opts.rad=[5 2];
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/M24_LFM_WD350_Depth200um_Overexposure/tif/';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/M24_LFM_WD350_Depth200um_Overexposure';
+Input.output_name='M24_LFM_WD350_Depth200um_Overexposure';
+Input.x_offset = 640.4;
+Input.y_offset = 496.8;
+Input.dx = 19.755;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p360_from-50_to360_zspacing4_Nnum15_lambda520_OSR3.mat';
+do_crop = 1;
+Input.detrend = false;
+Input.de_trend = true;
+Input.rank = 7;
+Input.thres = 20;
+Input.gpu_ids = [2,5]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='TV';
+Input.recon_opts.lambda=[ 0, 0, 10];
+Input.recon_opts.lambda_=0.1;
+Input.recon_opts.form='gaussian';
+Input.recon_opts.rad=[5 2];
+
+%%
+%output.segmm_sav = output.segmm;
+for i=1:numel(output.segmm)
+    tmp = output.segmm{i};
+    tmp(:,:,33:end) = 0;
+    output.segmm{i} = tmp;
 end
 
 %%

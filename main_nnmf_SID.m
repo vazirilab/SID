@@ -108,7 +108,7 @@ else
    Input.frames.end = inf;
 end
 
-if isfield(optional_arg, 'optimize_kernel')
+if isfield(optional_args, 'optimize_kernel')
     Input.optimize_kernel = optional_args.optimize_kernel;
 else
     Input.optimize_kernel = 1;
@@ -177,6 +177,12 @@ else
 	Input.total_deconv_opts = [];
 end
 
+if isfield(optional_args, 'psf_cache_dir')  % a very fast storage location (ideally, a ramdisk), for caching the psf file. This is to avoid serialization to parfor workers
+	Input.psf_cache_dir = optional_args.psf_cache_dir;
+else
+	Input.psf_cache_dir = '/dev/shm';
+end
+
 %%
 do_crop = 1; %% Oliver suggest = 1
 crop_thresh_coord_x = 0.5;
@@ -219,12 +225,11 @@ else
     output.bg_temporal=[];
     output.bg_spatial=[];
 end
-temp_folder = [Input.output_folder '/' Input.output_name '/'];
-mkdir(temp_folder)
+mkdir(Input.output_folder)
 figure; imagesc(output.bg_spatial); axis image; colorbar; title('Spatial background');
-print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.pdf']), '-dpdf', '-r300');
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.pdf']), '-dpdf', '-r300');
 figure; plot(output.bg_temporal); title('Temporal background');
-print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.pdf']), '-dpdf', '-r300');
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.pdf']), '-dpdf', '-r300');
 
 %%% Compute mean_signal
 %output.mean_signal=par_mean_signal(Input.LFM_folder,Input.step, Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.prime);
@@ -243,7 +248,7 @@ end
 
 
 figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 100.0)]); axis image; colorbar;
-print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
 
 %% load sensor movie
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
@@ -272,11 +277,18 @@ if do_crop
     for kk=2:beads.NumObjects
         Inside(beads.PixelIdxList{kk})=0;
     end
-output.idx=find(Inside>0);
+    output.idx=find(Inside>0);
 else
     Inside = output.std_image * 0 + 1;
 end
 output.idx=find(Inside>0);
+
+timestr = datestr(now, 'YYmmddTHHMM');
+figure;
+imagesc(Inside);
+colorbar();
+axis image;
+print(fullfile(Input.output_folder, [timestr '_cropped_stddev_img_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 
 %% subtract baseline outside of brain
 outside = ~Inside;
@@ -305,7 +317,7 @@ if Input.de_trend
     output.baseline_fit_params = exp2fit(fit_t_rng, base, 1);
     output.baseline_fit = output.baseline_fit_params(1) + output.baseline_fit_params(2) * exp(- (1 : Input.prime) / output.baseline_fit_params(3));
     figure; hold on; plot(output.baseline); plot(output.baseline_fit); hold off; title('Smoothed frame means and trend fit');  %TODO: Input.prime doesn't seem to be the correct range here
-    print(fullfile(temp_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
+    print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
     sensor_movie = sensor_movie * diag(1 ./ output.baseline_fit);
 end
 sensor_movie_min = min(sensor_movie(:));
@@ -325,6 +337,7 @@ output.S = S;
 output.T = T;
 
 %% Plot NMF results
+close all;
 timestr = datestr(now, 'YYmmddTHHMM');
 for i=1:size(output.T, 1)
     figure( 'Position', [100 100 800 800]);
@@ -333,13 +346,26 @@ for i=1:size(output.T, 1)
     title(['NMF component ' num2str(i)]);
     subplot(4,1,4);
     plot(output.T(i,:));
-    print(fullfile(temp_folder, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+    print(fullfile(Input.output_folder, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
     close;
+end
+
+%%
+if ~strcmp(Input.psf_cache_dir, '')
+    [~, rand_string] = fileparts(tempname());
+    Input.psf_cache_dir_unique = fullfile(Input.psf_cache_dir, ['sid_nnmf_recon_psf_' rand_string]);
+    disp(['Creating tmp dir for psf caching: ' Input.psf_cache_dir_unique]);
+    mkdir(Input.psf_cache_dir_unique);
+    disp('Copying psf file to tmp dir for caching...');
+    copyfile(Input.psf_filename_ballistic, Input.psf_cache_dir_unique);
+    [~, psf_fname, psf_ext] = fileparts(Input.psf_filename_ballistic);
+    Input.psf_filename_ballistic_in = Input.psf_filename_ballistic;
+    Input.psf_filename_ballistic = fullfile(Input.psf_cache_dir_unique, [psf_fname psf_ext]);
+    clear psf_fname;
 end
 
 %% reconstruct spatial filters
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Reconstructing spatial filters']);
-psf_ballistic=load(Input.psf_filename_ballistic);
 poolobj = gcp('nocreate');
 delete(poolobj);
 
@@ -351,7 +377,7 @@ if isempty(Input.gpu_ids)
         img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end))); % TN TODO: hardcoded vals
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));
-        output.recon{k} = reconstruction_cpu_sparse(psf_ballistic,infile, Input.recon_opts);
+        output.recon{k} = reconstruction_cpu_sparse(Input.psf_filename_ballistic, infile, Input.recon_opts);
         disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
     end   
 else
@@ -369,7 +395,7 @@ else
         img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end)));
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));        
-        test = reconstruction_new(infile, psf_ballistic, options{1});
+        test = reconstruction_new(infile, Input.psf_filename_ballistic, options{1});
         [~,kernel] = total_deconv(test,Input.total_deonv_opts);
         Input.form = 'free';
         Input.recon_opts.rad=kernel;
@@ -395,8 +421,7 @@ else
             options{worker}=tmp_recon_opts;
             options{worker}.gpu_ids=mod((worker-1),nn)+1;
             options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
-            
-            recon{worker}= reconstruction_sparse(infile, psf_ballistic, options{worker});
+            recon{worker}= reconstruction_sparse(infile, Input.psf_filename_ballistic, options{worker});
             gpuDevice([]);
         end
         for kp=1:min(nn,size(S,1)-(kk-1))
@@ -421,8 +446,8 @@ for i = 1:length(output.recon)
     colorbar;
     print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 end
-pause(10);
-close all;
+%pause(10);
+%close all;
 
 %% Save checkpoint
 save(fullfile(Input.output_folder, 'checkpoint_post-nmf-recon.mat'), 'Input', 'output');
@@ -530,24 +555,24 @@ end
 
 %% Plot segmentation result
 timestr = datestr(now, 'YYmmddTHHMM');
-for i = 1:numel(output.recon)
+for i = 1:numel(output.segmm)
     figure('Position', [50 50 1200 600]); 
     colormap parula;
     subplot(1,4,[1:3])
     hold on;
-    imagesc(squeeze(max(output.recon{i}, [], 3)));
+    imagesc(squeeze(max(output.segmm{i}, [], 3)));
     scatter(output.centers_per_component{i}(:,2), output.centers_per_component{i}(:,1), 'r.');
     axis image;
     colorbar;
     hold off;
     subplot(1,4,4)
     hold on;
-    imagesc(squeeze(max(output.recon{i}, [], 2)));
+    imagesc(squeeze(max(output.segmm{i}, [], 2)));
     scatter(output.centers_per_component{i}(:,3), output.centers_per_component{i}(:,1), 'r.');
-    xlim([1 size(output.recon{i}, 3)]);
-    ylim([1 size(output.recon{i}, 1)]);
+    xlim([1 size(output.segmm{i}, 3)]);
+    ylim([1 size(output.segmm{i}, 1)]);
     colorbar;
-    print(fullfile(Input.output_folder, [timestr '_nnmf_component_segmentation_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+    print(fullfile(Input.output_folder, [timestr '_segmm_segmentation_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 end
 
 %%
@@ -684,7 +709,7 @@ opts.warm_start=[];
 % opts.idx=output.idx;
 % opts.max_iter=20000; % already defined in the last section
 opts.frame=Input.frames; %frames for model optimization;
-opts.outfile = fullfile(temp_folder, 'timeseries_debug_out.mat');
+opts.outfile = fullfile(Input.output_folder, 'timeseries_debug_out.mat');
 if isfield(Input, 'detrend') && Input.detrend
     opts.mean_signal=output.mean_signal;
 end
@@ -703,7 +728,7 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Saving result'])
 output.Input = Input;
 save(fullfile(Input.output_folder, Input.output_name), 'Input', 'output', '-v7.3');
 
-%% Summary figures
+%% Summary figure: NNMF MIPs, with centers overlaid
 timestr = datestr(now, 'YYmmddTHHMM');
 nmf_mip = output.recon{1};
 for i=2:numel(output.recon)
@@ -717,6 +742,7 @@ hold on;
 imagesc(squeeze(max(nmf_mip, [], 3)));
 scatter(output.centers_(:,2), output.centers_(:,1), 'r.');
 axis image;
+title([Input.output_name ' - NNMF components MIPs, with segmentation centers'], 'Interpreter', 'none');
 colorbar;
 hold off;
 subplot(1,4,4)
@@ -728,16 +754,103 @@ ylim([1 size(output.recon{i}, 1)]);
 colorbar;
 print(fullfile(Input.output_folder, [timestr '_nnmf_components_mip.png']), '-dpng', '-r300');
 
-%%
+%% Timeseries, heatmap, clustered
 timestr = datestr(now, 'YYmmddTHHMM');
 figure('Position', [50 50 1200 600]);
 ts = zscore(output.timeseries_, 0, 2);
+clustered_ixs = clusterdata(ts, 'criterion', 'distance', 'distance', 'correlation', 'maxclust', floor(size(ts,1)/10));
+tsi = [clustered_ixs ts];
+ts = sortrows(tsi);
+ts = ts(2:end,:);
 limits = [prctile(ts(:), 0.01), prctile(ts(:), 99.9)];
-imagesc(ts, limits); 
+imagesc(ts, limits);
+title([Input.output_name ' - timeseries, z-scored, corr-clustered'], 'Interpreter', 'none');
 colormap parula;
 colorbar;
 print(fullfile(Input.output_folder, [timestr '_timeseries_zscore.png']), '-dpng', '-r300');
 
-%%    
+%% Timeseries, stacked (random subset of 100 traces)
+ts = zscore(output.timeseries_, 0, 2);
+y_shift = 4;
+clip = true;
+if size(ts,1) > 100
+    sel = randperm(size(ts,1), 100);
+else
+    sel = 1:size(ts,1);
+end
+nixs = 1:size(ts,1);
+sel_nixs = nixs(sel);
+
+figure('Position', [10 10 2000 2000]);
+title([Input.output_name ' - timeseries, z-scored'], 'Interpreter', 'none');
+subplot(121);
+hold on
+for n_ix = 1:floor(numel(sel_nixs)/2)
+    ax = gca();
+    ax.ColorOrderIndex = 1;
+    loop_ts = ts(sel_nixs(n_ix),:);
+    if clip
+       loop_ts(loop_ts > 3*y_shift) = y_shift; 
+       loop_ts(loop_ts < -3*y_shift) = -y_shift; 
+    end
+    t = (0:size(ts,2)-1);
+    %plot(t, mat2gray(squeeze(loop_ts)) + 1*(n_ix-1));
+    plot(t, squeeze(loop_ts) + y_shift*(n_ix-1));
+    %text(30, y_shift*(n_ix-1), num2str(sel_sv(n_ix)));
+end
+xlabel('Frame');
+%ylabel('Z-score');
+%ylim([0 size(p.timeseries{1}, 1)]);
+xlim([min(t) max(t)]);
+%legend(p.labels, 'location', 'NorthEast');
+hold off;
+axis tight;
+set(gca,'LooseInset',get(gca,'TightInset'))
+legend('boxoff');
+
+subplot(122);
+hold on;
+for n_ix = ceil(numel(sel_nixs)/2):numel(sel_nixs)
+    ax = gca();
+    ax.ColorOrderIndex = 1;
+    loop_ts = ts(sel_nixs(n_ix),:);
+    if clip
+       loop_ts(loop_ts > y_shift) = y_shift; 
+       loop_ts(loop_ts < -y_shift) = -y_shift; 
+    end
+    t = (0:size(ts,2)-1);
+    %plot(t, mat2gray(squeeze(loop_ts)) + 1*(n_ix-1));
+    plot(t, squeeze(loop_ts) + y_shift*(n_ix-1));
+    %text(30, y_shift*(n_ix-1), num2str(sel_sv(n_ix)));
+end
+xlabel('Frame');
+%ylabel('Z-score');
+%ylim([0 size(p.timeseries{1}, 1)]);
+xlim([min(t) max(t)]);
+%legend(p.labels, 'location', 'NorthEast');
+hold off;
+axis tight;
+set(gca,'LooseInset',get(gca,'TightInset'))
+legend('boxoff');
+print(fullfile(Input.output_folder, [timestr '_timeseries_zscore_stacked.png']), '-dpng', '-r300');
+
+%% Inspect forward model and associated ts
+ix = 200;
+fps = 15;
+figure('Position', [20, 20, 2000, 2000]); 
+subplot(3,1,1:2);
+imagesc(reshape(output.forward_model_(ix,:), size(output.std_image)), [0 max(output.forward_model_(ix,:))]); 
+axis image;
+colorbar();
+subplot(3,1,3);
+plot((1:size(ts,2))/15, output.timeseries_(ix,:));
+
+%% Delete cached psf file
+if ~strcmp(Input.psf_cache_dir, '')
+    disp([datestr(now,  'YYYY-mm-dd HH:MM:SS') ': Deleting cached psf file']);
+    rmdir(Input.psf_cache_dir_unique, 's');
+end
+
+%%
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'main_nnmf_SID() returning'])
 end
