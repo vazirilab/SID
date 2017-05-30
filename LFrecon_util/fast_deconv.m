@@ -12,6 +12,8 @@ else
     end
 end
 
+disp('Running fast_deconv() with options:');
+disp(opts);
 
 Xguess=df;
 if strcmp(opts.mode,'TV')

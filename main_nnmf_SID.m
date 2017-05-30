@@ -195,8 +195,22 @@ Input.detrend = false;
 Input.de_trend = true;
 Input.optimize_kernel = 0;
 
-%%
+%% Cache and open PSF
 psf_ballistic=matfile(Input.psf_filename_ballistic);
+if ~strcmp(Input.psf_cache_dir, '')
+    [~, rand_string] = fileparts(tempname());
+    Input.psf_cache_dir_unique = fullfile(Input.psf_cache_dir, ['sid_nnmf_recon_psf_' rand_string]);
+    disp(['Creating tmp dir for psf caching: ' Input.psf_cache_dir_unique]);
+    mkdir(Input.psf_cache_dir_unique);
+    disp('Copying psf file to tmp dir for caching...');
+    copyfile(Input.psf_filename_ballistic, Input.psf_cache_dir_unique);
+    [~, psf_fname, psf_ext] = fileparts(Input.psf_filename_ballistic);
+    Input.psf_filename_ballistic_in = Input.psf_filename_ballistic;
+    Input.psf_filename_ballistic = fullfile(Input.psf_cache_dir_unique, [psf_fname psf_ext]);
+    clear psf_fname;
+end
+
+%%
 Input.fluoslide_fn = ['fluoslide_Nnum' num2str(psf_ballistic.Nnum) '.mat'];
 if ~exist(Input.output_folder, 'dir')
     mkdir(Input.output_folder);
@@ -236,9 +250,9 @@ else
 end
 mkdir(Input.output_folder)
 figure; imagesc(output.bg_spatial); axis image; colorbar; title('Spatial background');
-print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.pdf']), '-dpdf', '-r300');
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.png']), '-dpng', '-r300');
 figure; plot(output.bg_temporal); title('Temporal background');
-print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.pdf']), '-dpdf', '-r300');
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.png']), '-dpng', '-r300');
 
 %%% Compute mean_signal
 %output.mean_signal=par_mean_signal(Input.LFM_folder,Input.step, Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.prime);
@@ -256,7 +270,7 @@ if (Input.bg_sub==1)&&(Input.rectify==1)
 end
 
 
-figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 100.0)]); axis image; colorbar;
+figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 100.0)]); axis image; axis ij; colorbar;
 print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
 
 %% load sensor movie
@@ -268,7 +282,7 @@ if isinf(Input.prime)
 end
 toc
 
-%% find crop space
+%% Crop frames, leaving out areas with stddev as in background-only area
 if do_crop
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
     Inside=output.std_image(ceil(crop_thresh_coord_x * size(output.std_image,1)):end, ceil(crop_thresh_coord_y * size(output.std_image,2)):end);
@@ -336,7 +350,6 @@ toc
 
 %% generate NNMF
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.rank) '-factorization']);
-ops.bg_temporal=squeeze(mean(sensor_movie,1));
 Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
 output.centers=[];
 [S, T]=fast_NMF_2(sensor_movie,Input.rank,Input.nnmf_opts);
@@ -357,20 +370,6 @@ for i=1:size(output.T, 1)
     plot(output.T(i,:));
     print(fullfile(Input.output_folder, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
     close;
-end
-
-%%
-if ~strcmp(Input.psf_cache_dir, '')
-    [~, rand_string] = fileparts(tempname());
-    Input.psf_cache_dir_unique = fullfile(Input.psf_cache_dir, ['sid_nnmf_recon_psf_' rand_string]);
-    disp(['Creating tmp dir for psf caching: ' Input.psf_cache_dir_unique]);
-    mkdir(Input.psf_cache_dir_unique);
-    disp('Copying psf file to tmp dir for caching...');
-    copyfile(Input.psf_filename_ballistic, Input.psf_cache_dir_unique);
-    [~, psf_fname, psf_ext] = fileparts(Input.psf_filename_ballistic);
-    Input.psf_filename_ballistic_in = Input.psf_filename_ballistic;
-    Input.psf_filename_ballistic = fullfile(Input.psf_cache_dir_unique, [psf_fname psf_ext]);
-    clear psf_fname;
 end
 
 %% reconstruct spatial filters
@@ -440,18 +439,30 @@ else
     end
 end
 
+%% crop reconstructed image with eroded mask, to reduce border artefacts
+if numel(Input.mask) > 1 && any(Input.mask ~= 0)
+    mask_dilated = imerode(Input.mask, strel('disk', 25));
+    mask_dilated =  logical(ImageRect(double(mask_dilated), Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, 0));
+    for i = 1:length(output.recon)
+        output.recon{i} = output.recon{i} .* mask_dilated;
+    end
+end
+
 %% Plot reconstructed spatial filters
 timestr = datestr(now, 'YYmmddTHHMM');
-for i = 1:length(output.recon)
+for i = 1:size(S, 1)
     figure('Position', [50 50 1200 600]); 
     subplot(1,4,[1:3])
     hold on;
     imagesc(squeeze(max(output.recon{i}, [], 3)));
+    %imagesc(squeeze(max(output.recon{i}(:,:,20), [], 3)));
     axis image;
+    axis ij;
     colorbar;
     hold off;
     subplot(1,4,4)
     imagesc(squeeze(max(output.recon{i}, [], 2)));
+    axis ij;
     colorbar;
     print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 end

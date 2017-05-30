@@ -77,6 +77,7 @@ for iter=1:opts.max_iter + N
         return;
     end    
     S(S<0)=0;   
-    fprintf('\n')
+    fprintf([num2str(iter) ' ']);
 end
+fprintf('\n')
 end
