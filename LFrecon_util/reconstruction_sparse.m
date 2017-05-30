@@ -16,9 +16,9 @@ if ~isfield(options, 'gpu_ids')
     options.gpu_ids = [4 5]; %the GPU ids to use for this job (valid on pcl-imp-2: 1,2,4,5)
 end
 
-if ~isfield(options,'rad')
-    options.rad = [2,2]; % radius of kernel [lateral, axial] with which volume gets convolved during reconstruction (akin to minimum expected feature size)
-end
+% if ~isfield(options,'rad')
+%     options.rad = [2,2]; % radius of kernel [lateral, axial] with which volume gets convolved during reconstruction (akin to minimum expected feature size)
+% end
 
 cluster = parcluster('local');
 
