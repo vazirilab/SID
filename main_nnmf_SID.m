@@ -628,6 +628,7 @@ if isfield(Input, 'bg_sub') && Input.bg_sub
     output.forward_model_(end+1,:) = output.bg_spatial(output.idx);
 end
 
+sensor_movie = (sensor_movie.*(sensor_movie_max - sensor_movie_min)) + sensor_movie_min);
 sensor_movie = double(sensor_movie);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update'])
 output.timeseries = fast_nnls(output.forward_model_', double(sensor_movie), opts);
