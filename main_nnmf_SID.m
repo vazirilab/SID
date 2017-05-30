@@ -299,15 +299,15 @@ colorbar();
 axis image;
 print(fullfile(Input.output_folder, [timestr '_crop_mask' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 
-%% subtract baseline outside of brain
-outside = ~Inside;
-if do_crop
-    baseline = squeeze(mean(sensor_movie(logical(outside),:),1));
-    for ix=1:size(sensor_movie,2)
-        sensor_movie(:,ix)= sensor_movie(:,ix) - baseline(ix);
-    end
-    sensor_movie(sensor_movie<0)=0;
-end
+%%% subtract baseline outside of brain
+%outside = ~Inside;
+%if do_crop
+%    baseline = squeeze(mean(sensor_movie(logical(outside),:),1));
+%    for ix=1:size(sensor_movie,2)
+%        sensor_movie(:,ix)= sensor_movie(:,ix) - baseline(ix);
+%    end
+%    sensor_movie(sensor_movie<0)=0;
+%end
 
 %% de-trend
 tic
