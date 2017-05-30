@@ -313,15 +313,15 @@ colorbar();
 axis image;
 print(fullfile(Input.output_folder, [timestr '_crop_mask' num2str(i, '%03d') '.png']), '-dpng', '-r300');
 
-%% subtract baseline outside of brain
-outside = ~Inside;
-if do_crop
-    baseline = squeeze(mean(sensor_movie(logical(outside),:),1));
-    for ix=1:size(sensor_movie,2)
-        sensor_movie(:,ix)= sensor_movie(:,ix) - baseline(ix);
-    end
-    sensor_movie(sensor_movie<0)=0;
-end
+%%% subtract baseline outside of brain
+%outside = ~Inside;
+%if do_crop
+%    baseline = squeeze(mean(sensor_movie(logical(outside),:),1));
+%    for ix=1:size(sensor_movie,2)
+%        sensor_movie(:,ix)= sensor_movie(:,ix) - baseline(ix);
+%    end
+%    sensor_movie(sensor_movie<0)=0;
+%end
 
 %% de-trend
 tic
@@ -639,6 +639,7 @@ if isfield(Input, 'bg_sub') && Input.bg_sub
     output.forward_model_(end+1,:) = output.bg_spatial(output.idx);
 end
 
+sensor_movie = (sensor_movie.*(sensor_movie_max - sensor_movie_min)) + sensor_movie_min);
 sensor_movie = double(sensor_movie);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update'])
 output.timeseries = fast_nnls(output.forward_model_', double(sensor_movie), opts);
