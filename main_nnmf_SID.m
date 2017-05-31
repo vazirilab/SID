@@ -596,7 +596,7 @@ for i = 1:numel(output.segmm)
 end
 
 %%
-clearvars -except sensor_movie Input output mean_signal psf_ballistic Hsize m
+clearvars -except sensor_movie Input output mean_signal psf_ballistic Hsize m sensor_movie_max sensor_movie_min;
 
 %% Initiate forward_model
 psf_ballistic=load(Input.psf_filename_ballistic);
@@ -612,7 +612,7 @@ output.forward_model_=output.forward_model(neur,output.idx);
 
 template_=output.template(neur,output.idx);
 Nnum=psf_ballistic.Nnum;
-clearvars -except sensor_movie Input output mean_signal template_ neur Nnum neur sensor_movie_max sensor_movie_min;
+clearvars -except sensor_movie Input output mean_signal template_ neur Nnum neur sensor_movie_max sensor_movie_min psf_ballistic;
 
 %% optimize model
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
