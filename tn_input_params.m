@@ -180,11 +180,17 @@ Input.optimize_kernel = 0;
 % Input.recon_opts.lambda_=0.1;
 % Input.recon_opts.form='gaussian';
 % Input.recon_opts.rad=[5 2];
+
 Input.recon_opts.p=2;
 Input.recon_opts.maxIter=8;
 Input.recon_opts.mode='basic';
 Input.recon_opts.lambda=0;
 Input.recon_opts.lambda_=0.0;
+
+Input.nnmf_opts.max_iter = 300;
+Input.nnmf_opts.lambda_t = 0;
+Input.nnmf_opts.lambda_s = 100;
+
 Input.frames_for_model_optimization.start = 500;
 Input.frames_for_model_optimization.end = 2000;
 Input.frames_for_model_optimization.step = 1;
@@ -220,20 +226,88 @@ Input.mask_file = '~/vazirilab_medium_data/joint_projects/miniscope/analyses/M24
 Input.nnmf_opts.lambda_s = 200;
 
 %%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-05-01_m33_1/tif/';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/2017-05-01_m33_1';
+Input.output_name='2017-05-01_m33';
+Input.x_offset = 638.3;
+Input.y_offset = 495.7;
+Input.dx = 19.755;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p360_from-50_to360_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p400_from50_to400_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_pm100_from-100_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+do_crop = 0;
+Input.detrend = false;
+Input.de_trend = true;
+Input.rank = 7;
+Input.thres = 20;
+Input.gpu_ids = [2,5]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='TV';
+Input.recon_opts.lambda=[ 0, 0, 10];
+Input.recon_opts.lambda_=0.1;
+Input.recon_opts.form='gaussian';
+Input.recon_opts.rad=[3 1];
+
+% Input.recon_opts = struct;
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='basic';
+% Input.recon_opts.lambda=0;
+% Input.recon_opts.lambda_=0.0;
+
+Input.nnmf_opts.lambda_s = 100;
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/M24_LFM_WD200_Depth200um/tif';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/M24_LFM_WD200_Depth200um';
+Input.output_name='M24_LFM_WD200_Depth200um';
+Input.x_offset = 640.1;
+Input.y_offset = 496.9;
+Input.dx = 19.755;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p360_from-50_to360_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p400_from50_to400_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_pm100_from-100_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+do_crop = 0;
+Input.detrend = false;
+Input.de_trend = true;
+Input.rank = 7;
+Input.thres = 20;
+Input.gpu_ids = [2,5]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+
+Input.nnmf_opts.lambda_s = 100;
+
+%%
 %output.segmm_sav = output.segmm;
 for i=1:numel(output.segmm)
     tmp = output.segmm{i};
-    tmp(:,:,33:end) = 0;
+    tmp(:,:,70:end) = 0;
     output.segmm{i} = tmp;
 end
 
 %%
 save(fullfile(Input.output_folder, 'checkpoint_post-nmf-recon.mat'), 'Input', 'output');
-
-%%
-mask_dilated = imerode(Input.mask, strel('disk', 25));
-mask_dilated =  logical(ImageRect(double(mask_dilated), Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, 0));
-
-%%
-figure;
-imagesc(mask_dilated)

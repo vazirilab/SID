@@ -157,10 +157,10 @@ else
     Input.recon_opts.form='free';    
 end
  
-if isfield(Input,'filter')
+if isfield(optional_args, 'filter')
     Input.filter = optional_args.filter;
 else
-    Input.filter=0;
+    Input.filter = 0;
 end
 
 if isfield(optional_args, 'frames_for_model_optimization')
@@ -311,7 +311,7 @@ figure;
 imagesc(Inside);
 colorbar();
 axis image;
-print(fullfile(Input.output_folder, [timestr '_crop_mask' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+print(fullfile(Input.output_folder, [timestr '_crop_mask.png']), '-dpng', '-r300');
 
 %%% subtract baseline outside of brain
 %outside = ~Inside;
@@ -470,7 +470,7 @@ end
 %close all;
 
 %% Save checkpoint
-save(fullfile(Input.output_folder, 'checkpoint_post-nmf-recon.mat'), 'Input', 'output');
+save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_post-nmf-recon.mat']), 'Input', 'output');
 
 %% filter reconstructed spatial filters
 if Input.filter
@@ -612,7 +612,7 @@ output.forward_model_=output.forward_model(neur,output.idx);
 
 template_=output.template(neur,output.idx);
 Nnum=psf_ballistic.Nnum;
-clearvars -except sensor_movie Input output mean_signal template_ neur Nnum neur
+clearvars -except sensor_movie Input output mean_signal template_ neur Nnum neur sensor_movie_max sensor_movie_min;
 
 %% optimize model
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
@@ -639,8 +639,7 @@ if isfield(Input, 'bg_sub') && Input.bg_sub
     output.forward_model_(end+1,:) = output.bg_spatial(output.idx);
 end
 
-sensor_movie = (sensor_movie.*(sensor_movie_max - sensor_movie_min)) + sensor_movie_min);
-sensor_movie = double(sensor_movie);
+sensor_movie = double(sensor_movie .* (sensor_movie_max - sensor_movie_min) + sensor_movie_min);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update'])
 output.timeseries = fast_nnls(output.forward_model_', double(sensor_movie), opts);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
@@ -651,7 +650,6 @@ toc
 
 disp('---');
 disp('---');
-
 
 %%
 for iter=1:Input.num_iter
