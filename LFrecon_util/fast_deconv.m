@@ -64,6 +64,7 @@ for iter=1:maxIter
         alpha=sum(sum(sum(df_.^2,1),2),3)/sum(sum(sum(df_.*Q(df_),1),2),3);
     end
     alpha(isnan(alpha))=0;
+    alpha(isinf(alpha))=0;
     for id=1:length(alpha)
         df_(:,:,:,id)=Xguess(:,:,:,id)-alpha(id)*df_(:,:,:,id);
     end
