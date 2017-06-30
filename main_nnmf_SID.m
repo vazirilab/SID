@@ -187,9 +187,10 @@ end
 do_crop = 1; %% Oliver suggest = 1
 crop_thresh_coord_x = 0.8;	%values for fish
 crop_thresh_coord_y = 0.75;	%values for fish
-Input.nnmf_opts.max_iter = 300;
+Input.nnmf_opts.max_iter = 600;
 Input.nnmf_opts.lambda_t = 0;
 Input.nnmf_opts.lambda_s = 0.1;
+Input.nnmf_opts.lambda_orth = 10000;
 Input.update_template = false;
 Input.detrend = false;
 Input.de_trend = true;
