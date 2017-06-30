@@ -354,6 +354,7 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.ran
 Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
 output.centers=[];
 [S, T]=fast_NMF_2(sensor_movie,Input.rank,Input.nnmf_opts);
+S=S(:,logical(mean(S,1)<mean(mean(S,1))+3*std(mean(S,1))));
 S=[S output.std_image(:)]';
 sensor_movie = sensor_movie(output.idx,:);
 output.S = S;
