@@ -28,8 +28,10 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % Input.delta
 
 % Input.frames.start = 1;%frames_for_model_optimization
-% Input.frames.steps = 10;
+% Input.frames.step = 10;
 % Input.frames.end = 1e6;
+% Input.frames.mean = 1; % boolean (true == take mean over frames,
+% otherwise only take every Input.step frames
 
 %% Required parameters
 Input.LFM_folder = indir;
@@ -62,12 +64,6 @@ if isfield(optional_args, 'step')
     Input.step = optional_args.step;
 else
     Input.step = 1;
-end
-
-if isfield(optional_args, 'step_')
-    Input.step_ = optional_args.step_;
-else
-    Input.step_ = 3;
 end
 
 if isfield(optional_args, 'bg_iter')
@@ -104,8 +100,9 @@ if isfield(optional_args, 'frames')
     Input.frames = optional_args.frames;
 else
    Input.frames.start = 1;
-   Input.frames.steps = 10;
+   Input.frames.step = 10;
    Input.frames.end = inf;
+   Input.frames.mean=1;
 end
 
 if isfield(optional_args, 'optimize_kernel')
@@ -135,7 +132,7 @@ end
 if isfield(optional_args, 'delta')
     Input.delta = optional_args.delta;
 else
-    Input.delta = 200;
+    Input.delta = 150;
 end
 
 % typical neuron radius in px. Typically 6 for fish using 20x/0.5
@@ -163,14 +160,6 @@ else
     Input.filter = 0;
 end
 
-if isfield(optional_args, 'frames_for_model_optimization')
-    Input.frames_for_model_optimization = optional_args.frames_for_model_optimization;
-else
-    Input.frames_for_model_optimization.start = 1;
-    Input.frames_for_model_optimization.step = 1;
-    Input.frames_for_model_optimization.end = inf;
-end
-
 if isfield(optional_args, 'total_deconv_opts')
 	Input.total_deconv_opts = optional_args.total_deconv_opts;
 else
@@ -190,10 +179,9 @@ crop_thresh_coord_y = 0.75;	%values for fish
 Input.nnmf_opts.max_iter = 600;
 Input.nnmf_opts.lambda_t = 0;
 Input.nnmf_opts.lambda_s = 0.1;
-Input.nnmf_opts.lambda_orth = 10000;
+Input.nnmf_opts.lambda_orth = 4;
 Input.update_template = false;
 Input.detrend = false;
-Input.de_trend = true;
 Input.optimize_kernel = 0;
 
 %% Cache and open PSF
@@ -212,10 +200,10 @@ if ~strcmp(Input.psf_cache_dir, '')
 end
 
 %%
-Input.fluoslide_fn = ['fluoslide_Nnum' num2str(psf_ballistic.Nnum) '.mat'];
-if ~exist(Input.output_folder, 'dir')
-    mkdir(Input.output_folder);
-end
+% Input.fluoslide_fn = ['fluoslide_Nnum' num2str(psf_ballistic.Nnum) '.mat'];
+% if ~exist(Input.output_folder, 'dir')
+%     mkdir(Input.output_folder);
+% end
 
 %% Prepare cluster object
 pctconfig('portrange', [27400 27500] + randi(100)*100);
@@ -277,7 +265,7 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.pn
 %% load sensor movie
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
 tic;
-[sensor_movie,num_frames]=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.rectify,Input.frames_for_model_optimization, Input.mask);
+[sensor_movie,num_frames]=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.rectify,Input.frames);%, Input.mask);
 if isinf(Input.prime)
     Input.prime=num_frames;
 end
@@ -326,7 +314,7 @@ print(fullfile(Input.output_folder, [timestr '_crop_mask.png']), '-dpng', '-r300
 
 %% de-trend
 tic
-if Input.de_trend
+if Input.detrend
     disp('Detrending LFM movie');
     output.baseline=squeeze(mean(sensor_movie,1));
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
@@ -337,21 +325,22 @@ if Input.de_trend
         base(t) = min(output.baseline(max(1,t-delta):min(size(output.baseline,1),t+delta)));
     end
     base = double(base);
-    fit_t_rng = Input.frames_for_model_optimization.start : Input.frames_for_model_optimization.step : (size(sensor_movie,2)-1)*Input.frames_for_model_optimization.step + Input.frames_for_model_optimization.start;
+    fit_t_rng = Input.frames.start : Input.frames.step : (size(sensor_movie,2)-1)*Input.frames.step + Input.frames.start;
     output.baseline_fit_params = exp2fit(fit_t_rng, base, 1);
-    output.baseline_fit = output.baseline_fit_params(1) + output.baseline_fit_params(2) * exp(- (1 : Input.prime) / output.baseline_fit_params(3));
-    figure; hold on; plot(output.baseline); plot(output.baseline_fit); hold off; title('Smoothed frame means and trend fit');  %TODO: Input.prime doesn't seem to be the correct range here
+    output.baseline_fit = output.baseline_fit_params(1) + output.baseline_fit_params(2) * exp(- (1 : num_frames) / output.baseline_fit_params(3));
+    figure; hold on; plot(output.baseline); plot(output.baseline_fit(Input.frames.start:Input.frames.step:Input.prime)); hold off; title('Smoothed frame means and trend fit');  %TODO: Input.prime doesn't seem to be the correct range here
     print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
-    sensor_movie = sensor_movie * diag(1 ./ output.baseline_fit);
+    sensor_movie = sensor_movie * diag(1 ./ output.baseline_fit(Input.frames.start:Input.frames.step:(size(sensor_movie,2)-1)*Input.frames.step+Input.frames.start));
 end
-sensor_movie_min = min(sensor_movie(:));
+% sensor_movie_min = min(sensor_movie(:));
 sensor_movie_max = max(sensor_movie(:));
-sensor_movie = (sensor_movie - sensor_movie_min) ./ (sensor_movie_max - sensor_movie_min);
+% sensor_movie = (sensor_movie - sensor_movie_min) ./ (sensor_movie_max - sensor_movie_min);
+sensor_movie = sensor_movie/sensor_movie_max;
 toc
 
 %% generate NNMF
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.rank) '-factorization']);
-Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
+% Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
 output.centers=[];
 [S, T]=fast_NMF_2(sensor_movie,Input.rank,Input.nnmf_opts);
 S=S(:,logical(mean(S,1)<mean(mean(S,1))+3*std(mean(S,1))));
@@ -535,7 +524,7 @@ for ii=1:size(output.segmm,2)
         segm(:,:,kk)=segm(:,:,kk).*(Inside>0);
     end
     segm=segm/max(segm(:));
-    segm=segm-0.02; % Tobias, this should be made in to a parameter so that it can be adjust flexiably,
+    segm=segm-0.1; % Tobias, this should be made in to a parameter so that it can be adjust flexiably,
     segm(segm<0)=0;
     centers=[];
     B=reshape(segm,[],1);
@@ -621,18 +610,19 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
 
 tic
 opts=[];
-opts.tol=1e-2; 
-opts.tol_=5*1e-1;
+opts.tol=1e-7; 
+opts.tol_=1e-2;
 opts.gpu_ids=1;
-opts.sample=600;
+opts.sample=300;
 opts.display='off';
 opts.gpu='off';
 optz.solver=1;
 optz.display='off';
 optz.bg_sub=Input.bg_sub;
-opts.max_iter=10000;
+opts.max_iter=2000;
 opts.idx=output.idx;
 opts.lambda = 0;
+
 
 if isfield(Input, 'bg_sub') && Input.bg_sub
 %     bg_spatial_=average_ML(reshape(output.bg_spatial,size(output.bg_spatial)),Nnum, Input.fluoslide_fn);
@@ -641,7 +631,8 @@ if isfield(Input, 'bg_sub') && Input.bg_sub
     output.forward_model_(end+1,:) = output.bg_spatial(output.idx);
 end
 
-sensor_movie = double(sensor_movie .* (sensor_movie_max - sensor_movie_min) + sensor_movie_min);
+% sensor_movie = double(sensor_movie .* (sensor_movie_max - sensor_movie_min) + sensor_movie_min);
+sensor_movie =double(sensor_movie*sensor_movie_max);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update'])
 output.timeseries = fast_nnls(output.forward_model_', double(sensor_movie), opts);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);

@@ -33,6 +33,8 @@ else
     end
 end
 
+opts.lambda_orth = opts.lambda_orth * size(Y,2);
+
 opts.warm_start=[];
 option=opts;
 option.max_iter=1;
@@ -114,6 +116,7 @@ for iter=1:opts.max_iter + N
     %             norm(reshape(Y-S*T,1,[]))
     
     %     disp('!')
+    S(isnan(S))=0;
     line = ~logical(sum(S,1));
     
     

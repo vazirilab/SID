@@ -20,31 +20,61 @@ if nargin<7 || isempty(frames)
     frames.start=1;
     frames.step=1;
     frames.end=size(infiles_struct,1);
+    frames.mean=1;
 end
 frames.end=min(frames.end,size(infiles_struct,1));
 num_frames_total=size(infiles_struct,1);
-infiles_struct = infiles_struct(frames.start:frames.step:frames.end);
 
-%%
-for img_ix = 1:size(infiles_struct,1)
-    if mod(img_ix, 20) == 1
-        fprintf([num2str(img_ix) ' ']);
-    end    
-    if rect==1
-        img_rect = ImageRect(double(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff')) .* mask, x_offset, y_offset, dx, Nnum, 0);
-    else
-        img_rect = single(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff')) .* mask;
+if frames.mean
+    
+    %%
+    for ig=1:length(1:frames.step:frames.end)
+        for ig_ = 1:min(frames.step,frames.end-(ig-1)*frames.step)
+            img_ix=(ig-1)*frames.step + ig_;
+            if rect==1
+                img_rect =  ImageRect(double(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff')), x_offset, y_offset, dx, Nnum,0);
+            else
+                img_rect = single(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff'));
+            end
+            if img_ix == 1
+                sens = ones(numel(img_rect), size(1:frames.step:frames.end,2), 'single');
+            end
+            if size(infiles_struct)==1
+                sensor_movie= img_rect(:);
+            else
+                sensor_movie(:, ig_) = img_rect(:);
+            end
+        end
+        if mod(ig, 20) == 1
+            fprintf([num2str(ig) ' ']);
+            
+        end
+        sens(:,ig)=mean(sensor_movie,2);
     end
-    if img_ix == 1
-%         sensor_movie = ones(size(img_rect, 1), size(img_rect, 2), size(infiles_struct,1), 'double');
-        sensor_movie = ones(numel(img_rect), size(infiles_struct,1), 'single');
-    end
-    if size(infiles_struct)==1
-%         sensor_movie(:, :) = img_rect;
-        sensor_movie= img_rect(:);        
-    else
-%         sensor_movie(:, :, img_ix) = img_rect;
-         sensor_movie(:, img_ix) = img_rect(:);       
+else
+    infiles_struct = infiles_struct(frames.start:frames.step:frames.end);
+    
+    %%
+    for img_ix = 1:size(infiles_struct,1)
+        if mod(img_ix, 20) == 1
+            fprintf([num2str(img_ix) ' ']);
+        end
+        if rect==1
+            img_rect = ImageRect(double(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff')) .* mask, x_offset, y_offset, dx, Nnum, 0);
+        else
+            img_rect = single(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff')) .* mask;
+        end
+        if img_ix == 1
+            %         sensor_movie = ones(size(img_rect, 1), size(img_rect, 2), size(infiles_struct,1), 'double');
+            sensor_movie = ones(numel(img_rect), size(infiles_struct,1), 'single');
+        end
+        if size(infiles_struct)==1
+            %         sensor_movie(:, :) = img_rect;
+            sensor_movie= img_rect(:);
+        else
+            %         sensor_movie(:, :, img_ix) = img_rect;
+            sensor_movie(:, img_ix) = img_rect(:);
+        end
     end
 end
 fprintf('\n');
