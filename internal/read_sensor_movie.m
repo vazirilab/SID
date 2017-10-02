@@ -26,10 +26,8 @@ frames.end=min(frames.end,size(infiles_struct,1));
 num_frames_total=size(infiles_struct,1);
 
 if frames.mean
-    
-    %%
     for ig=1:length(1:frames.step:frames.end)
-        for ig_ = 1:min(frames.step,frames.end-(ig-1)*frames.step)
+        for ig_ = 1 : min(frames.step, frames.end-(ig-1)*frames.step)
             img_ix=(ig-1)*frames.step + ig_;
             if rect==1
                 img_rect =  ImageRect(double(imread(fullfile(p.rect_dir, infiles_struct(img_ix).name), 'tiff')), x_offset, y_offset, dx, Nnum,0);
@@ -40,21 +38,18 @@ if frames.mean
                 sens = ones(numel(img_rect), size(1:frames.step:frames.end,2), 'single');
             end
             if size(infiles_struct)==1
-                sensor_movie= img_rect(:);
+                sens = img_rect(:);
             else
-                sensor_movie(:, ig_) = img_rect(:);
+                sens(:, ig_) = img_rect(:);
             end
         end
         if mod(ig, 20) == 1
-            fprintf([num2str(ig) ' ']);
-            
+            fprintf([num2str(ig) ' ']);       
         end
-        sens(:,ig)=mean(sensor_movie,2);
+        sensor_movie(:,ig)=mean(sens,2);
     end
 else
     infiles_struct = infiles_struct(frames.start:frames.step:frames.end);
-    
-    %%
     for img_ix = 1:size(infiles_struct,1)
         if mod(img_ix, 20) == 1
             fprintf([num2str(img_ix) ' ']);
