@@ -183,8 +183,13 @@ else
 	Input.psf_cache_dir = '/dev/shm';
 end
 
+if isfield(optional_args, 'do_crop')  % a very fast storage location (ideally, a ramdisk), for caching the psf file. This is to avoid serialization to parfor workers
+	Input.do_crop = optional_args.do_crop;
+else
+	Input.do_crop = true;
+end
+
 %%
-do_crop = 1; %% Oliver suggest = 1
 crop_thresh_coord_x = 0.8;	%values for fish
 crop_thresh_coord_y = 0.75;	%values for fish
 Input.nnmf_opts.max_iter = 300;
@@ -242,7 +247,7 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_mask.pdf']), 
 
 %% Compute bg components via rank-1-factorization
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing background components']);
-if Input.bg_sub==1
+if Input.bg_sub==1 
     [output.bg_temporal,output.bg_spatial] = par_rank_1_factorization(Input.LFM_folder, Input.step, Input.bg_iter, 0, 0, 0, 0, Input.prime, Input.mask);
 else
     output.bg_temporal=[];
@@ -282,8 +287,8 @@ if isinf(Input.prime)
 end
 toc
 
-%% Crop frames, leaving out areas with stddev as in background-only area
-if do_crop
+%% Find cropping mask, leaving out areas with stddev as in background-only area
+if Input.do_crop
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
     Inside=output.std_image(ceil(crop_thresh_coord_x * size(output.std_image,1)):end, ceil(crop_thresh_coord_y * size(output.std_image,2)):end);
     Inside=output.std_image-mean(Inside(:))-2*std(Inside(:));
@@ -308,14 +313,18 @@ output.idx=find(Inside>0);
 
 timestr = datestr(now, 'YYmmddTHHMM');
 figure;
+hold on;
 imagesc(Inside);
+contour(Inside, [1e-10 1e-10], 'w');
+axis ij;
 colorbar();
 axis image;
+hold off;
 print(fullfile(Input.output_folder, [timestr '_crop_mask.png']), '-dpng', '-r300');
 
 %%% subtract baseline outside of brain
 %outside = ~Inside;
-%if do_crop
+%if Input.do_crop
 %    baseline = squeeze(mean(sensor_movie(logical(outside),:),1));
 %    for ix=1:size(sensor_movie,2)
 %        sensor_movie(:,ix)= sensor_movie(:,ix) - baseline(ix);
@@ -354,9 +363,11 @@ Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
 output.centers=[];
 [S, T]=fast_NMF_2(sensor_movie,Input.rank,Input.nnmf_opts);
 S=[S output.std_image(:)]';
-sensor_movie = sensor_movie(output.idx,:);
 output.S = S;
 output.T = T;
+
+%% Crop sensor movie
+sensor_movie = sensor_movie(output.idx,:);
 
 %% Plot NMF results
 close all;
@@ -369,8 +380,8 @@ for i=1:size(output.T, 1)
     subplot(4,1,4);
     plot(output.T(i,:));
     print(fullfile(Input.output_folder, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
-    close;
 end
+close all;
 
 %% reconstruct spatial filters
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Reconstructing spatial filters']);
@@ -454,14 +465,14 @@ for i = 1:size(S, 1)
     figure('Position', [50 50 1200 600]); 
     subplot(1,4,[1:3])
     hold on;
-    imagesc(squeeze(max(output.recon{i}, [], 3)));
-    %imagesc(squeeze(max(output.recon{i}(:,:,20), [], 3)));
+    %imagesc(squeeze(max(output.recon{i}, [], 3)));
+    imagesc(squeeze(max(output.recon{i}(:,:,:), [], 3)));
     axis image;
     axis ij;
     colorbar;
     hold off;
     subplot(1,4,4)
-    imagesc(squeeze(max(output.recon{i}, [], 2)));
+    imagesc(squeeze(max(output.recon{i}(:,:,:), [], 2))); %(:,:,65)
     axis ij;
     colorbar;
     print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
@@ -478,8 +489,8 @@ if Input.filter
     Hsize = size(psf_ballistic.H);
     m=[size(output.std_image,1),size(output.std_image,2),Hsize(5)];
     bordz = 15;
-    bord=1;
-    cellSize = 14;
+    bord = 1;
+    cellSize = 70;
     gpu = ~isempty(Input.gpu_ids);
     [X,Y,Z]=meshgrid(1:2:2*size(output.std_image,2)-1,1:2:2*size(output.std_image,1)-1,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:Hsize(5)]);
     [Xq,Yq,Zq]=meshgrid(1:2:2*size(output.std_image,2)-1,1:2:2*size(output.std_image,1)-1,[1:Hsize(5)]);
@@ -526,6 +537,7 @@ end
 
 %% Segment reconstructed components
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': generate initial brain model'])
+
 output.centers=[];
 for ii=1:size(output.segmm,2)
     segm=output.segmm{ii};
@@ -563,8 +575,6 @@ for ii=1:size(output.segmm,2)
         end
         output.centers=[output.centers' centers(id,:)']';
     end
-    
-    
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Segmentation of component ' num2str(ii) ' resulted in ' num2str(size(output.centers, 1)) ' neuron candidates']);
 end
 
@@ -583,11 +593,13 @@ for i = 1:numel(output.segmm)
     imagesc(squeeze(max(output.segmm{i}, [], 3)));
     scatter(output.centers_per_component{i}(:,2), output.centers_per_component{i}(:,1), 'r.');
     axis image;
+    axis ij;
     colorbar;
     hold off;
     subplot(1,4,4)
     hold on;
     imagesc(squeeze(max(output.segmm{i}, [], 2)));
+    axis ij;
     scatter(output.centers_per_component{i}(:,3), output.centers_per_component{i}(:,1), 'r.');
     xlim([1 size(output.segmm{i}, 3)]);
     ylim([1 size(output.segmm{i}, 1)]);
@@ -707,7 +719,7 @@ for iter=1:Input.num_iter
 %     output.forward_model_=diag(1./(sqrt(sum(output.forward_model_.^2,2))))*output.forward_model_;
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting Temporal update']);
     opts.warm_start=output.timeseries_;
-    output.timeseries_=fast_nnls(output.forward_model_',sensor_movie,opts);
+    output.timeseries_ = fast_nnls(output.forward_model_', sensor_movie, opts);
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
     toc
 %     if mod(iter, 50) == 0
@@ -854,8 +866,8 @@ legend('boxoff');
 print(fullfile(Input.output_folder, [timestr '_timeseries_zscore_stacked.png']), '-dpng', '-r300');
 
 %% Inspect forward model and associated ts
-ix = randperm(size(output.timeseries_,1), 1);
-fps = 15;
+ix = randperm(size(output.timeseries_, 1), 1);
+fps = 16;
 figure('Position', [20, 20, 2000, 2000]); 
 subplot(3,1,1:2);
 imagesc(reshape(output.forward_model_(ix,:), size(output.std_image)), [0 max(output.forward_model_(ix,:))]); 
