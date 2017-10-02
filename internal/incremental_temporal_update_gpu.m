@@ -11,10 +11,10 @@ end
 
 
 %% making sure what has already been computed does not get computed again
+Varg=ones(1,length(infiles_struct));
 if isfield(opts,'frame')
 opts.frame.end=min(opts.frame.end,length(infiles_struct));
-Varg=ones(1,length(infiles_struct));
-Varg(opts.frame.start:opts.frame.steps:opts.frame.end)=0;
+Varg(opts.frame.start:opts.frame.step:opts.frame.end)=0;
 line=find(Varg);
 infiles_struct=infiles_struct(logical(Varg));
 else
