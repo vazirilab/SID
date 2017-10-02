@@ -46,7 +46,9 @@ for k=1:size(centers,1)
     forward_model_indices{k}=find(Q);
     forward_model_values{k}=Q(forward_model_indices{k});
     N=N+length(forward_model_values{k});
-        disp(k);
+    if mod(k, 20) == 1
+        fprintf([num2str(k) ' ']);
+    end
 end
 I=zeros(N,1);
 J=I;
@@ -57,9 +59,9 @@ for k=1:size(forward_model_indices,2)
     I(jj+1:jj+size(forward_model_values{k},1))=k*ones(size(forward_model_values{k}));
     S(jj+1:jj+size(forward_model_values{k},1))=forward_model_values{k};
     jj=jj+size(forward_model_values{k},1);
-    %     disp(k)
 end
 forward_model=sparse(I,J,S,size(centers,1),prod(dim));
+fprintf('\n');
 toc;
 disp([num2str(size(centers,1)) ' NSFs generated']);
 end
