@@ -364,7 +364,7 @@ sensor_movie = sensor_movie(output.idx,:);
 close all;
 timestr = datestr(now, 'YYmmddTHHMM');
 for i=1:size(output.T, 1)
-    figure( 'Position', [100 100 800 800]);
+    figure( 'Position', [100 100 800 800],'visible','off');
     subplot(4,1,[1,2,3]);
     imagesc(reshape(output.S(i,:), size(Inside))); axis image; colormap('parula'); colorbar;
     title(['NMF component ' num2str(i)]);
