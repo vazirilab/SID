@@ -387,7 +387,7 @@ if isempty(Input.gpu_ids)
         img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end))); % TN TODO: hardcoded vals
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));
-        output.recon{k} = reconstruction_cpu_sparse(Input.psf_filename_ballistic, infile, Input.recon_opts);
+        output.recon{k} = reconstruction_cpu_sparse(psf_ballistic, infile, Input.recon_opts);
         disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
     end   
 else
