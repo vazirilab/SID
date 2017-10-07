@@ -472,7 +472,7 @@ end
 %close all;
 
 %% Save checkpoint
-save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_post-nmf-recon.mat']), 'Input', 'output');
+save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_post-nmf-recon.mat']), 'Input', 'output','-v7.3');
 
 %% filter reconstructed spatial filters
 if Input.filter
