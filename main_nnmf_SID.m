@@ -379,7 +379,7 @@ sensor_movie = sensor_movie(output.idx,:);
 close all;
 timestr = datestr(now, 'YYmmddTHHMM');
 for i=1:size(output.T, 1)
-    figure( 'Position', [100 100 800 800]);
+    figure( 'Position', [100 100 800 800],'visible','off');
     subplot(4,1,[1,2,3]);
     imagesc(reshape(output.S(i,:), size(Inside))); axis image; colormap('parula'); colorbar;
     title(['NMF component ' num2str(i)]);
@@ -406,7 +406,7 @@ if isempty(Input.gpu_ids)
         img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end))); % TN TODO: hardcoded vals
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));
-        output.recon{k} = reconstruction_cpu_sparse(Input.psf_filename_ballistic, infile, Input.recon_opts);
+        output.recon{k} = reconstruction_cpu_sparse(psf_ballistic, infile, Input.recon_opts);
         disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
     end   
 else % use GPU
@@ -493,7 +493,7 @@ end
 
 %% Save checkpoint
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Saving post-nmf-recon checkpoint']);
-save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_post-nmf-recon.mat']), 'Input', 'output');
+save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_post-nmf-recon.mat']), 'Input', 'output','-v7.3');
 
 %% filter reconstructed spatial filters
 if Input.filter

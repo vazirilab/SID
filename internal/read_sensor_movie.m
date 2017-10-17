@@ -20,13 +20,13 @@ if nargin<7 || isempty(frames)
     frames.start=1;
     frames.step=1;
     frames.end=size(infiles_struct,1);
-    frames.mean=1;
+    frames.mean=0;
 end
 frames.end=min(frames.end,size(infiles_struct,1));
 num_frames_total=size(infiles_struct,1);
 
 if frames.mean
-    for ig=1:length(1:frames.step:frames.end)
+    for ig=1:length(frames.start:frames.step:frames.end)
         for ig_ = 1 : min(frames.step, frames.end-(ig-1)*frames.step)
             img_ix=(ig-1)*frames.step + ig_;
             if rect==1
