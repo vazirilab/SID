@@ -717,6 +717,425 @@ Input.recon_opts.lambda_=0.0;
 % Input.frames_for_model_optimization.step = 1;
 
 %%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-09-28_lintrack_m58_1/tif';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/2017-09-28_lintrack_m58_1';
+Input.output_name='2017-09-28_lintrack_m58_1';
+Input.x_offset = 646.9;
+Input.y_offset = 514.6;
+Input.dx = 19.64;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p360_from-50_to360_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p400_from50_to400_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_pm100_from-100_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_p300_from-100_to300_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M7P98_w_from-450_to200_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.do_crop = 0;
+Input.detrend = false;
+Input.de_trend = true;
+Input.rank = 10;
+Input.nnmf_opts.lambda_s = 10;
+Input.thres = 20;
+Input.gpu_ids = [1,5]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+% 
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+% Input.frames_for_model_optimization.start = 625;
+% Input.frames_for_model_optimization.end = 2000;
+% Input.frames_for_model_optimization.step = 1;
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-09-28_lintrack_m56_1/tif';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/2017-09-28_lintrack_m56_1';
+Input.output_name='2017-09-28_lintrack_m56_1';
+Input.x_offset = 646.9;
+Input.y_offset = 514.6;
+Input.dx = 19.64;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p360_from-50_to360_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p400_from50_to400_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_pm100_from-100_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_p300_from-100_to300_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M7P98_w_from-450_to200_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.do_crop = 0;
+Input.detrend = false;
+Input.de_trend = true;
+Input.rank = 10;
+Input.nnmf_opts.lambda_s = 10;
+Input.thres = 20;
+Input.gpu_ids = [1,5]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+% 
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+% Input.frames_for_model_optimization.start = 625;
+% Input.frames_for_model_optimization.end = 2000;
+% Input.frames_for_model_optimization.step = 1;
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-09-28_lintrack_m57_1/tif';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/2017-09-28_lintrack_m57_1';
+Input.output_name='2017-09-28_lintrack_m57_1';
+Input.x_offset = 647.6;
+Input.y_offset = 517.4;
+Input.dx = 19.64;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p360_from-50_to360_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p400_from50_to400_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_pm100_from-100_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_p300_from-100_to300_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M7P98_w_from-450_to200_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.do_crop = 0;
+Input.detrend = false;
+Input.de_trend = true;
+Input.rank = 10;
+Input.nnmf_opts.lambda_s = 10;
+Input.thres = 20;
+Input.gpu_ids = [1,5]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+% 
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+% Input.frames_for_model_optimization.start = 625;
+% Input.frames_for_model_optimization.end = 2000;
+% Input.frames_for_model_optimization.step = 1;
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-09-14_m65_nucl-g/m65_zm000_30fps__1/Pos0';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/sid/analyses/2017-09-14_m65_nucl-g/m65_zm000_30fps__1/';
+Input.output_name='2017-09-14_lintrack_m65_zm000';
+Input.x_offset = 1283.0;
+Input.y_offset = 1082.6;
+Input.dx = 17.75;
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-100_to100_zspacing4_Nnum15_lambda520_OSR3_pdfnorm.mat';
+Input.do_crop = 0;
+Input.detrend = true;
+Input.rank = 10;
+Input.nnmf_opts.lambda_s = 10;
+Input.thres = 20;
+Input.gpu_ids = [1,2]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+% 
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+% Input.frames_for_model_optimization.start = 625;
+% Input.frames_for_model_optimization.end = 2000;
+% Input.frames_for_model_optimization.step = 1;
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-09-14_m65_nucl-g/m65_zm150_30fps__1/Pos0';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/sid/analyses/2017-09-14_m65_nucl-g/m65_zm150_30fps__1/';
+Input.output_name='2017-09-14_lintrack_m65_zm150';
+Input.x_offset = 1283.0;
+Input.y_offset = 1082.6;
+Input.dx = 17.75;
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-100_to100_zspacing4_Nnum15_lambda520_OSR3_pdfnorm.mat';
+Input.do_crop = 0;
+Input.detrend = true;
+Input.rank = 10;
+Input.nnmf_opts.lambda_s = 10;
+Input.thres = 20;
+Input.gpu_ids = [5]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+% 
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+% Input.frames_for_model_optimization.start = 625;
+% Input.frames_for_model_optimization.end = 2000;
+% Input.frames_for_model_optimization.step = 1;
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-09-14_m65_nucl-g/m65_zm250_30fps__1/Pos0';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/sid/analyses/2017-09-14_m65_nucl-g/m65_zm250_30fps__1/';
+Input.output_name='2017-09-14_lintrack_m65_zm250';
+Input.x_offset = 1283.0;
+Input.y_offset = 1082.6;
+Input.dx = 17.69;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-100_to100_zspacing4_Nnum15_lambda520_OSR3_pdfnorm.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-252_to-100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-252_to_4_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.do_crop = 0;
+Input.detrend = true;
+
+Input.rank = 30;
+Input.nnmf_opts.lambda_t = 0;
+Input.nnmf_opts.lambda_s = 10;
+Input.nnmf_opts.lambda_orth = 4; % maybe try 40
+Input.nnmf_opts.max_iter = 300;
+
+Input.thres = 20;
+Input.gpu_ids = [4]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+% 
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+% Input.frames_for_model_optimization.start = 625;
+% Input.frames_for_model_optimization.end = 2000;
+% Input.frames_for_model_optimization.step = 1;
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-09-14_m65_nucl-g/m65_zm350_30fps__1/Pos0';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/sid/analyses/2017-09-14_m65_nucl-g/m65_zm350_30fps__1/';
+Input.output_name='2017-09-14_lintrack_m65_zm350';
+Input.x_offset = 1283.0;
+Input.y_offset = 1082.6;
+Input.dx = 17.75;
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-252_to-100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%'/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-100_to100_zspacing4_Nnum15_lambda520_OSR3_pdfnorm.mat';
+Input.do_crop = 0;
+Input.detrend = true;
+
+Input.rank = 30;
+Input.nnmf_opts.lambda_t = 0;
+Input.nnmf_opts.lambda_s = 10;
+Input.nnmf_opts.lambda_orth = 4; % maybe try 40
+Input.nnmf_opts.max_iter = 300;
+
+Input.thres = 20;
+Input.gpu_ids = [2]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+% 
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-10-12_m57/tif';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/2017-10-12_m57';
+Input.output_name='2017-10-12_m57';
+Input.x_offset = 643.0;
+Input.y_offset = 520.3;
+Input.dx = 19.695;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p360_from-50_to360_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p400_from50_to400_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_pm100_from-100_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_p300_from-100_to300_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M7P98_w_from-450_to200_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.do_crop = 0;
+Input.detrend = false;
+Input.de_trend = true;
+Input.rank = 10;
+Input.nnmf_opts.lambda_s = 10;
+Input.thres = 20;
+Input.gpu_ids = [2]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+% 
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+% Input.frames_for_model_optimization.start = 625;
+% Input.frames_for_model_optimization.end = 2000;
+% Input.frames_for_model_optimization.step = 1;
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-10-12_m56/tif';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/2017-10-12_m56';
+Input.output_name='2017-10-12_m56';
+Input.x_offset = 642.8;
+Input.y_offset = 516.9;
+Input.dx = 19.64;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p360_from-50_to360_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p400_from50_to400_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_pm100_from-100_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_p300_from-100_to300_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M7P98_w_from-450_to200_zspacing4_Nnum15_lambda520_OSR3.mat';
+
+Input.do_crop = 0;
+Input.detrend = true;
+
+Input.rank = 20;
+Input.nnmf_opts.lambda_t = 0;
+Input.nnmf_opts.lambda_s = 10;
+Input.nnmf_opts.lambda_orth = 4; % maybe try 40
+Input.nnmf_opts.max_iter = 300;
+
+Input.thres = 20;
+Input.gpu_ids = [4]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+% 
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+
+
+%%
+optional_args = struct;
+Input.LFM_folder='/ssd_raid_4TB/tobias/data_cache/2017-10-12_m58_2/tif';
+Input.output_folder='~/vazirilab_medium_data/joint_projects/miniscope/analyses/2017-10-12_m58_2';
+Input.output_name='2017-10-12_m58_2';
+Input.x_offset = 641.0;
+Input.y_offset = 517.8;
+Input.dx = 19.695;
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_water_from-266_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p360_from-50_to360_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_p400_from50_to400_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M5P97_w_pm100_from-100_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_w_p300_from-320_to100_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd266_0435NA_M8P95_p300_from-100_to300_zspacing4_Nnum15_lambda520_OSR3.mat';
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_miniscope_wd350_0493NA_M7P98_w_from-450_to200_zspacing4_Nnum15_lambda520_OSR3.mat';
+
+Input.do_crop = 0;
+Input.detrend = true;
+
+Input.rank = 20;
+Input.nnmf_opts.lambda_t = 0;
+Input.nnmf_opts.lambda_s = 10;
+Input.nnmf_opts.lambda_orth = 4; % maybe try 40
+Input.nnmf_opts.max_iter = 300;
+
+Input.thres = 20;
+Input.gpu_ids = [4]; %1-based! so 1,2,4,5 are valid
+Input.optimize_kernel = 0;
+
+% Input.recon_opts.p=2;
+% Input.recon_opts.maxIter=8;
+% Input.recon_opts.mode='TV';
+% Input.recon_opts.lambda=[ 0, 0, 10];
+% Input.recon_opts.lambda_=0.1;
+% Input.recon_opts.form='gaussian';
+% Input.recon_opts.rad=[3 1];
+% 
+Input.recon_opts = struct;
+Input.recon_opts.p=2;
+Input.recon_opts.maxIter=8;
+Input.recon_opts.mode='basic';
+Input.recon_opts.lambda=0;
+Input.recon_opts.lambda_=0.0;
+
+
+
+
+
+
+
+%%
 %output.segmm_sav = output.segmm;
 for i=1:numel(output.segmm)
     tmp = output.segmm{i};
@@ -740,3 +1159,22 @@ end
 
 %%
 write_tiff_stack('/tmp/nmf_recon_tmp.tif', uint16(mat2gray(output.recon{4}) * 65535)); !/opt/Fiji.app/ImageJ-linux64 /tmp/nmf_recon_tmp.tif
+
+%%
+figure; 
+imagesc(reshape(output.S(1,:), size(output.std_image)));  
+set(gca, 'xtick', 0.5:15:size(output.std_image, 2)); 
+set(gca, 'ytick', 0.5:15:size(output.std_image, 1));
+set(gca, 'GridColor', 'w');
+set(gca, 'GridAlpha', 0.7);
+grid on;
+axis image; 
+axis ij; 
+colorbar;
+%savefig(filename);
+
+
+
+%%
+img = reshape(output.S(1,:), size(output.std_image));
+figure; imagesc(img(30*15+2:34*15+1, 30*15+2:34*15+1));  grid on; xticks(1:15:end); axis image; axis ij; colorbar;
