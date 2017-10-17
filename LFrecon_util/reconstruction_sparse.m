@@ -28,7 +28,8 @@ cluster = parcluster('local');
 %     pool = parpool(cluster)
 % end
 
-%% Load Data
+%% Load PSF
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading PSF']);
 if ~isstruct(psf_ballistic)
     psf_ballistic = load(psf_ballistic);
 end
@@ -37,7 +38,7 @@ if isa(psf_ballistic.H, 'double')
     psf_ballistic.H = single(psf_ballistic.H);
     psf_ballistic.Ht = single(psf_ballistic.Ht);
 end
-disp(['Size of PSF matrix is : ' num2str(size(psf_ballistic.H)) ]);
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Done loading PSF. PSF size: ' num2str(size(psf_ballistic.H))]);
 
 %%
 [n_px_x, n_px_y, n_frames] = size(in_file.LFmovie);
