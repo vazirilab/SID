@@ -23,7 +23,7 @@ diary([Input.output_folder Input.output_name '.txt'])
 
 Input.rank=30;
 Input.frames.start=311;
-Input.frames.steps=15; % Qian prefer bigger stepss
+Input.frames.step=15; % Qian prefer bigger stepss
 Input.frames.end=inf;
 Input.step=2;                                                               
 Input.prime=inf;
