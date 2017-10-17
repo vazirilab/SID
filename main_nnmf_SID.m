@@ -7,6 +7,15 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % Input.x_offset
 % Input.y_offset
 % Input.dx
+
+%%% DETRENDING
+% Input.detrend -- boolean, whether to perform detrending prior to NMF 
+% Input.delta  -- integer, Half width of sliding window (in units of frames) for 
+% low-pass filtering the frame means prior to detrending. Set this to a value that is large
+% compared to the duration of a Ca transient (e.g. 10 times as large), to
+% avoid that the detrending smoothes out true Ca transients.
+
+%% NMF
 % Input.rank
 % Input.output_name
 % Input.tmp_dir
@@ -23,9 +32,7 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % Input.nnmf_opts
 % Input.recon_opts
 % Input.update_template
-% Input.detrend
 % Input.fluoslide_fn
-% Input.delta
 
 % Input.frames.start = 1;%frames_for_model_optimization
 % Input.frames.step = 10;
@@ -102,7 +109,7 @@ else
    Input.frames.start = 1;
    Input.frames.step = 10;
    Input.frames.end = inf;
-   Input.frames.mean=1;
+   Input.frames.mean = false;
 end
 
 if isfield(optional_args, 'optimize_kernel')
@@ -132,7 +139,7 @@ end
 if isfield(optional_args, 'delta')
     Input.delta = optional_args.delta;
 else
-    Input.delta = 150;
+    Input.delta = -1; %% use length of movie divided by the modulus of this number
 end
 
 % typical neuron radius in px. Typically 6 for fish using 20x/0.5
@@ -188,9 +195,10 @@ Input.nnmf_opts.lambda_orth = 4;
 Input.update_template = false;
 Input.detrend = false;
 Input.optimize_kernel = 0;
+mkdir(Input.output_folder)
 
 %% Cache and open PSF
-psf_ballistic=matfile(Input.psf_filename_ballistic);
+psf_ballistic = matfile(Input.psf_filename_ballistic);
 if ~strcmp(Input.psf_cache_dir, '')
     [~, rand_string] = fileparts(tempname());
     Input.psf_cache_dir_unique = fullfile(Input.psf_cache_dir, ['sid_nnmf_recon_psf_' rand_string]);
@@ -242,7 +250,6 @@ else
     output.bg_temporal=[];
     output.bg_spatial=[];
 end
-mkdir(Input.output_folder)
 figure; imagesc(output.bg_spatial); axis image; colorbar; title('Spatial background');
 print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.png']), '-dpng', '-r300');
 figure; plot(output.bg_temporal); title('Temporal background');
@@ -264,7 +271,7 @@ if (Input.bg_sub==1)&&(Input.rectify==1)
 end
 
 
-figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 100.0)]); axis image; axis ij; colorbar;
+figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 100.0)]); title('Stddev image'); axis image; axis ij; colorbar;
 print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
 
 %% load sensor movie
@@ -324,22 +331,30 @@ print(fullfile(Input.output_folder, [timestr '_crop_mask.png']), '-dpng', '-r300
 %% de-trend
 tic
 if Input.detrend
-    disp('Detrending LFM movie');
-    output.baseline=squeeze(mean(sensor_movie,1));
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
-    figure; plot(output.baseline); title('Frame means after background subtraction');
-    output.baseline=smooth(output.baseline,70);
-    delta=Input.delta;
-    for t=1:size(output.baseline,1)
-        base(t) = min(output.baseline(max(1,t-delta):min(size(output.baseline,1),t+delta)));
+    output.baseline_raw = squeeze(mean(sensor_movie,1))';
+%     delta=Input.delta;
+%     for t = 1 : size(output.baseline_raw, 1)
+%         base(t) = min(output.baseline_raw(max(1, t - delta) : min(size(output.baseline_raw, 1), t + delta)));
+%     end
+%     base = double(base);
+    if Input.delta <= 0
+       smooth_window_span = numel(output.baseline_raw) / max(1, abs(Input.delta));
+    else
+       smooth_window_span = 2 * Input.delta / Input.frames.step;
     end
-    base = double(base);
-    fit_t_rng = Input.frames.start : Input.frames.step : (size(sensor_movie,2)-1)*Input.frames.step + Input.frames.start;
-    output.baseline_fit_params = exp2fit(fit_t_rng, base, 1);
-    output.baseline_fit = output.baseline_fit_params(1) + output.baseline_fit_params(2) * exp(- (1 : num_frames) / output.baseline_fit_params(3));
-    figure; hold on; plot(output.baseline); plot(output.baseline_fit(Input.frames.start:Input.frames.step:Input.prime)); hold off; title('Smoothed frame means and trend fit');  %TODO: Input.prime doesn't seem to be the correct range here
+    output.baseline = smooth(output.baseline_raw, smooth_window_span, 'sgolay', 3);
+    figure; hold on; plot(output.baseline_raw); plot(output.baseline); title('Frame means (post bg subtract), raw + trend fit'); hold off;
     print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
-    sensor_movie = sensor_movie * diag(1 ./ output.baseline_fit(Input.frames.start:Input.frames.step:(size(sensor_movie,2)-1)*Input.frames.step+Input.frames.start));
+    
+    %fit_t_rng = Input.frames.start : Input.frames.step : ((size(sensor_movie,2)-1) * Input.frames.step + Input.frames.start);
+    %output.baseline_fit_params = exp2fit(fit_t_rng, base, 1);
+    %output.baseline_fit = output.baseline_fit_params(1) + output.baseline_fit_params(2) * exp(- (1 : num_frames) / output.baseline_fit_params(3));
+    %figure; hold on; plot(output.baseline); plot(output.baseline_fit(Input.frames.start:Input.frames.step:Input.prime)); hold off; title('Smoothed frame means and trend fit');  %TODO: Input.prime doesn't seem to be the correct range here
+    %print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
+    
+    sensor_movie = sensor_movie * diag(1 ./ output.baseline);
+    %TODO: check if trend fit worked, i.e. residuals are mostly gaussian
 end
 % sensor_movie_min = min(sensor_movie(:));
 sensor_movie_max = max(sensor_movie(:));
@@ -374,6 +389,10 @@ for i=1:size(output.T, 1)
 end
 close all;
 
+%% Save checkpoint
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Saving pre-nmf-recon checkpoint']);
+save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_pre-nmf-recon.mat']), 'Input', 'output');
+
 %% reconstruct spatial filters
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Reconstructing spatial filters']);
 poolobj = gcp('nocreate');
@@ -390,7 +409,7 @@ if isempty(Input.gpu_ids)
         output.recon{k} = reconstruction_cpu_sparse(Input.psf_filename_ballistic, infile, Input.recon_opts);
         disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
     end   
-else
+else % use GPU
     nn=length(Input.gpu_ids);
     gimp=Input.gpu_ids;
     parpool(nn);
@@ -404,14 +423,14 @@ else
         img_=img_/max(img_(:));
         img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end)));
         img_(img_<0)=0;
-        infile.LFmovie=full(img_)/max(img_(:));        
+        infile.LFmovie=full(img_)/max(img_(:));       
         test = reconstruction_new(infile, Input.psf_filename_ballistic, options{1});
         [~,kernel] = total_deconv(test,Input.total_deonv_opts);
         Input.form = 'free';
         Input.recon_opts.rad=kernel;
     end
     
-    for kk=1:nn:size(S,1)
+    for kk = 1 : nn : size(S,1)
         img=cell(nn,1);
         for worker=1:min(nn,size(S,1)-(kk-1))
             k=kk+worker-1;
@@ -425,12 +444,13 @@ else
         options=cell(min(nn,size(S,1)-(kk-1)),1);
         recon=cell(min(nn,size(S,1)-(kk-1)),1);
         tmp_recon_opts = Input.recon_opts;
-        parfor worker=1:min(nn,size(S,1)-(kk-1))
+        parfor worker=1 : min(nn, size(S,1)-(kk-1))
             infile=struct;
             infile.LFmovie=(img{worker});
             options{worker}=tmp_recon_opts;
             options{worker}.gpu_ids=mod((worker-1),nn)+1;
             options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
+            disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Starting batch reconstrution in worker ' worker]);
             recon{worker}= reconstruction_sparse(infile, Input.psf_filename_ballistic, options{worker});
             gpuDevice([]);
         end
@@ -472,6 +492,7 @@ end
 %close all;
 
 %% Save checkpoint
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Saving post-nmf-recon checkpoint']);
 save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_post-nmf-recon.mat']), 'Input', 'output');
 
 %% filter reconstructed spatial filters
