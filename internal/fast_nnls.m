@@ -38,6 +38,10 @@ end
 if ~isfield(opts,'warm_start')
     opts.warm_start=[];
 end
+
+if ~isfield(opts,'lambda')
+    opts.lambda = 0;
+end
 %%
 if nargin<=3
     Q=A'*A;
