@@ -925,8 +925,14 @@ Input.y_offset = 1082.6;
 Input.dx = 17.69;
 %Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-100_to100_zspacing4_Nnum15_lambda520_OSR3_pdfnorm.mat';
 %Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-252_to-100_zspacing4_Nnum15_lambda520_OSR3.mat';
-Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-252_to_4_zspacing4_Nnum15_lambda520_OSR3.mat';
+
+%Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-252_to_4_zspacing4_Nnum15_lambda520_OSR3.mat';
+Input.psf_filename_ballistic='/dev/shm/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-252_to_4_zspacing4_Nnum15_lambda520_OSR3_uncompressed.mat';
+Input.psf_cache_dir = '';
+
 Input.do_crop = 0;
+Input.crop_border_microlenses = [0 0 0 floor(400/15)];
+
 Input.detrend = true;
 
 Input.rank = 30;
