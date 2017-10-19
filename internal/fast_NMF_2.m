@@ -31,11 +31,15 @@ else
     if ~isfield(opts,'lambda_orth')
         opts.lambda_orth=0;
     end
+    if ~isfield(opts,'active')
+        opts.active = ones(1,size(Y,1),'logical');
+    end
 end
 
 opts.lambda_orth = opts.lambda_orth * size(Y,2);
 
 opts.warm_start=[];
+
 option=opts;
 option.max_iter=1;
 option.total=1;
@@ -79,9 +83,8 @@ for iter=1:opts.max_iter + N
     N =size(T,2);
     d = std(T,[],2);
     
-    
-    Q_S = S'*S;
-    q_T = S'*Y;
+    Q_S = S(opts.active,:)'*S(opts.active,:);
+    q_T = S(opts.active,:)'*Y(opts.active,:);
     
     if opts.lambda_ind_t
         hilf = ((zsc*zsc')*zsc - zsc);
