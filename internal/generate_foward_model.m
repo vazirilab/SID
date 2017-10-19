@@ -1,8 +1,12 @@
-function forward_model=generate_foward_model(centers,psf_ballistic,r,rr,m,kernel)
+function forward_model = generate_foward_model(centers, psf_ballistic, r, rr, m, kernel)
 tic
 dim=m(1:2);
-Hsize=size(psf_ballistic.H);
-disp('Initiate forward_model');
+
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Load H']);
+H = psf_ballistic.H; % TN TODO: check if we can do this efficiently with matfile()
+Hsize = size(H);
+
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Initialize forward_model']);
 forward_model_indices=cell(1,size(centers,1));
 forward_model_values=forward_model_indices;
 N=0;
@@ -40,7 +44,7 @@ for k=1:size(centers,1)
             B_ = [B_' bbb_']';
         end
     end
-    Q=project_forward_patched(B, dim, psf_ballistic.Nnum, psf_ballistic.H,W,B_);
+    Q=project_forward_patched(B, dim, psf_ballistic.Nnum, H, W, B_);
     Q=Q(:);
     Q=Q/norm(Q);
     forward_model_indices{k}=find(Q);

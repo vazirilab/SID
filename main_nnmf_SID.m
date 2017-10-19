@@ -179,11 +179,23 @@ else
 	Input.psf_cache_dir = '/dev/shm';
 end
 
-if isfield(optional_args, 'do_crop')  % a very fast storage location (ideally, a ramdisk), for caching the psf file. This is to avoid serialization to parfor workers
+if isfield(optional_args, 'do_crop')
 	Input.do_crop = optional_args.do_crop;
 else
 	Input.do_crop = true;
 end
+
+% Width of borders to crop, in units of microlenses. Set to empty array to
+% disable. When giving a value of floor([ix1_lo_border_width ix1_hi_border_width ix2_hi_border_width
+% ix2_hi_border_width] / Nnum)
+% that means that 
+% cropped_img = full_img(ix1_lo_border_width + 1 : end - ix1_hi_border_width, ix2_lo_border_width + 1 : end - ix2_hi_border_width)
+if isfield(optional_args, 'crop_border_microlenses')
+	Input.crop_border_microlenses = optional_args.crop_border_microlenses;
+else
+	Input.crop_border_microlenses = [0 0 0 0];
+end
+
 
 %%
 crop_thresh_coord_x = 0.8;	%values for fish
@@ -198,7 +210,6 @@ Input.optimize_kernel = 0;
 mkdir(Input.output_folder)
 
 %% Cache and open PSF
-psf_ballistic = matfile(Input.psf_filename_ballistic);
 if ~strcmp(Input.psf_cache_dir, '')
     [~, rand_string] = fileparts(tempname());
     Input.psf_cache_dir_unique = fullfile(Input.psf_cache_dir, ['sid_nnmf_recon_psf_' rand_string]);
@@ -211,6 +222,8 @@ if ~strcmp(Input.psf_cache_dir, '')
     Input.psf_filename_ballistic = fullfile(Input.psf_cache_dir_unique, [psf_fname psf_ext]);
     clear psf_fname;
 end
+psf_ballistic = matfile(Input.psf_filename_ballistic);
+psf_size = size(psf_ballistic, 'H');
 
 %%
 % Input.fluoslide_fn = ['fluoslide_Nnum' num2str(psf_ballistic.Nnum) '.mat'];
@@ -244,12 +257,23 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_mask.pdf']), 
 
 %% Compute bg components via rank-1-factorization
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing background components']);
-if Input.bg_sub==1 
-    [output.bg_temporal,output.bg_spatial] = par_rank_1_factorization(Input.LFM_folder, Input.step, Input.bg_iter, 0, 0, 0, 0, Input.prime, Input.mask);
+if Input.bg_sub
+    [output.bg_temporal, output.bg_spatial] = par_rank_1_factorization(Input.LFM_folder, Input.step, Input.bg_iter, 0, 0, 0, 0, Input.prime, Input.mask);
 else
-    output.bg_temporal=[];
-    output.bg_spatial=[];
+    output.bg_temporal = [];
+    output.bg_spatial = [];
 end
+
+output.bg_spatial_pre_crop_rectify = output.bg_spatial;
+
+if Input.rectify
+    output.bg_spatial = ImageRect(output.bg_spatial_pre_crop_rectify, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, ...
+        true, Input.crop_border_microlenses(3), Input.crop_border_microlenses(4), Input.crop_border_microlenses(1), Input.crop_border_microlenses(2));
+else
+    Nnum = psf_ballistic.Nnum;
+    output.bg_spatial = output.bg_spatial_pre_crop_rectify(crop_border_microlenses(1)*Nnum + 1 : end - crop_border_microlenses(2)*Nnum, crop_border_microlenses(3)*Nnum + 1 : end - crop_border_microlenses(4)*Nnum);
+end
+
 figure; imagesc(output.bg_spatial); axis image; colorbar; title('Spatial background');
 print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.png']), '-dpng', '-r300');
 figure; plot(output.bg_temporal); title('Temporal background');
@@ -260,24 +284,21 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_temporal.p
 
 %% Compute standard-deviation image (std. image)
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Computing standard deviation image']);
-if Input.rectify==1
-    [output.std_image,~]=par_compute_std_image(Input.LFM_folder,Input.step,output.bg_temporal,output.bg_spatial,Input.prime, Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum, Input.mask);
+if Input.rectify
+    [output.std_image, ~] = par_compute_std_image(Input.LFM_folder, Input.step, output.bg_temporal, output.bg_spatial_pre_crop_rectify, ...
+        Input.prime, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, Input.mask, Input.crop_border_microlenses);
 else
-    [output.std_image,~]=par_compute_std_image(Input.LFM_folder,Input.step,output.bg_temporal,output.bg_spatial,Input.prime, 0, 0, 0, 0, Input.mask);
+    [output.std_image, ~] = par_compute_std_image(Input.LFM_folder, Input.step, output.bg_temporal, output.bg_spatial_pre_crop_rectify, ...
+        Input.prime, 0, 0, 0, 0, Input.mask, Input.crop_border_microlenses);
 end
-
-if (Input.bg_sub==1)&&(Input.rectify==1)
-    output.bg_spatial = ImageRect(output.bg_spatial, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, 0);
-end
-
 
 figure; imagesc(output.std_image, [prctile(output.std_image(:), 0) prctile(output.std_image(:), 100.0)]); title('Stddev image'); axis image; axis ij; colorbar;
-print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r300');
+print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r600');
 
 %% load sensor movie
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
 tic;
-[sensor_movie,num_frames]=read_sensor_movie(Input.LFM_folder,Input.x_offset,Input.y_offset,Input.dx,psf_ballistic.Nnum,Input.rectify,Input.frames);%, Input.mask);
+[sensor_movie,num_frames] = read_sensor_movie(Input.LFM_folder, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, Input.rectify, Input.frames, Input.mask, Input.crop_border_microlenses);
 if isinf(Input.prime)
     Input.prime=num_frames;
 end
@@ -385,7 +406,7 @@ for i=1:size(output.T, 1)
     title(['NMF component ' num2str(i)]);
     subplot(4,1,4);
     plot(output.T(i,:));
-    print(fullfile(Input.output_folder, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+    print(fullfile(Input.output_folder, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r600');
 end
 close all;
 
@@ -406,7 +427,7 @@ if isempty(Input.gpu_ids)
         img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end))); % TN TODO: hardcoded vals
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));
-        output.recon{k} = reconstruction_cpu_sparse(psf_ballistic, infile, Input.recon_opts);
+        output.recon{k} = reconstruction_cpu_sparse(Input.psf_filename_ballistic, infile, Input.recon_opts);
         disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
     end   
 else % use GPU
@@ -424,7 +445,7 @@ else % use GPU
         img_=img_-mean(mean(img_(ceil(0.8*size(output.std_image,1)):end,ceil(0.75*size(output.std_image,2)):end)));
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));       
-        test = reconstruction_new(infile, Input.psf_filename_ballistic, options{1});
+        test = reconstruction_new(infile, Input.psf_filename_ballistic, options{1}); % TN TODO: check this for matfile
         [~,kernel] = total_deconv(test,Input.total_deonv_opts);
         Input.form = 'free';
         Input.recon_opts.rad=kernel;
@@ -447,10 +468,10 @@ else % use GPU
         parfor worker=1 : min(nn, size(S,1)-(kk-1))
             infile=struct;
             infile.LFmovie=(img{worker});
-            options{worker}=tmp_recon_opts;
+            options{worker} = tmp_recon_opts;
             options{worker}.gpu_ids=mod((worker-1),nn)+1;
             options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
-            disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Starting batch reconstrution in worker ' worker]);
+            disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Starting batch reconstrution in worker ' num2str(worker)]);
             recon{worker}= reconstruction_sparse(infile, Input.psf_filename_ballistic, options{worker});
             gpuDevice([]);
         end
@@ -464,7 +485,8 @@ end
 %% crop reconstructed image with eroded mask, to reduce border artefacts
 if numel(Input.mask) > 1 && any(Input.mask ~= 0)
     mask_dilated = imerode(Input.mask, strel('disk', 25));
-    mask_dilated =  logical(ImageRect(double(mask_dilated), Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, 0));
+    mask_dilated =  logical(ImageRect(double(mask_dilated), Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, ...
+        true, Input.crop_border_microlenses(3), Input.crop_border_microlenses(4), Input.crop_border_microlenses(1), Input.crop_border_microlenses(2)));
     for i = 1:length(output.recon)
         output.recon{i} = output.recon{i} .* mask_dilated;
     end
@@ -486,7 +508,7 @@ for i = 1:size(S, 1)
     imagesc(squeeze(max(output.recon{i}(:,:,:), [], 2))); %(:,:,65)
     axis ij;
     colorbar;
-    print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r300');
+    print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r600');
 end
 %pause(10);
 %close all;
@@ -498,34 +520,33 @@ save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_pos
 %% filter reconstructed spatial filters
 if Input.filter
     disp('Filtering reconstructed spatial filters');
-    Hsize = size(psf_ballistic.H);
-    m=[size(output.std_image,1),size(output.std_image,2),Hsize(5)];
+    m=[size(output.std_image,1),size(output.std_image,2),psf_size(5)];
     bordz = 15;
     bord = 1;
     cellSize = 70;
     gpu = ~isempty(Input.gpu_ids);
-    [X,Y,Z]=meshgrid(1:2:2*size(output.std_image,2)-1,1:2:2*size(output.std_image,1)-1,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:Hsize(5)]);
-    [Xq,Yq,Zq]=meshgrid(1:2:2*size(output.std_image,2)-1,1:2:2*size(output.std_image,1)-1,[1:Hsize(5)]);
+    [X,Y,Z]=meshgrid(1:2:2*size(output.std_image,2)-1,1:2:2*size(output.std_image,1)-1,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:psf_size(5)]);
+    [Xq,Yq,Zq]=meshgrid(1:2:2*size(output.std_image,2)-1,1:2:2*size(output.std_image,1)-1,[1:psf_size(5)]);
     
     for kk=1:nn:size(S,1)
         img=cell(nn,1);
         for worker=1:min(nn,size(S,1)-(kk-1))
             k=kk+worker-1;
-            V=interp3(X,Y,Z,output.recon{k}(:,:,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:Hsize(5)]),Xq,Yq,Zq);
+            V=interp3(X,Y,Z,output.recon{k}(:,:,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:psf_size(5)]),Xq,Yq,Zq);
             
             I=zeros(size(V)+[0 0 2*bordz],'single');
-            I(:,:,bordz+1:bordz+Hsize(5))=single(V);
+            I(:,:,bordz+1:bordz+psf_size(5))=single(V);
             for k=0:bordz-1
                 I(:,:,bordz-k)=I(:,:,bordz+1-k)*0.96;
-                I(:,:,bordz+Hsize(5)+k)=I(:,:,bordz+Hsize(5)-1+k)*0.96;
+                I(:,:,bordz+psf_size(5)+k)=I(:,:,bordz+psf_size(5)-1+k)*0.96;
             end
             Ifiltered = I/max(I(:));
             img{worker}=full(Ifiltered);
         end
-        segm_=zeros(min(nn,size(S,1)-(kk-1)),size(Ifiltered,1)-2*bord+1,size(Ifiltered,2)-2*bord+1,Hsize(5));
+        segm_=zeros(min(nn,size(S,1)-(kk-1)),size(Ifiltered,1)-2*bord+1,size(Ifiltered,2)-2*bord+1,psf_size(5));
         parfor worker=1:min(nn,size(S,1)-(kk-1))
             filtered_Image_=band_pass_filter(img{worker}, cellSize, 8, gimp(worker),1.2);
-            segm_(worker,:,:,:)=filtered_Image_(bord:size(filtered_Image_,1)-bord,bord:size(filtered_Image_,2)-bord,bordz+1:bordz+Hsize(5));                      
+            segm_(worker,:,:,:)=filtered_Image_(bord:size(filtered_Image_,1)-bord,bord:size(filtered_Image_,2)-bord,bordz+1:bordz+psf_size(5));                      
             if gpu
                 gpuDevice([]);
             end
@@ -623,9 +644,9 @@ end
 clearvars -except sensor_movie Input output mean_signal psf_ballistic Hsize m sensor_movie_max sensor_movie_min;
 
 %% Initiate forward_model
-psf_ballistic=load(Input.psf_filename_ballistic);
-
-output.forward_model=generate_foward_model(output.centers,psf_ballistic,8,3,size(output.recon{1})); %replace 8 by 1 if _7r psf
+%TODO: check performance of generate_forward_model() with matfile
+%psf_ballistic = matfile(Input.psf_filename_ballistic);
+output.forward_model=generate_foward_model(output.centers, psf_ballistic, 8, 3, size(output.recon{1})); %replace 8 by 1 if _7r psf
 
 %% generate template
 output.template=generate_template(output.forward_model,psf_ballistic.Nnum,0.005,size(output.std_image));
@@ -666,7 +687,7 @@ end
 
 % sensor_movie = double(sensor_movie .* (sensor_movie_max - sensor_movie_min) + sensor_movie_min);
 sensor_movie =double(sensor_movie*sensor_movie_max);
-disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update'])
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update']);
 output.timeseries = fast_nnls(output.forward_model_', double(sensor_movie), opts);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
 

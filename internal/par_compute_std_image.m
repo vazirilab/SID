@@ -1,4 +1,4 @@
-function [std_image, mean_image] = par_compute_std_image(indir, step, bg_temporal, bg_spatial, prime, x_offset, y_offset, dx, Nnum, mask)
+function [std_image, mean_image] = par_compute_std_image(indir, step, bg_temporal, bg_spatial, prime, x_offset, y_offset, dx, Nnum, mask, crop_border_microlenses)
 
 if nargin < 10
     mask = true;
@@ -26,6 +26,10 @@ end
 
 if nargin < 10
     mask = true;
+end
+
+if nargin < 11
+    crop_border_microlenses = [0 0 0 0];
 end
 
 %%
@@ -107,5 +111,7 @@ if all([x_offset y_offset dx Nnum])
 end
 
 std_image=sqrt(std_image);
+std_image = std_image(crop_border_microlenses(1)*Nnum + 1 : end - crop_border_microlenses(2)*Nnum, crop_border_microlenses(3)*Nnum + 1 : end - crop_border_microlenses(4)*Nnum);
 mean_image=xa;
+mean_image = mean_image(crop_border_microlenses(1)*Nnum + 1 : end - crop_border_microlenses(2)*Nnum, crop_border_microlenses(3)*Nnum + 1 : end - crop_border_microlenses(4)*Nnum);
 end

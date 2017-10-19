@@ -29,34 +29,34 @@ cluster = parcluster('local');
 % end
 
 %% Load PSF
-disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading PSF']);
 if ~isstruct(psf_ballistic)
-    psf_ballistic = load(psf_ballistic);
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Open PSF matfile']);
+    psf_ballistic = matfile(psf_ballistic);
 end
-
-if isa(psf_ballistic.H, 'double')
-    psf_ballistic.H = single(psf_ballistic.H);
-    psf_ballistic.Ht = single(psf_ballistic.Ht);
-end
-disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Done loading PSF. PSF size: ' num2str(size(psf_ballistic.H))]);
+% 
+% if isa(psf_ballistic.H, 'double')
+%     psf_ballistic.H = single(psf_ballistic.H);
+%     psf_ballistic.Ht = single(psf_ballistic.Ht);
+% end
+psf_size = size(psf_ballistic, 'H');
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'PSF size: ' num2str(psf_size)]);
 
 %%
-[n_px_x, n_px_y, n_frames] = size(in_file.LFmovie);
+[n_px_x, n_px_y, ~] = size(in_file.LFmovie);
 global volumeResolution;
-volumeResolution = [n_px_x n_px_y size(psf_ballistic.H,5)];
+volumeResolution = [n_px_x n_px_y psf_size(5)];
 disp(['Image size is ' num2str(volumeResolution(1)) 'X' num2str(volumeResolution(2))]);
 
 %% prepare reconstruction of first frame
-Nnum = size(psf_ballistic.H,3);
-backwardFUN_ = @(projection) backwardProjectGPU_new(psf_ballistic.H, projection );
-forwardFUN_ = @(Xguess) forwardProjectGPU( psf_ballistic.H, Xguess );
+backwardFUN_ = @(projection) backwardProjectGPU_new(psf_ballistic, projection);
+forwardFUN_ = @(Xguess) forwardProjectGPU(psf_ballistic, Xguess);
 %prepare global gpu variables for reconstruction of the first frame.
 %this does not affect the parallelization later on.
 gpuDevice(options.gpu_ids(1));
 global zeroImageEx;
 global exsize;
 xsize = [volumeResolution(1), volumeResolution(2)];
-msize = [size(psf_ballistic.H,1), size(psf_ballistic.H,2)];
+msize = [psf_size(1), psf_size(2)];
 mmid = floor(msize/2);
 exsize = xsize + mmid;
 exsize = [ min( 2^ceil(log2(exsize(1))), 256*ceil(exsize(1)/256) ), min( 2^ceil(log2(exsize(2))), 256*ceil(exsize(2)/256) ) ];
@@ -69,6 +69,7 @@ if ~isfield(options,'form')
 end
 
 if isfield(options,'rad')
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating neuron kernel to use in reconstruction']);
     if strcmp(options.form,'spherical')
         W=zeros(2*options.rad(1)+1,2*options.rad(1)+1,2*options.rad(2)+1);
         for ii=1:2*options.rad(1)+1
@@ -83,24 +84,25 @@ if isfield(options,'rad')
     elseif strcmp(options.form,'gaussian')
         gaussian=fspecial('gaussian',ceil(10*options.rad(1))+1,options.rad(1));
         W=reshape(reshape(gaussian,[],1)*exp(-[-3*options.rad(2):1:3*options.rad(2)].^2/4/options.rad(2)^2),ceil(10*options.rad(1))+1,ceil(10*options.rad(1))+1,[]);
-        
     elseif strcmp(options.form,'lorentz')
-        [X Y Z] = meshgrid([-ceil(5*options.rad(1)):ceil(5*options.rad(1))],[-ceil(5*options.rad(1)):ceil(5*options.rad(1))],[-ceil(5*options.rad(2)):ceil(5*options.rad(2))]);
-        W = 1./(1 + (options.rad(1)*(X.^2 + Y.^2) + options.rad(2)*Z.^2));    
+        [X, Y, Z] = meshgrid(-ceil(5*options.rad(1)):ceil(5*options.rad(1)), -ceil(5*options.rad(1)):ceil(5*options.rad(1)), -ceil(5*options.rad(2)):ceil(5*options.rad(2)));
+        W = 1. / (1 + (options.rad(1)*(X.^2 + Y.^2) + options.rad(2)*Z.^2));    
     elseif strcmp(options.form,'free')
-        W=options.rad;
+        W = options.rad;
     end
         W = W/norm(W(:));
     kernel=gpuArray(W);
-    forwardFUN = @(Xguess) forwardFUN_(convn(Xguess,kernel,'same'));
-    backwardFUN = @(projection) convn(backwardFUN_(projection),kernel,'same');
+    forwardFUN = @(Xguess) forwardFUN_(convn(Xguess, kernel,'same'));
+    backwardFUN = @(projection) convn(backwardFUN_(projection), kernel,'same');
     
 else
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Not using neuron kernel']);
     forwardFUN = forwardFUN_;
     backwardFUN = backwardFUN_;
 end
 
 %% Reconstruction
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Starting initial back-projection (zero-th iteration)']);
 LFIMG = single(in_file.LFmovie);
 tic;
 Xguess = backwardFUN(LFIMG);
