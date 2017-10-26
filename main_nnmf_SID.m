@@ -204,6 +204,7 @@ Input.nnmf_opts.max_iter = 600;
 Input.nnmf_opts.lambda_t = 0;
 Input.nnmf_opts.lambda_s = 0.1;
 Input.nnmf_opts.lambda_orth = 4;
+Input.nnmf_opts.rank = 30;
 Input.update_template = false;
 Input.detrend = false;
 Input.optimize_kernel = 0;
@@ -307,8 +308,9 @@ toc
 %% Find cropping mask, leaving out areas with stddev as in background-only area
 if Input.do_crop
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
-    Inside=output.std_image(ceil(crop_thresh_coord_x * size(output.std_image,1)):end, ceil(crop_thresh_coord_y * size(output.std_image,2)):end);
-    Inside=output.std_image-mean(Inside(:))-2*std(Inside(:));
+    bg = output.bg_spatial/max(output.bg_spatial(:));
+    Inside=bg(ceil(crop_thresh_coord_x * size(output.std_image,1)):end, ceil(crop_thresh_coord_y * size(output.std_image,2)):end);
+    Inside=bg-mean(Inside(:))-2*std(Inside(:));
     Inside(Inside<0)=0;
     beads=bwconncomp(Inside>0);
     for kk=1:beads.NumObjects
@@ -322,11 +324,13 @@ if Input.do_crop
     for kk=2:beads.NumObjects
         Inside(beads.PixelIdxList{kk})=0;
     end
+    Inside(Inside<quantile(Inside(:),0.55))=0; % 0.55 decrease until it works for most data sets
     output.idx=find(Inside>0);
 else
     Inside = output.std_image * 0 + 1;
+    output.idx=find(Inside>0);
 end
-output.idx=find(Inside>0);
+
 
 timestr = datestr(now, 'YYmmddTHHMM');
 figure;
