@@ -16,7 +16,7 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % avoid that the detrending smoothes out true Ca transients.
 
 %% NMF
-% Input.rank
+% Input.nnmf_opts.rank
 % Input.output_name
 % Input.tmp_dir
 % Input.step
@@ -49,12 +49,6 @@ Input.y_offset = y_offset;
 Input.dx = dx;
 
 %% Optional parameters
-if isfield(optional_args, 'rank')
-    Input.rank = optional_args.rank;
-else
-    Input.rank = 30; % If Input.rank==0 SID classic instead of SID_nmf
-end
-
 if isfield(optional_args, 'out_filename')
     Input.output_name = optional_args.out_filename;
 else
@@ -388,10 +382,10 @@ sensor_movie = sensor_movie/sensor_movie_max;
 toc
 
 %% generate NNMF
-disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.rank) '-factorization']);
+disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.nnmf_opts.rank) '-factorization']);
 % Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
 output.centers=[];
-[S, T]=fast_NMF_2(sensor_movie,Input.rank,Input.nnmf_opts);
+[S, T]=fast_NMF_2(sensor_movie,Input.nnmf_opts.rank,Input.nnmf_opts);
 S=S(:,logical(mean(S,1)<mean(mean(S,1))+3*std(mean(S,1))));
 S=[S output.std_image(:)]';
 output.S = S;
