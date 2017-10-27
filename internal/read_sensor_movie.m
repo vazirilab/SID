@@ -25,6 +25,18 @@ if nargin < 7 || isempty(frames)
     frames.mean = 0; % disable moving average
 end
 
+if ~isfield(frames,'mean')
+    frames.mean = 0;
+end
+if ~isfield(frames,'start')
+    frames.start = 1;
+end
+if ~isfield(frames,'step')
+    frames.step = 1;
+end
+if ~isfield(frames,'end')
+    frames.end = inf;
+end
 %%
 frames.end=min(frames.end,size(infiles_struct,1));
 num_frames_total=size(infiles_struct,1);
