@@ -21,6 +21,15 @@ else
     line=1:length(infiles_struct);
 end
 
+if isfield(opts,'baseline')
+    if ~isempty(opts.baseline)
+        baseline = interp1(find(~Varg)',opts.baseline,line','linear','extrap');
+    else
+        baseline=[1:length(infiles_struct)]*0+1;
+    end
+else
+    baseline=[1:length(infiles_struct)]*0+1;
+end
 %%
 num=length(infiles_struct);
 timeseries=zeros(size(forward_model,1)+(~isempty(bg_spatial)),num);
