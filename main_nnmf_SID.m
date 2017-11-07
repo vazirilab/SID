@@ -315,7 +315,11 @@ if Input.do_crop
     h = fspecial('average', 3*psf_ballistic.Nnum);
     Inside=conv2(Inside,h,'same');
     beads=bwconncomp(Inside);                    %reduce to biggest connected component
-    for kk=2:beads.NumObjects
+    for kk=1:beads.NumObjects
+        sp(kk)=size(beads.PixelIdxList{kk},1);
+    end
+    [~,sp]=max(sp);
+    for kk=[1:sp-1 sp+1:beads.NumObjects]
         Inside(beads.PixelIdxList{kk})=0;
     end
     Inside(Inside<quantile(Inside(:),0.55))=0; % 0.55 decrease until it works for most data sets
