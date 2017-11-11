@@ -323,6 +323,21 @@ if Input.do_crop
         Inside(beads.PixelIdxList{kk})=0;
     end
     Inside(Inside<quantile(Inside(:),0.55))=0; % 0.55 decrease until it works for most data sets
+    mx=mean(Inside,2);
+    my=mean(Inside,1);
+    ouput.crop.x_min=min(find(mx));
+    ouput.crop.y_min=min(find(my));
+    ouput.crop.x_max=max(find(mx));
+    ouput.crop.y_max=max(find(my));
+    ouput.crop.x_min=floor(ouput.crop.x_min/Nnum)*Nnum;
+    ouput.crop.y_min=floor(ouput.crop.y_min/Nnum)*Nnum;
+    ouput.crop.x_max=ceil(ouput.crop.x_max/Nnum)*Nnum;
+    ouput.crop.y_max=ceil(ouput.crop.y_max/Nnum)*Nnum;
+    sensor_movie=reshape(sensor_movie,size(output.std_image,1),size(output.std_image,2),[]);
+    sensor_movie=sensor_movie(ouput.crop.x_min+1:ouput.crop.x_max,ouput.crop.y_min+1:ouput.crop.y_max,:);
+    output.bg_spatial=output.bg_spatial(ouput.crop.x_min+1:ouput.crop.x_max,ouput.crop.y_min+1:ouput.crop.y_max,:);
+    Inside=Inside(ouput.crop.x_min+1:ouput.crop.x_max,ouput.crop.y_min+1:ouput.crop.y_max,:);
+    output.std_image=output.std_image(ouput.crop.x_min+1:ouput.crop.x_max,ouput.crop.y_min+1:ouput.crop.y_max,:);
     output.idx=find(Inside>0);
 else
     Inside = output.std_image * 0 + 1;
