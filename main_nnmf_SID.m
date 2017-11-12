@@ -338,6 +338,7 @@ if Input.do_crop
     output.bg_spatial=output.bg_spatial(ouput.crop.x_min+1:ouput.crop.x_max,ouput.crop.y_min+1:ouput.crop.y_max,:);
     Inside=Inside(ouput.crop.x_min+1:ouput.crop.x_max,ouput.crop.y_min+1:ouput.crop.y_max,:);
     output.std_image=output.std_image(ouput.crop.x_min+1:ouput.crop.x_max,ouput.crop.y_min+1:ouput.crop.y_max,:);
+    sensor_movie=reshape(sensor_movie,size(output.std_image,1)*size(output.std_image,2),[]);
     output.idx=find(Inside>0);
 else
     Inside = output.std_image * 0 + 1;
