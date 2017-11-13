@@ -15,6 +15,7 @@ if nargin<3
     opts.lambda_t=0;
     opts.lambda_ind_t=0;
     opts.lambda_orth=0;
+    opts.lambda_sm=0;
 else
     if ~isfield(opts,'tol')
         opts.tol=1e-6;
@@ -34,7 +35,24 @@ else
     if ~isfield(opts,'active')
         opts.active = ones(1,size(Y,1),'logical');
     end
+    if ~isfield(opts,'lambda_sm')
+        opts.lambda_sm=0;
+    end
 end
+
+if opts.lambda_sm
+    if ~isfield(opts,'size')
+        disp('The option lambda_sm needs additional information: imagesize (opts.size)');
+        return
+    end
+   lap = zeros(1,3,3);
+   lap(1,2,2)=4;
+   lap(1,1,2)=-1;
+   lap(1,3,2)=-1;
+   lap(1,2,1)=-1;
+   lap(1,2,3)=-1;
+end
+   
 
 opts.lambda_orth = opts.lambda_orth * size(Y,2);
 
@@ -138,6 +156,9 @@ for iter=1:opts.max_iter + N
         df_S = -q_S + S*Q_T + opts.lambda_s;
     end
     
+    if opts.lambda_sm
+       df_S = df_S + opts.lambda_sm*reshape(convn(reshape(S',n,opts.size(1),opts.size(2)),lap,'same'),n,[])'; 
+    end
     
     passive_S = max(S>0,df_S<0);
     
