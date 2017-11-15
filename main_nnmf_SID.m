@@ -597,6 +597,7 @@ for ii=1:size(output.segmm,2)
         segm(:,:,kk)=segm(:,:,kk).*(Inside>0);
     end
     segm=segm/max(segm(:));
+    segm(isnan(segm))=0;
     segm=segm-0.1; % Tobias, this should be made in to a parameter so that it can be adjust flexiably,
     segm(segm<0)=0;
     centers=[];
