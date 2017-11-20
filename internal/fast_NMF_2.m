@@ -3,11 +3,7 @@ function [S,T]=fast_NMF_2(Y,n,opts,T,S)
 %%
 if nargin<4
     T=rand(n,size(Y,2));
-    T=conv2(T,ones(1,32),'same');
-    if isfield(opts,'bg_temporal')
-        T(end,:)=opts.bg_temporal;
-    end
-    
+    T=conv2(T,ones(1,32),'same');    
 end
 if nargin<3
     opts.tol=1e-6;
@@ -16,6 +12,7 @@ if nargin<3
     opts.lambda_ind_t=0;
     opts.lambda_orth=0;
     opts.lambda_sm=0;
+    opts.ini='pca';
 else
     if ~isfield(opts,'tol')
         opts.tol=1e-6;
@@ -37,6 +34,9 @@ else
     end
     if ~isfield(opts,'lambda_sm')
         opts.lambda_sm=0;
+    end
+    if ~isfield(opts,'ini')
+        opts.ini='pca';
     end
 end
 
@@ -67,18 +67,28 @@ if ~n
 end
 
 
-opts.warm_start=[];
-option=opts;
-option.max_iter=1;
-option.lambda=opts.lambda_s;
+% opts.warm_start=[];
+% option=opts;
+% option.max_iter=1;
+% option.lambda=opts.lambda_s;
+
+if nargin<4
+    if strcmp(opts.ini,'rand')
+        T=rand(n,size(Y,2));
+        T=conv2(T,ones(1,32),'same');
+    else
+        [T,~,~] = pca(Y(opts.active,:));
+        T = abs(T(:,1:n))';
+    end
+end
 
 if nargin<5
-    S=fast_nnls(T',Y',option)';
+%     S=fast_nnls(T',Y',option)';
+    S=Y*T';
     S=S*inv(diag(sqrt(sum(S.^2,1))));
 end
 N=0;
 
-% S(:,end)=opts.bg_spatial;
 
 for iter=1:opts.max_iter + N
     
