@@ -768,7 +768,7 @@ for iter=1:Input.num_iter
     output.timeseries_=output.timeseries_(id2,:);
     output.forward_model_=output.forward_model_(id2,:);
     template_=template_(id2(1:end-Input.bg_sub),:);
-    output.centers=output.centers(id2(1:end-Input.bg_sub),:);
+    output.centers_=output.centers_(id2(1:end-Input.bg_sub),:);
     output.forward_model=output.forward_model(id2(1:end-Input.bg_sub),:);
     tic
 %     output.forward_model_=diag(1./(sqrt(sum(output.forward_model_.^2,2))))*output.forward_model_;
