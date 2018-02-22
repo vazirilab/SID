@@ -1,12 +1,37 @@
 function [S,T]=fast_NMF_2(Y,n,opts,T,S)
-%nnmf using block coordinate descent with exact line search
+% the algorithm performs a non-negative matrix factorization (nnmf) on the movie Y, using a
+% alternating convex update approach where each of the updates is performed
+% by gradient descent with exact line search.
+%
+% Input:
+% n...                  rank of the nnmf.
+% T...                  Initial condition for the temporal component of the nnmf.
+%                       If T is not set, the algorithm will compute a first guess
+%                       based on opts.ini.
+% S...                  Initial guess for the spatial compontent of the nnmf.
+%                       If S is not set, it is computed by S=Y*T
+% struct opts:
+% opts.lambda_s...      lagrangian multiplier for L1 regularizer on S
+% opts.lambda.t...      lagrangian multiplier for L1 regularizer on T
+% opts.lambda_ind_t...  lagrangian multiplier for L2 regularizer on
+%                       corrcoef(T)-eye(size(S,2))
+% opts.lambda_orth...   lagrangian multiplier for L2 regularizer on
+%                       S'*S-eye(size(S,2))
+% opts.lambda_sm...     lagrangian multiplier for L2 regularizer on the
+%                       total variation of the components of S.
+%                       It is necessary that the size (height & width) of 
+%                       the linearized components of S is included, since
+%                       the algorithm needs the reshape S accordingly.
+% opts.ini...           Initialization method for T. opts.ini='pca' uses
+%                       the first "n" principal components. opts.ini="rand"
+%                       generates "n" smoothed random traces as
+%                       initialization for T.
 %%
 if nargin<4
     T=rand(n,size(Y,2));
     T=conv2(T,ones(1,32),'same');    
 end
 if nargin<3
-    opts.tol=1e-6;
     opts.lambda_s=0;
     opts.lambda_t=0;
     opts.lambda_ind_t=0;
@@ -14,9 +39,6 @@ if nargin<3
     opts.lambda_sm=0;
     opts.ini='pca';
 else
-    if ~isfield(opts,'tol')
-        opts.tol=1e-6;
-    end
     if ~isfield(opts,'lambda_s')
         opts.lambda_s=0;
     end
@@ -85,7 +107,7 @@ end
 if nargin<5
 %     S=fast_nnls(T',Y',option)';
     S=Y*T';
-    S=S*inv(diag(sqrt(sum(S.^2,1))));
+%     S=S*inv(diag(sqrt(sum(S.^2,1))));
 end
 N=0;
 
