@@ -4,7 +4,6 @@ if ~isfield(opts,'bg_sub')
     opts.bg_sub=1;
 end
 
-
 if ~isfield(opts,'lambda')
     opts.lambda=0;
 end
@@ -45,27 +44,17 @@ for neur=1:size(template,1)
             end
         end
         Y=sensor_movie(space,:);
-        if opts.solver==0
-            opts.anti=1;
-            F=NONnegLSQ_gpu(timeseries(involved_neurons,:),[],Y,temp,opts);
-        elseif opts.solver==1
-            opts.Accy=0;
-            A=timeseries(involved_neurons,:)';
-            F=zeros(length(involved_neurons),size(space,2));
-            for k_=1:length(space)
-                idx=find(squeeze(temp(:,k_)));
-                y=squeeze(Y(k_,:))';
-                x_=nnls(A(:,idx),y,opts);
-                F(idx,k_)=x_;
-            end
-        elseif opts.solver==2                                               %memory saving
-            A=timeseries(involved_neurons,:)';
-            H=full(A'*A);
-            Q=H./sqrt(diag(H)*diag(H)');
-            option=opts;
-            option.display='off';
-            F=fast_nnls(A,Y',option,Q,[],H,temp);
-        end       
+        
+        opts.Accy=0;
+        A=timeseries(involved_neurons,:)';
+        F=zeros(length(involved_neurons),size(space,2));
+        for k_=1:length(space)
+            idx=find(squeeze(temp(:,k_)));
+            y=squeeze(Y(k_,:))';
+            x_=nnls(A(:,idx),y,opts);
+            F(idx,k_)=x_;
+        end
+        
         if size(involved_neurons,2)>=1
             template(:,space)=0;
             [iI, iJ, iS]=find(F);
