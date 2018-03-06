@@ -89,7 +89,7 @@ X=[[1:2:2*opts.sample]', ones(opts.sample,1)];
 Xi=inv(X'*X)*X';
 
 while ~isempty(x)
-%     tic
+    %     tic
     x_=x;
     if strcmp(opts.display,'on')
         disp(s)
@@ -103,7 +103,12 @@ while ~isempty(x)
         x_(x_<0)=0;
         df=df+Q*(x_-x);
         x=x_;
-        passive=max(x>0,df<0);
+        
+        if nargin==7
+            passive=max(x>0,df<0).*temp;
+        else
+            passive=max(x>0,df<0);
+        end
         
         if isfield(opts,'max_iter')
             if s>opts.max_iter
@@ -159,7 +164,12 @@ while ~isempty(x)
         end
         x=x_;
         
-        passive=max(x>0,df<0);
+        
+        if nargin==7
+            passive=max(x>0,df<0).*temp;
+        else
+            passive=max(x>0,df<0);
+        end
         
         if max(ids(:))
             if strcmp(opts.display,'on')
@@ -181,7 +191,7 @@ while ~isempty(x)
         end
         
     end
-%     toc
+    %     toc
 end
 
 if strcmp(opts.gpu,'on')
