@@ -1,13 +1,18 @@
 function [bg_temporal, bg_spatial] = par_rank_1_factorization(indir, step, max_iter, x_offset, y_offset, dx, Nnum, final_frame, mask)
-% Rank-1-factorization of the tif-movie contained in the folder indir
-
+% PAR_RANK_1_FACTORIZATION Rank-1-matrix-factorization of the tif-movie Y
+% contained in the indir folder.
+%
+%       Y~bg_spatial*bg_temporal
+%
 % Input:
-% step...                   algorithm only considers ever "step" frame of the movie
-% max_iter...               Number of Iterations
-% final_frame...            Final frame of the movie for the algorithm to consider
-% x_offset, y_offset, dx... Lenslet-parameters for rectification
-% Nnum...                   number of pixels behind microlens (property of the psf)
-
+% step...                   algorithm only considers frames with increments
+%                           of 'step' between them.
+% max_iter...               maximum Number of Iterations
+% final_frame...            Final frame of the movie the algorithm to
+%                           considers.
+% x_offset, y_offset, dx... Lenslet-parameters for the rectification.
+% Nnum...                   number of pixels behind microlens.
+%
 % Output:
 % bg_temporal...            temporal component of the rank-1-factorization
 % bg_spatial...             spatial component of the rank-1-factorization
