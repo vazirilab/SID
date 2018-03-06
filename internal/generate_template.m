@@ -1,34 +1,26 @@
-function template=generate_template(forward_model,Nnum,thres,dim)
+function template=generate_template(centers,H,std_image,thres)
 
-disp('Generate template');
-II=[];JJ=[];
-tic
-for neuron=1:size(forward_model,1)
-    img=reshape(forward_model(neuron,:),dim);
-    img_=zeros(dim/Nnum);
-    for k=1:dim(1)/Nnum
-        for j=1:dim(2)/Nnum
-            img_(k,j)=mean(mean(img((k-1)*Nnum+1:k*Nnum,(j-1)*Nnum+1:j*Nnum)));
-        end
-    end
-    img_=img_/max(img_(:));
-    img_(img_<thres)=0;
-    [I_,J_,~]=find(img_);
-    I=[];J=[];
-    for k=1:length(I_)
-        s=(I_(k)-1)*Nnum+1:I_(k)*Nnum;
-        for l=1:Nnum
-            I=[I' (ones(Nnum,1)*s(l))']';
-            J=[J' ((J_(k)-1)*Nnum+1:J_(k)*Nnum)]';
-        end
-    end
-    II=[II' (ones(size(I))*neuron)']';
-    JJ=[JJ' sub2ind(size(img),I,J)']';
-    %     disp(neuron);
+if nargin<4
+    thres=0.03;
 end
-toc
-template=sparse(II,JJ,ones(size(II)),size(forward_model,1),prod(dim));
-toc
-disp([num2str(neuron) ' templates generated']);
+disp('Generate template');
+
+radius=squeeze(mean(mean(H,3),4));
+for k=1:size(radius,3)
+    radius(:,:,k)=radius(:,:,k)/max(reshape(radius(:,:,k),1,[]));
+end
+radius=sum(squeeze(mean(radius>thres,2))>0,1)/2;
+
+
+[X,Y]=meshgrid(1:size(std_image,2),1:size(std_image,1));
+
+template=false([size(centers,1),size(std_image)]);
+for k=1:size(centers,1)
+    tic
+    template(k,:) = reshape(((Y-centers(k,1)).^2 + (X-centers(k,2)).^2 )<...
+        radius(round(centers(k,3)))^2,1,[]);
+    toc
+end
+disp([num2str(size(centers,1)) ' templates generated']);
 
 end
