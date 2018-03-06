@@ -1,4 +1,28 @@
 function [sensor_movie, num_frames_total] = read_sensor_movie(in_folder, x_offset, y_offset, dx, Nnum, do_rectify, frames, mask, crop_border_microlenses)
+% READ_SENSOR_MOVIE: Algorithm loads the frames, specified in the struct 
+% "frames" of the movie contained in the folder "in_folder" into the 
+% working memory.
+%
+% Input:
+% x_offset, y_offset, dx... Lenslet-parameters for rectification.
+% Nnum...                   number of pixels behind microlens.
+% do_rectification...       boolean that determines wether the raw movie
+%                           frames ought to be rectified.
+% struct frames:
+%   frames.start...         First frame to be loaded.
+%   frames.step...          algorithm only loads frames with increments
+%                           of 'step' between them.
+%   frames.end...           Final frame to be loaded.
+%   frames.mean...          boolean that determines wether to load just the
+%                           frames specified by the struct "frames" or if 
+%                           the algorithm loads all frames, and
+%                           computes the mean of the junks of frames in 
+%                           between the frames specified by the struct 
+%                           'frames'.
+%
+% Output:
+% sensor_movie...           Resulting framewise linearized movie
+% num_frames_total...       Total number of frames in "in_folder"
 
 if nargin < 8
     mask = true;
@@ -25,18 +49,6 @@ if nargin < 7 || isempty(frames)
     frames.mean = 0; % disable moving average
 end
 
-if ~isfield(frames,'mean')
-    frames.mean = 0;
-end
-if ~isfield(frames,'start')
-    frames.start = 1;
-end
-if ~isfield(frames,'step')
-    frames.step = 1;
-end
-if ~isfield(frames,'end')
-    frames.end = inf;
-end
 %%
 frames.end=min(frames.end,size(infiles_struct,1));
 num_frames_total=size(infiles_struct,1);
