@@ -13,10 +13,10 @@ end
 %% making sure what has already been computed does not get computed again
 Varg=ones(1,length(infiles_struct));
 if isfield(opts,'frame')
-opts.frame.end=min(opts.frame.end,length(infiles_struct));
-Varg(opts.frame.start:opts.frame.step:opts.frame.end)=0;
-line=find(Varg);
-infiles_struct=infiles_struct(logical(Varg));
+    opts.frame.end=min(opts.frame.end,length(infiles_struct));
+    Varg(opts.frame.start:opts.frame.step:opts.frame.end)=0;
+    line=find(Varg);
+    infiles_struct=infiles_struct(logical(Varg));
 else
     line=1:length(infiles_struct);
 end
@@ -45,15 +45,15 @@ while num>0
         end
         img_rect =  ImageRect(double(imread(fullfile(indir, infiles_struct(img_ix).name), 'tiff')), x_offset, y_offset, dx, Nnum,0);
         if img_ix==1
-            if isfield(opts,'baseline')
-                if ~isempty(opts.baseline)
-                    baseline=opts.baseline(logical(Varg));
-                else
-                    baseline=[1:length(infiles_struct)]*0+1;
-                end
-            else
-                baseline=[1:length(infiles_struct)]*0+1;
-            end
+%             if isfield(opts,'baseline')
+%                 if ~isempty(opts.baseline)
+%                     baseline=opts.baseline(logical(Varg));
+%                 else
+%                     baseline=[1:length(infiles_struct)]*0+1;
+%                 end
+%             else
+%                 baseline=[1:length(infiles_struct)]*0+1;
+%             end
         end
         if img_ix == mig(1)
             sensor_movie = ones(size(img_rect, 1)*size(img_rect, 2), length(mig), 'double');
