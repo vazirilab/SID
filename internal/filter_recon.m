@@ -43,15 +43,15 @@ for kk=1:opts.NumWorkers:size(recon,2)
     segm_=cell(opts.NumWorkers,1);
     for worker=1:min(opts.NumWorkers,size(recon,2)-(kk-1))
         k=kk+worker-1;        
-        if Input.thres<7
-            [X,Y,Z]=meshgrid(1:2:2*size(recon{k},2)-1,1:2:2*size(recon{k},1)-1,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:size(V,3)]);
-            [Xq,Yq,Zq]=meshgrid(1:1:2*size(recon{k},2)-1,1:1:2*size(recon{k},1)-1,[1:size(V,3)]);
-            cellSize = 4*Input.thres;
+        if Input.neur_rad<7
+            [X,Y,Z]=meshgrid(1:2:2*size(recon{k},2)-1,1:2:2*size(recon{k},1)-1,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:size(recon{k},3)]);
+            [Xq,Yq,Zq]=meshgrid(1:1:2*size(recon{k},2)-1,1:1:2*size(recon{k},1)-1,1:size(recon{k},3));
+            cellSize = 4*Input.neur_rad;
         else
-            cellSize = 2*Input.thres;
+            cellSize = 2*Input.neur_rad;
         end       
-        if Input.thres<7
-            V=interp3(X,Y,Z,recon{k}(:,:,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:size(V,3)]),Xq,Yq,Zq);
+        if Input.neur_rad<7
+            V=interp3(X,Y,Z,recon{k}(:,:,[1:Input.native_focal_plane-1 Input.native_focal_plane+1:size(recon{k},3)]),Xq,Yq,Zq);
         else
             V=recon{k};
         end
@@ -76,7 +76,11 @@ for kk=1:opts.NumWorkers:size(recon,2)
     for kp=1:min(opts.NumWorkers,size(recon,2)-(kk-1))
         filtered_Image=zeros(siz_I{kp}-[0 0 2*opts.border(3)]);
         filtered_Image(opts.border(1):siz_I{kp}(1)-opts.border(1),opts.border(2):siz_I{kp}(2)-opts.border(2),:)=segm_{kp};
-        segmm{kk+kp-1}=filtered_Image;
+        if Input.neur_rad<7
+            segmm{kk+kp-1}=filtered_Image(1:2:end,1:2:end,:);
+        else
+            segmm{kk+kp-1}=filtered_Image;
+        end        
     end
     disp(kk)
 end
