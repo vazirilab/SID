@@ -9,6 +9,10 @@ else
     return
 end
 
+if ~isfield(opts,'non_neg_on')
+    opts.non_neg_on=false;
+end
+
 
 %% making sure what has already been computed does not get computed again
 Varg=ones(1,length(infiles_struct));
@@ -35,8 +39,9 @@ num=length(infiles_struct);
 timeseries=zeros(size(forward_model,1)+(~isempty(bg_spatial)),num);
 mig=1:min(Junk_size,num);
 flag=1;
+if opts.non_neg_on
 forward_model=forward_model';
-
+end
 
 while num>0
     for img_ix =mig
@@ -44,22 +49,11 @@ while num>0
             fprintf([num2str(line(img_ix)) ' ']);
         end
         img_rect =  ImageRect(double(imread(fullfile(indir, infiles_struct(img_ix).name), 'tiff')), x_offset, y_offset, dx, Nnum,0);
-        if img_ix==1
-%             if isfield(opts,'baseline')
-%                 if ~isempty(opts.baseline)
-%                     baseline=opts.baseline(logical(Varg));
-%                 else
-%                     baseline=[1:length(infiles_struct)]*0+1;
-%                 end
-%             else
-%                 baseline=[1:length(infiles_struct)]*0+1;
-%             end
-        end
         if img_ix == mig(1)
             sensor_movie = ones(size(img_rect, 1)*size(img_rect, 2), length(mig), 'double');
         end
         if size(infiles_struct)==1
-            sensor_movie(:) = img_rect(:)/baseline(img_ix);          
+            sensor_movie(:) = img_rect(:)/baseline(img_ix);
         else
             sensor_movie(:, img_ix-mig(1)+1) = img_rect(:)/baseline(img_ix);
         end
@@ -69,12 +63,20 @@ while num>0
     end
     
     if flag==1
-        %         [timeseries(:,mig),B]=NONnegLSQ_gpu(forward_model,bg_spatial,sensor_movie,[],opts);
-        [timeseries(:,mig),Q,~,h]=fast_nnls(forward_model,sensor_movie,opts);
+        if opts.non_neg_on
+            [timeseries(:,mig),Q,~,h]=fast_nnls(forward_model,sensor_movie,opts);
+        else
+            Q=inv(forward_model*forward_model');
+            Q=Q*forward_model;
+            timeseries(:,mig)=Q*sensor_movie;
+        end
         flag=0;
     else
-        %         [timeseries(:,mig),B]=NONnegLSQ_gpu(forward_model,bg_spatial,sensor_movie,[],opts,B);
-        [timeseries(:,mig)]=fast_nnls(forward_model,sensor_movie,opts,Q,[],h);
+        if opts.non_neg_on
+            [timeseries(:,mig)]=fast_nnls(forward_model,sensor_movie,opts,Q,[],h);
+        else
+            timeseries(:,mig)=Q*sensor_movie;
+        end
     end
     if isfield(opts, 'outfile')
         save(opts.outfile, 'timeseries','-v7.3');
