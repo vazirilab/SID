@@ -7,12 +7,12 @@ if  ~isfield(opts,'total')
 end
 
 if nargin<3
-    opts.gpu='off';
+    opts.gpu=false;
     opts.tol=1e-12;
 end
 
 if ~isfield(opts,'gpu')
-    opts.gpu='off';
+    opts.gpu=false;
 end
 
 if ~isfield(opts,'tol_p')
@@ -20,7 +20,7 @@ if ~isfield(opts,'tol_p')
 end
 
 if ~isfield(opts,'display')
-    opts.display='off';
+    opts.display=false;
 end
 
 if ~isfield(opts,'tol')
@@ -66,7 +66,7 @@ else
     df=df+Q*x;
 end
 
-if strcmp(opts.gpu,'on')
+if opts.gpu
     gpu = gpuDevice(opts.gpu_ids);
     x=gpuArray(x);
     Q=gpuArray(Q);
@@ -91,7 +91,7 @@ Xi=inv(X'*X)*X';
 while ~isempty(x)
     %     tic
     x_=x;
-    if strcmp(opts.display,'on')
+    if opts.display
         disp(s)
     end
     s=s+1;
@@ -119,7 +119,7 @@ while ~isempty(x)
     else
         alpha=sum(df_.^2,1)./sum(df_.*(Q*df_),1);
         alpha(isnan(alpha))=0;
-        if strcmp(opts.gpu,'on')
+        if opts.gpu
             x = gather(x);
             x_ = gather(x_);
             df_ = gather(df_);
@@ -129,7 +129,7 @@ while ~isempty(x)
             x_(:,ii)=x(:,ii)-df_(:,ii)*alpha(ii);
         end
         
-        if strcmp(opts.gpu,'on')
+        if opts.gpu
             x = gpuArray(x);
             x_ = gpuArray(x_);
         end
@@ -172,10 +172,10 @@ while ~isempty(x)
         end
         
         if max(ids(:))
-            if strcmp(opts.display,'on')
+            if opts.display
                 disp(find(ids))
             end
-            if strcmp(opts.gpu,'on')
+            if opts.gpu
                 xx(:,rds(ids))=gather(x(:,ids));
             else
                 xx(:,rds(ids))=x(:,ids);
@@ -194,7 +194,7 @@ while ~isempty(x)
     %     toc
 end
 
-if strcmp(opts.gpu,'on')
+if opts.gpu
     if nargout>1
         Q=gather(Q);
     end

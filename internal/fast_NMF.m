@@ -27,6 +27,7 @@ function [S,T]=fast_NMF(Y,n,opts,T,S)
 %                       the first "n" principal components. opts.ini="rand"
 %                       generates "n" smoothed random traces as
 %                       initialization for T.
+% opts.max_iter...      maximum number of iterations
 %%
 if nargin<4
     T=rand(n,size(Y,2));
