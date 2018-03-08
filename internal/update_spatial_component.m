@@ -66,13 +66,13 @@ for neur=1:size(template,1)
             S=[S' iS']';
         end
     end
-    if strcmp(opts.display,'on')
+    if opts.display
         disp(neuron);
     end
 end
 
 if isfield(opts,'gpu')
-    if strcmp(opts.gpu,'on')
+    if opts.gpu
         gpuDevice([]);
     end
 end
