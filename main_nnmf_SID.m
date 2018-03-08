@@ -519,7 +519,7 @@ else % use GPU
             options{worker}.gpu_ids=mod((worker-1),nn)+1;
             options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
             disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Starting batch reconstrution in worker ' num2str(worker)]);
-            recon{worker}= reconstruction_new(infile, psf_ballistic, options{worker});
+            recon{worker}= reconstruction_sparse(infile, psf_ballistic, options{worker});
             gpuDevice([]);
         end
         for kp=1:min(nn,size(S,1)-(kk-1))
