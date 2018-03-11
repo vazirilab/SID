@@ -1,7 +1,7 @@
-function [xx, Q, df, h]=fast_nnls(A,Y,opts,Q,df,h,temp)
+function [xx, Q, df, h]=fast_nnls(A,Y,opts,Q,df,h)
+% FAST_NNLS:
 
 
-%%
 if  ~isfield(opts,'total')
     opts.total=0;
 end
@@ -42,7 +42,7 @@ end
 if ~isfield(opts,'lambda')
     opts.lambda = 0;
 end
-%%
+
 if nargin<=3
     Q=A'*A;
     h=1./sqrt(diag(Q));
@@ -73,12 +73,7 @@ if opts.gpu
     df=gpuArray(df);
 end
 
-if nargin==7
-    passive=max(x>0,df<0).*temp;
-else
-    passive=max(x>0,df<0);
-end
-
+passive=max(x>0,df<0);
 
 h_=max(h);
 rds=1:size(Y,2);
@@ -104,11 +99,8 @@ while ~isempty(x)
         df=df+Q*(x_-x);
         x=x_;
         
-        if nargin==7
-            passive=max(x>0,df<0).*temp;
-        else
-            passive=max(x>0,df<0);
-        end
+        passive=max(x>0,df<0);
+        
         
         if isfield(opts,'max_iter')
             if s>opts.max_iter
@@ -141,8 +133,6 @@ while ~isempty(x)
             elseif opts.tol_p==1
                 test=[test' log(sum(abs(x_-x),1))']';
             end
-            
-            
             if size(test,1)>opts.sample
                 test=test(2:end,:);
             end
@@ -150,7 +140,6 @@ while ~isempty(x)
                 k=Xi*test;
                 ids=logical(max((max(passive)==0),(h_*exp(test(end,:))./(1-exp(k(1,:)))<opts.tol*size(x,1)*max(x,[],1)).*(sum(abs(X*k-test),1)<opts.tol_*opts.sample).*(exp(k(1,:))<1)));
             end
-            
         else
             ids=[];
         end
@@ -164,12 +153,7 @@ while ~isempty(x)
         end
         x=x_;
         
-        
-        if nargin==7
-            passive=max(x>0,df<0).*temp;
-        else
-            passive=max(x>0,df<0);
-        end
+        passive=max(x>0,df<0);
         
         if max(ids(:))
             if opts.display
@@ -185,9 +169,6 @@ while ~isempty(x)
             df=df(:,~ids);
             passive=passive(:,~ids);
             test=test(:,~ids);
-            if nargin==7
-                temp=temp(:,~ids);
-            end
         end
         
     end
