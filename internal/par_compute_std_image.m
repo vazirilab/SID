@@ -1,5 +1,5 @@
 function [std_image, mean_image] = par_compute_std_image(indir, step, bg_temporal, bg_spatial, final_frame, x_offset, y_offset, dx, Nnum, mask, crop_border_microlenses)
-% PAR_CMPUTE_STD_IMAGE: Algorithm for the incremental computation of the 
+% PAR_COMPUTE_STD_IMAGE: Algorithm for the incremental computation of the 
 % standard deviation image of the tif-movie conntained in the folderer 'indir'.
 %
 % Input: 
