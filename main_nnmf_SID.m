@@ -179,16 +179,15 @@ end
 
 
 %%
-% crop_thresh_coord_x = 0.8;	%values for fish
-% crop_thresh_coord_y = 0.75;	%values for fish
+
 Input.nnmf_opts.max_iter = 600;
 Input.nnmf_opts.lambda_t = 0;
 Input.nnmf_opts.lambda_s = 0;
 Input.nnmf_opts.lambda_orth = 0.1;
 Input.nnmf_opts.rank = 30;
 Input.update_template = false;
-Input.detrend = false;
-Input.optimize_kernel = 0;
+Input.detrend = true;
+Input.optimize_kernel = false;
 mkdir(Input.output_folder)
 
 %% Cache and open PSF
@@ -278,9 +277,6 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_mask.pdf']), 
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
 tic;
 [sensor_movie,SID_output.movie_size] = read_sensor_movie(Input.LFM_folder, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, Input.rectify, Input.frames, Input.mask, Input.crop_border_microlenses);
-% if isinf(Input.prime)
-%     Input.prime=num_frames;
-% end
 toc
 %% Compute background and std-image
 
@@ -384,15 +380,6 @@ axis image;
 hold off;
 print(fullfile(Input.output_folder, [timestr '_crop_mask.png']), '-dpng', '-r300');
 
-%%% subtract baseline outside of brain
-%outside = ~Inside;
-%if Input.do_crop
-%    baseline = squeeze(mean(sensor_movie(logical(outside),:),1));
-%    for ix=1:size(sensor_movie,2)
-%        sensor_movie(:,ix)= sensor_movie(:,ix) - baseline(ix);
-%    end
-%    sensor_movie(sensor_movie<0)=0;
-%end
 
 %% de-trend
 tic
@@ -430,7 +417,6 @@ toc
 
 %% generate NNMF
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.nnmf_opts.rank) '-factorization']);
-% Input.nnmf_opts.bg_temporal=squeeze(mean(sensor_movie,1));
 p=0.8;
 Input.nnmf_opts.ini_method='pca';
 SID_output.neuron_centers_ini=[];
@@ -464,24 +450,8 @@ save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_pre
 
 %% reconstruct spatial filters
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Reconstructing spatial filters']);
-poolobj = gcp('nocreate');
-delete(poolobj);
 
-if isempty(Input.gpu_ids)
-    infile=struct;
-    for k=1:size(S,1)
-        img_=reshape(S(k,:),size(SID_output.std_image,1),[]);
-        img_=img_/max(img_(:));
-        img_=img_-quantile(reshape(img_(Inside==0),1,[]),p);
-        img_(img_<0)=0;
-        infile.LFmovie=full(img_)/max(img_(:));
-        SID_output.recon{k} = reconstruction_cpu_sparse(Input.psf_filename_ballistic, infile, Input.recon_opts);
-        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
-    end   
-else % use GPU
-    nn=length(Input.gpu_ids);
-    gimp=Input.gpu_ids;
-    parpool(nn);
+
     
     if Input.optimize_kernel
         infile=struct;
@@ -494,40 +464,18 @@ else % use GPU
         img_(img_<0)=0;
         infile.LFmovie=full(img_)/max(img_(:));       
         test = reconstruction_new(infile, Input.psf_filename_ballistic, options{1}); % TN TODO: check this for matfile
-        [~,kernel] = total_deconv(test,Input.total_deonv_opts);
+        [~,kernel] = total_deconv(test,Input.total_deconv_opts);
         Input.form = 'free';
         Input.recon_opts.rad=kernel;
     end
     
-    for kk = 1 : nn : size(S,1)
-        img=cell(nn,1);
-        for worker=1:min(nn,size(S,1)-(kk-1))
-            k=kk+worker-1;
-            img_=reshape(S(k,:),size(SID_output.std_image,1),[]);
-            img_=img_/max(img_(:));
-            img_=img_-quantile(reshape(img_(SID_output.microlenses==0),1,[]),p);
-            img_(img_<0)=0;
-            img{worker}=full(img_)/max(img_(:));
-        end
-        options=cell(min(nn,size(S,1)-(kk-1)),1);
-        recon=cell(min(nn,size(S,1)-(kk-1)),1);
-        tmp_recon_opts = Input.recon_opts;
-        parfor worker=1 : min(nn, size(S,1)-(kk-1))
-            infile=struct;
-            infile.LFmovie=(img{worker});
-            options{worker} = tmp_recon_opts;
-            options{worker}.gpu_ids=mod((worker-1),nn)+1;
-            options{worker}.gpu_ids=gimp(options{worker}.gpu_ids);
-            disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Starting batch reconstrution in worker ' num2str(worker)]);
-            recon{worker}= reconstruction_sparse(infile, psf_ballistic, options{worker});
-            gpuDevice([]);
-        end
-        for kp=1:min(nn,size(S,1)-(kk-1))
-            SID_output.recon{kk+kp-1}=recon{kp};
-        end
-        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' num2str(kk)])
-    end
-end
+    
+    opts=Input.recon_opts;
+    opts.gpu_ids=Input.gpu_ids;
+    opts.microlenses=SID_output.microlenses;
+    
+    SID_output.S = reshape(SID_output.S,[size(SID_output.S,1) SID_output.movie_size(1:2)]);
+    SID_output.recon=reconstruct_S(SID_output.S,psf_ballistic,opts);
 
 %% crop reconstructed image with eroded mask, to reduce border artefacts
 if numel(Input.mask) > 1 && any(Input.mask ~= 0)
@@ -545,20 +493,19 @@ for i = 1:size(S, 1)
     figure('Position', [50 50 1200 600]); 
     subplot(1,4,[1:3])
     hold on;
-    %imagesc(squeeze(max(SID_output.recon{i}, [], 3)));
-    imagesc(squeeze(max(SID_output.recon{i}(:,:,:), [], 3)));
+    imagesc(squeeze(max(SID_output.recon{i}, [], 3)));
     axis image;
     axis ij;
     colorbar;
     hold off;
     subplot(1,4,4)
-    imagesc(squeeze(max(SID_output.recon{i}(:,:,:), [], 2))); %(:,:,65)
+    imagesc(squeeze(max(SID_output.recon{i}, [], 2))); 
     axis ij;
     colorbar;
     print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r600');
 end
-%pause(10);
-%close all;
+pause(10);
+close all;
 
 %% Save checkpoint
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Saving post-nmf-recon checkpoint']);
@@ -613,6 +560,8 @@ end
 id=logical((SID_output.neuron_centers_ini(:,3)>z_1).*(SID_output.neuron_centers_ini(:,3)<z_2));
 SID_output.neuron_centers_ini=SID_output.neuron_centers_ini(id,:);
 SID_output.neur_id=SID_output.neur_id(id,:);
+
+
 %% Plot segmentation result
 timestr = datestr(now, 'YYmmddTHHMM');
 for i = 1:numel(SID_output.segmm)
@@ -664,7 +613,7 @@ Nnum=psf_ballistic.Nnum;
 
 %% optimize model
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
-% sensor_movie=max(sensor_movie-quantile(reshape(sensor_movie(SID_output.microlenses(SID_output.idx)==0,:),1,[]),p),0);
+
 tic
 opts_temp=[];
 opts_temp.tol=1e-7; 
@@ -685,6 +634,7 @@ if isfield(Input, 'bg_sub') && Input.bg_sub
 %     bg_spatial_=bg_spatial_(SID_output.idx);
 %     bg_spatial_=bg_spatial_/norm(bg_spatial_(:));
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
+    SID_output.indices_in_orig=[SID_output.indices_in_orig' length(SID_output.indices_in_orig)+1];
 end
 
 % sensor_movie = double(sensor_movie .* (sensor_movie_max - sensor_movie_min) + sensor_movie_min);
