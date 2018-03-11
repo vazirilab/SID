@@ -38,6 +38,7 @@ function recon_nnmf=reconstruct_S(S,psf_ballistic,opts)
 % Output:
 %   recon_nnmf...   cell-array of reconstructed Volumes
 
+
 if nargin<3
     opts = struct;
 end
@@ -120,15 +121,15 @@ if isempty(opts.gpu_ids)
     backwardFUN_raw = @(projection) backwardProjectACC_new(psf_ballistic.H, ...
         projection, psf_ballistic.CAindex);
     if isempty(kernel)
-        forwardFUN =  backwardFUN_raw;
-        backwardFUN = forwardFUN_raw;
+        forwardFUN = forwardFUN_raw; 
+        backwardFUN = backwardFUN_raw;
     else
         forwardFUN = @(Xguess) forwardFUN_raw(convn(Xguess,kernel,'same'));
         backwardFUN = @(projection) convn(backwardFUN_raw(projection),kernel,'same');
     end
     
     for ii = 1:size(S,1)
-        img = S(ii,:,:);
+        img = squeeze(S(ii,:,:));
         img = max(img - quantile(img(opts.microlenses(:)==0),opts.q),0);
         img = img/max(img(:));
         disp('Backprojecting...');
@@ -154,7 +155,7 @@ else
         for worker=1:min(opts.NumWorkers,size(S,1)-(kk-1))
             disp(['Preparing job: ' num2str(worker)]);
             ii=kk+worker-1;
-            img = S(ii,:,:);
+            img = squeeze(S(ii,:,:));
             img = max(img - quantile(img(opts.microlenses(:)==0),opts.q),0);
             img = img/max(img(:));
             img_cell{worker}=img;
@@ -194,7 +195,7 @@ else
             recon_nnmf{kk+kp-1}=recon{kp};
         end
         disp(['Reconstruction of frames from ' num2str(kk) ' to ' ...
-            num2str(kk+poolobj.NumWorkers-1) ' completed']);
+            num2str(min(kk+poolobj.NumWorkers-1,size(S,1))) ' completed']);
     end
 end
 

@@ -139,7 +139,7 @@ else
     Input.recon_opts.mode='TV';
     Input.recon_opts.lambda=[ 0, 0, 10];
     Input.recon_opts.lambda_=0.1;
-    Input.recon_opts.form='free';    
+    Input.recon_opts.shape='free';    
 end
  
 if isfield(optional_args, 'filter')
@@ -421,11 +421,11 @@ p=0.8;
 Input.nnmf_opts.ini_method='pca';
 SID_output.neuron_centers_ini=[];
 Input.nnmf_opts.active=SID_output.microlenses>0;
-[S, T]=fast_NMF(max(sensor_movie-quantile(reshape(sensor_movie(SID_output.microlenses==0,:),1,[]),p),0),Input.nnmf_opts.rank,Input.nnmf_opts);
-S=S(:,logical(mean(S,1)<mean(mean(S,1))+3*std(mean(S,1))));
-S=[S SID_output.std_image(:)]';
-SID_output.S = S;
-SID_output.T = T;
+[SID_output.S, SID_output.T]=fast_NMF(max(sensor_movie-quantile(reshape(...
+    sensor_movie(SID_output.microlenses==0,:),1,[]),p),0),Input.nnmf_opts.rank,Input.nnmf_opts);
+SID_output.S=SID_output.S(:,logical(mean(SID_output.S,1)<mean(mean(...
+    SID_output.S,1))+3*std(mean(SID_output.S,1))));
+SID_output.S=[SID_output.S SID_output.std_image(:)]';
 
 %% Crop sensor movie
 sensor_movie = sensor_movie(SID_output.idx,:);
@@ -450,32 +450,27 @@ save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_pre
 
 %% reconstruct spatial filters
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Reconstructing spatial filters']);
+opts=Input.recon_opts;
+opts.gpu_ids=Input.gpu_ids;
+opts.microlenses=SID_output.microlenses;
+SID_output.S = reshape(SID_output.S,[size(SID_output.S,1) SID_output.movie_size(1:2)]);
 
-
-    
-    if Input.optimize_kernel
-        infile=struct;
-        options{1}=Input.recon_opts;
-        options{1}.gpu_ids=gimp(1);
-        
-        img_=reshape(S(1,:),size(SID_output.std_image,1),[]);
-        img_=img_/max(img_(:));
-        img_=img_-quantile(reshape(img_(Inside==0),1,[]),p);
-        img_(img_<0)=0;
-        infile.LFmovie=full(img_)/max(img_(:));       
-        test = reconstruction_new(infile, Input.psf_filename_ballistic, options{1}); % TN TODO: check this for matfile
-        [~,kernel] = total_deconv(test,Input.total_deconv_opts);
-        Input.form = 'free';
-        Input.recon_opts.rad=kernel;
+if Input.optimize_kernel
+    if isfield(opts,'ker_param')
+        opts=rmfield(opts,'ker_param');
     end
-    
-    
-    opts=Input.recon_opts;
-    opts.gpu_ids=Input.gpu_ids;
-    opts.microlenses=SID_output.microlenses;
-    
-    SID_output.S = reshape(SID_output.S,[size(SID_output.S,1) SID_output.movie_size(1:2)]);
-    SID_output.recon=reconstruct_S(SID_output.S,psf_ballistic,opts);
+    kernel=0;
+    while max(kernel(:))==0
+        test_recon=reconstruct_S(SID_output.S(ceil(rand(1)*size(SID_output.S,1)),...
+            :,:),psf_ballistic,opts);
+        kernel=find_kernel(test_recon{1},Input);
+    end
+    opts.ker_shape='user';
+    opts.ker_param=kernel;
+    SID_output.kernel=kernel;
+end
+
+SID_output.recon=reconstruct_S(SID_output.S,psf_ballistic,opts);
 
 %% crop reconstructed image with eroded mask, to reduce border artefacts
 if numel(Input.mask) > 1 && any(Input.mask ~= 0)
