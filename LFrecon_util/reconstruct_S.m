@@ -7,7 +7,7 @@ function recon_nnmf=reconstruct_S(S,psf_ballistic,opts)
 % Input:
 % S...              Vector of LFM images
 % struct opts
-%   opts.shape      shape of the kernel 
+%   opts.shape      shape of the kernel
 %       'gaussian'  gaussian kernel
 %       'ball'      binary kernel in shape of ball
 %       'lorentz'   laurentzian kernel
@@ -28,13 +28,13 @@ function recon_nnmf=reconstruct_S(S,psf_ballistic,opts)
 %                   descent with exact line search, implemented by
 %                   fast_nnls.
 %   gpu_ids         Vector of ids of gpu's, that are available. If this
-%                   array is empty the algorithm will perform reconstruction 
+%                   array is empty the algorithm will perform reconstruction
 %                   on the CPU
 %   NumWorkers      number of workers for parpool
 %   p, mode,lambda,
 %   lambda_         See help of deconv-algorithm
 % q...              Quantile of the image, where it should be thresholded.
-% 
+%
 % Output:
 %   recon_nnmf...   cell-array of reconstructed Volumes
 
@@ -121,7 +121,7 @@ if isempty(opts.gpu_ids)
     backwardFUN_raw = @(projection) backwardProjectACC_new(psf_ballistic.H, ...
         projection, psf_ballistic.CAindex);
     if isempty(kernel)
-        forwardFUN = forwardFUN_raw; 
+        forwardFUN = forwardFUN_raw;
         backwardFUN = backwardFUN_raw;
     else
         forwardFUN = @(Xguess) forwardFUN_raw(convn(Xguess,kernel,'same'));
@@ -132,11 +132,12 @@ if isempty(opts.gpu_ids)
         img = squeeze(S(ii,:,:));
         img = max(img - quantile(img(opts.microlenses(:)==0),opts.q),0);
         img = img/max(img(:));
+        nrm = sqrt(sum(img(:).^2));
         disp('Backprojecting...');
-        Htf = backwardFUN(single(img));
+        Htf = backwardFUN(single(img/nrm));
         disp('Backprojection completed');
         disp('Reconstructing...')
-        recon_nnmf{ii} = fast_deconv(forwardFUN, backwardFUN, Htf, opts.maxIter, opts);
+        recon_nnmf{ii} = nrm*fast_deconv(forwardFUN, backwardFUN, Htf, opts.maxIter, opts);
         disp(['Reconstruction of frame ' num2str(ii) ' completed']);
     end
 else
@@ -178,7 +179,8 @@ else
                 forwardFUN = @(Xguess) forwardFUN_raw(convn(Xguess,kern,'same'));
                 backwardFUN = @(projection) convn(backwardFUN_raw(projection),kern,'same');
             end
-            Xguess = backwardFUN(img_cell{worker});
+            nrm = sqrt(sum(img_cell{worker}(:).^2));
+            Xguess = backwardFUN(img_cell{worker}/nrm);
             if strcmp(options{worker}.whichSolver,'ISRA')
                 Xguess = deconvRL(forwardFUN, backwardFUN, Xguess, ...
                     options{worker}.maxIter, Xguess ,options{worker});
@@ -189,7 +191,7 @@ else
                 Xguess=fast_deconv_neg(forwardFUN, backwardFUN, Xguess, ...
                     options{worker}.maxIter,options{worker});
             end
-            recon{worker} = gather(Xguess);
+            recon{worker} = nrm*gather(Xguess);
         end
         for kp=1:min(opts.NumWorkers,size(S,1)-(kk-1))
             recon_nnmf{kk+kp-1}=recon{kp};
