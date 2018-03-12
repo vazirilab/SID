@@ -1,9 +1,12 @@
 function kernel=find_kernel(Volume,Input)
 
-opts=struct;
-opts.border=[1,1,15];
 rr{1}=Volume;
-segmm=filter_recon(rr,Input,opts);
+opts=struct;
+opts.border = [1,1,15];
+opts.gpu_ids = Input.gpu_ids;
+opts.neur_rad = Input.neur_rad;
+opts.native_focal_plane = Input.native_focal_plane;
+segmm=filter_recon(rr,opts);
 segmm=max(segmm{1}-mean(segmm{1}(segmm{1}>0))/2,0);
 
 beads=bwconncomp(segmm);
