@@ -117,12 +117,6 @@ else
     Input.native_focal_plane = 26;
 end
 
-if isfield(optional_args, 'delta')
-    Input.delta = optional_args.delta;
-else
-    Input.delta = -1; %% use length of movie divided by the modulus of this number
-end
-
 % typical neuron radius in px. Typically 6 for fish using 20x/0.5
 % objective, 9-12 for mouse cortex and 16x/0.8
 if isfield(optional_args, 'neuron_radius_px')
@@ -136,10 +130,9 @@ if isfield(optional_args, 'recon_opts')
 else
     Input.recon_opts.p=2;
     Input.recon_opts.maxIter=8;
-    Input.recon_opts.mode='TV';
-    Input.recon_opts.lambda=[ 0, 0, 10];
-    Input.recon_opts.lambda_=0.1;
-    Input.recon_opts.shape='free';    
+    Input.recon_opts.mode='basic';
+    Input.recon_opts.lambda_=3.5;
+    Input.recon_opts.ker_shape='user';    
 end
  
 if isfield(optional_args, 'filter')
@@ -470,7 +463,7 @@ if Input.optimize_kernel
     SID_output.kernel=kernel;
 end
 
-SID_output.recon=reconstruct_S(SID_output.S,psf_ballistic,opts);
+SID_output.recon_=reconstruct_S(SID_output.S,psf_ballistic,opts);
 
 %% crop reconstructed image with eroded mask, to reduce border artefacts
 if numel(Input.mask) > 1 && any(Input.mask ~= 0)
@@ -508,16 +501,22 @@ save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_pos
 
 %% filter reconstructed spatial filters
 opts.border = [1,1,15];
-
+opts.gpu_ids = Input.gpu_ids;
+if Input.optimize_kernel
+    opts.neur_rad = 6;
+else
+    opts.neur_rad = Input.neur_rad;
+end
+opts.native_focal_plane = Input.native_focal_plane;
 if Input.filter
     disp('Filtering reconstructed spatial filters');
-    SID_output.segmm=filter_recon(SID_output.recon,Input,opts);
+    SID_output.segmm=filter_recon(SID_output.recon,opts);
 else
     SID_output.segmm = SID_output.recon;
 end
 
 %% Segment reconstructed components
-threshold = 0.04;
+threshold = 0.01;
 Input.axial=4;
 N=40;
 % z_1
@@ -528,7 +527,8 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': generate initial brain model'])
 dim=[1 1 Input.axial];
 SID_output.neuron_centers_ini=[];
 Volume=SID_output.segmm{1}*0;
-for ii=1:size(SID_output.segmm,2)
+[~,u] = max([size(SID_output.segmm{1},1),size(SID_output.segmm{1},2)]);
+for ii=1:size(SID_output.segmm,u)
     temp_vol=Volume*0;
     SID_output.neuron_centers_per_component{ii} = segment_component(SID_output.segmm{ii},threshold);
     for jj=1:size(SID_output.neuron_centers_per_component{ii},1)
@@ -541,16 +541,15 @@ end
 
 [SID_output.neuron_centers_ini,SID_output.neur_id]=iterate_cluster(SID_output.neuron_centers_per_component,N,Input.neur_rad,dim); 
 
-disp('Check the axial distribution and remove top/bottom artefacts');
-
 figure;plot(hist(SID_output.neuron_centers_ini(:,3),size(SID_output.recon{1},3)));
 xlabel('z-axis');
 ylabel('neuron frequency');
 if ~exist('z_1','var')
-z_1 = input('Input lower cutoff \n');
+    disp('Check the axial distribution and remove top/bottom artefacts');
+    z_1 = input('Input lower cutoff \n');
 end
 if ~exist('z_2','var')
-z_2 = input('Input upper cutoff \n');
+    z_2 = input('Input upper cutoff \n');
 end
 id=logical((SID_output.neuron_centers_ini(:,3)>z_1).*(SID_output.neuron_centers_ini(:,3)<z_2));
 SID_output.neuron_centers_ini=SID_output.neuron_centers_ini(id,:);
