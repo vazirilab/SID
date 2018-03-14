@@ -9,8 +9,8 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % Input.dx
 
 %%% DETRENDING
-% Input.detrend -- boolean, whether to perform detrending prior to NMF 
-% Input.delta  -- integer, Half width of sliding window (in units of frames) for 
+% Input.detrend -- boolean, whether to perform detrending prior to NMF
+% Input.delta  -- integer, Half width of sliding window (in units of frames) for
 % low-pass filtering the frame means prior to detrending. Set this to a value that is large
 % compared to the duration of a Ca transient (e.g. 10 times as large), to
 % avoid that the detrending smoothes out true Ca transients.
@@ -87,10 +87,10 @@ end
 if isfield(optional_args, 'frames')
     Input.frames = optional_args.frames;
 else
-   Input.frames.start = 1;
-   Input.frames.step = 10;
-   Input.frames.end = inf;
-   Input.frames.mean = false;
+    Input.frames.start = 1;
+    Input.frames.step = 10;
+    Input.frames.end = inf;
+    Input.frames.mean = false;
 end
 
 if isfield(optional_args, 'optimize_kernel')
@@ -132,9 +132,9 @@ else
     Input.recon_opts.maxIter=8;
     Input.recon_opts.mode='basic';
     Input.recon_opts.lambda_=3.5;
-    Input.recon_opts.ker_shape='user';    
+    Input.recon_opts.ker_shape='user';
 end
- 
+
 if isfield(optional_args, 'filter')
     Input.filter = optional_args.filter;
 else
@@ -142,41 +142,43 @@ else
 end
 
 if isfield(optional_args, 'total_deconv_opts')
-	Input.total_deconv_opts = optional_args.total_deconv_opts;
+    Input.total_deconv_opts = optional_args.total_deconv_opts;
 else
-	Input.total_deconv_opts = [];
+    Input.total_deconv_opts = [];
 end
 
 if isfield(optional_args, 'psf_cache_dir')  % a very fast storage location (ideally, a ramdisk), for caching the psf file. This is to avoid serialization to parfor workers
-	Input.psf_cache_dir = optional_args.psf_cache_dir;
+    Input.psf_cache_dir = optional_args.psf_cache_dir;
 else
-	Input.psf_cache_dir = '/dev/shm';
+    Input.psf_cache_dir = '/dev/shm';
 end
 
 if isfield(optional_args, 'do_crop')
-	Input.do_crop = optional_args.do_crop;
+    Input.do_crop = optional_args.do_crop;
 else
-	Input.do_crop = true;
+    Input.do_crop = true;
 end
 
 % Width of borders to crop, in units of microlenses. Set to empty array to
 % disable. When giving a value of floor([ix1_lo_border_width ix1_hi_border_width ix2_hi_border_width
 % ix2_hi_border_width] / Nnum)
-% that means that 
+% that means that
 % cropped_img = full_img(ix1_lo_border_width + 1 : end - ix1_hi_border_width, ix2_lo_border_width + 1 : end - ix2_hi_border_width)
 if isfield(optional_args, 'crop_border_microlenses')
-	Input.crop_border_microlenses = optional_args.crop_border_microlenses;
+    Input.crop_border_microlenses = optional_args.crop_border_microlenses;
 else
-	Input.crop_border_microlenses = [0 0 0 0];
+    Input.crop_border_microlenses = [0 0 0 0];
 end
 
-
+if ~isfield(Input,'cluster_iter')
+    Input.cluster_iter=40;
+end
 %%
-
+Input.axial = 4;
 Input.nnmf_opts.max_iter = 600;
-Input.nnmf_opts.lambda_t = 0;
-Input.nnmf_opts.lambda_s = 0;
-Input.nnmf_opts.lambda_orth = 0.1;
+Input.nnmf_opts.lamb_temp = 0;
+Input.nnmf_opts.lamb_spat = 0;
+Input.nnmf_opts.lamb_orth = 5e-4;
 Input.nnmf_opts.rank = 30;
 Input.update_template = false;
 Input.detrend = true;
@@ -209,7 +211,7 @@ psf_size = size(psf_ballistic, 'H');
 pctconfig('portrange', [27400 27500] + randi(100)*100);
 cluster = parcluster('local');
 if ~isfield(Input, 'job_storage_location')
-    Input.job_storage_location = tempdir();    
+    Input.job_storage_location = tempdir();
 end
 [~, rand_string] = fileparts(tempname());
 Input.job_storage_location_unique = fullfile(Input.job_storage_location, ['nnmf_sid_' rand_string]);
@@ -237,9 +239,9 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_mask.pdf']), 
 %     SID_output.bg_temporal = [];
 %     SID_output.bg_spatial = [];
 % end
-% 
+%
 % SID_output.bg_spatial_pre_crop_rectify = SID_output.bg_spatial;
-% 
+%
 % if Input.rectify
 %     SID_output.bg_spatial = ImageRect(SID_output.bg_spatial_pre_crop_rectify, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, ...
 %         true, Input.crop_border_microlenses(3), Input.crop_border_microlenses(4), Input.crop_border_microlenses(1), Input.crop_border_microlenses(2));
@@ -247,7 +249,7 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_mask.pdf']), 
 %     Nnum = psf_ballistic.Nnum;
 %     SID_output.bg_spatial = SID_output.bg_spatial_pre_crop_rectify(crop_border_microlenses(1)*Nnum + 1 : end - crop_border_microlenses(2)*Nnum, crop_border_microlenses(3)*Nnum + 1 : end - crop_border_microlenses(4)*Nnum);
 % end
-% 
+%
 % figure; imagesc(SID_output.bg_spatial); axis image; colorbar; title('Spatial background');
 % print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_bg_spatial.png']), '-dpng', '-r300');
 % figure; plot(SID_output.bg_temporal); title('Temporal background');
@@ -262,7 +264,7 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_mask.pdf']), 
 %     [SID_output.std_image, ~] = par_compute_std_image(Input.LFM_folder, Input.frames.step, SID_output.bg_temporal, SID_output.bg_spatial_pre_crop_rectify, ...
 %         Input.frames.end, 0, 0, 0, 0, Input.mask, Input.crop_border_microlenses);
 % end
-% 
+%
 % figure; imagesc(SID_output.std_image, [prctile(SID_output.std_image(:), 0) prctile(SID_output.std_image(:), 100.0)]); title('Stddev image'); axis image; axis ij; colorbar;
 % print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.png']), '-dpng', '-r600');
 
@@ -274,7 +276,7 @@ toc
 %% Compute background and std-image
 
 if Input.bg_sub
-   [SID_output.bg_spatial,SID_output.bg_temporal]=rank_1_factorization(sensor_movie,Input.bg_iter);
+    [SID_output.bg_spatial,SID_output.bg_temporal]=rank_1_factorization(sensor_movie,Input.bg_iter);
 end
 
 SID_output.std_image=compute_std_image(sensor_movie,SID_output.bg_spatial,SID_output.bg_temporal);
@@ -292,10 +294,14 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.pn
 
 
 %% Find cropping mask, leaving out areas with stddev as in background-only area
-p_1=0.2;
-p_2=0.6;
-
-if Input.do_crop
+if ~isfield(Input,'crop_params')
+    disp('Find appropriate crop_params!')
+    Input.crop_params(1)=0.2;
+    Input.crop_params(2)=0.6;
+    flag1 = false;
+    flag2 = false;
+end
+while max(~flag1,~flag2)
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
     bg = SID_output.bg_spatial/max(SID_output.bg_spatial(:));
     Nnum = psf_ballistic.Nnum;
@@ -308,59 +314,57 @@ if Input.do_crop
     Inside = bg;
     h = fspecial('average', 3*psf_ballistic.Nnum);
     Inside=conv2(Inside,h,'same');
-    Inside=max(Inside-quantile(Inside(:),p_1),0);
+    Inside=max(Inside-quantile(Inside(:),Input.crop_params(1)),0);
     Inside=conv2(single(Inside>0),h,'same');
     SID_output.microlenses=Inside.*SID_output.microlenses;
-    SID_output.microlenses=max(SID_output.microlenses-quantile(SID_output.microlenses(:),p_2),0);
-    
-%     Input.nnmf_opts.active=logical((Inside>0.0001).*(SID_output.microlenses>0.09));
-
-%     
-%     Inside=bg(ceil(crop_thresh_coord_x * size(SID_output.std_image,1)):end, ceil(crop_thresh_coord_y * size(SID_output.std_image,2)):end);
-%     Inside=bg-mean(Inside(:))-2*std(Inside(:));
-%     Inside(Inside<0)=0;
-%     beads=bwconncomp(Inside>0);
-%     for kk=1:beads.NumObjects
-%         if numel(beads.PixelIdxList{kk})<8
-%             Inside(beads.PixelIdxList{kk})=0;
-%         end
-%     end
-%     h = fspecial('average', 3*psf_ballistic.Nnum);
-%     Inside=conv2(Inside,h,'same');
-%     beads=bwconncomp(Inside);                    %reduce to biggest connected component
-%     for kk=1:beads.NumObjects
-%         sp(kk)=size(beads.PixelIdxList{kk},1);
-%     end
-%     [~,sp]=max(sp);
-%     for kk=[1:sp-1 sp+1:beads.NumObjects]
-%         Inside(beads.PixelIdxList{kk})=0;
-%     end
-%     Inside(Inside<quantile(Inside(:),0.55))=0; % 0.55 decrease until it works for most data sets
-%     
-%     
-%     mx=mean(Inside,2);
-%     my=mean(Inside,1);
-%     SID_output.crop.x_min=min(find(mx));
-%     SID_output.crop.y_min=min(find(my));
-%     SID_output.crop.x_max=max(find(mx));
-%     SID_output.crop.y_max=max(find(my));
-%     SID_output.crop.x_min=floor(SID_output.crop.x_min/Nnum)*Nnum;
-%     SID_output.crop.y_min=floor(SID_output.crop.y_min/Nnum)*Nnum;
-%     SID_output.crop.x_max=ceil(SID_output.crop.x_max/Nnum)*Nnum;
-%     SID_output.crop.y_max=ceil(SID_output.crop.y_max/Nnum)*Nnum;
-%     sensor_movie=reshape(sensor_movie,size(SID_output.std_image,1),size(SID_output.std_image,2),[]);
-%     sensor_movie=sensor_movie(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
-%     SID_output.bg_spatial=SID_output.bg_spatial(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
-%     Inside=Inside(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
-%     SID_output.std_image=SID_output.std_image(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
-%     sensor_movie=reshape(sensor_movie,size(SID_output.std_image,1)*size(SID_output.std_image,2),[]);
-    SID_output.idx=find(Inside>0);
-else
-    Inside = SID_output.std_image * 0 + 1;
-    SID_output.microlenses=Inside;
-    SID_output.idx=find(Inside>0);
+    SID_output.microlenses=max(SID_output.microlenses-quantile(SID_output.microlenses(:),Input.crop_params(2)),0);
+    if ~flag1
+        figure(1);imagesc(Inside);
+        drawnow expose
+        flag1 = input('Does figure(1) give a good representation of the activity in the standard-deviation image? (yes=1,no=0)');
+        if ~flag1
+            disp(['The current value of Input.crop_params(1) is: ' num2str(Input.crop_params(1))]);
+            Input.crop_params(1) = input('Enter new Value for Input.crop_params(1): ');
+        end
+    end
+    if ~flag2
+        figure(2);imagesc(SID_output.microlenses);
+        drawnow expose
+        flag2 = input('Does figure(2) give a good representation of the microlens pattern? (yes=1,no=0)');
+        if ~flag2
+            disp(['The current value of Input.crop_params(2) is: ' num2str(Input.crop_params(2))]);
+            Input.crop_params(2) = input('Enter new Value for Input.crop_params(2): ');
+        end
+    end
 end
 
+if Input.do_crop
+    if ~isfield(Input,'crop_mask')
+        Input.crop_mask=Inside;
+    end
+    mx=mean(Input.crop_mask,2);
+    my=mean(Input.crop_mask,1);
+    SID_output.crop.x_min=min(mx>0);
+    SID_output.crop.y_min=min(my>0);
+    SID_output.crop.x_max=max(mx>0);
+    SID_output.crop.y_max=max(my>0);
+    SID_output.crop.x_min=floor(SID_output.crop.x_min/Nnum)*Nnum;
+    SID_output.crop.y_min=floor(SID_output.crop.y_min/Nnum)*Nnum;
+    SID_output.crop.x_max=ceil(SID_output.crop.x_max/Nnum)*Nnum;
+    SID_output.crop.y_max=ceil(SID_output.crop.y_max/Nnum)*Nnum;
+    sensor_movie=reshape(sensor_movie,size(SID_output.std_image,1),size(SID_output.std_image,2),[]);
+    sensor_movie=sensor_movie(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
+    SID_output.microlenses=SID_output.microlenses(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
+    SID_output.bg_spatial=SID_output.bg_spatial(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
+    Inside=Inside(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
+    SID_output.std_image=SID_output.std_image(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
+    sensor_movie=reshape(sensor_movie,size(SID_output.std_image,1)*size(SID_output.std_image,2),[]);
+    SID_output.idx=find(Inside>0);
+    SID_output.movie_size(1:2) = size(SID_output.std_image);
+else
+    Inside = SID_output.std_image * 0 + 1;
+    SID_output.idx=find(Inside>0);
+end
 
 timestr = datestr(now, 'YYmmddTHHMM');
 figure;
@@ -373,21 +377,20 @@ axis image;
 hold off;
 print(fullfile(Input.output_folder, [timestr '_crop_mask.png']), '-dpng', '-r300');
 
-
 %% de-trend
 tic
 if Input.detrend
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
     SID_output.baseline_raw = squeeze(mean(sensor_movie,1))';
-%     delta=Input.delta;
-%     for t = 1 : size(SID_output.baseline_raw, 1)
-%         base(t) = min(SID_output.baseline_raw(max(1, t - delta) : min(size(SID_output.baseline_raw, 1), t + delta)));
-%     end
-%     base = double(base);
+    %     delta=Input.delta;
+    %     for t = 1 : size(SID_output.baseline_raw, 1)
+    %         base(t) = min(SID_output.baseline_raw(max(1, t - delta) : min(size(SID_output.baseline_raw, 1), t + delta)));
+    %     end
+    %     base = double(base);
     if Input.delta <= 0
-       smooth_window_span = numel(SID_output.baseline_raw) / max(1, abs(Input.delta));
+        smooth_window_span = numel(SID_output.baseline_raw) / max(1, abs(Input.delta));
     else
-       smooth_window_span = 2 * Input.delta / Input.frames.step;
+        smooth_window_span = 2 * Input.delta / Input.frames.step;
     end
     SID_output.baseline = smooth(SID_output.baseline_raw, smooth_window_span, 'sgolay', 3);
     figure; hold on; plot(SID_output.baseline_raw); plot(SID_output.baseline); title('Frame means (post bg subtract), raw + trend fit'); hold off;
@@ -427,7 +430,7 @@ sensor_movie = sensor_movie(SID_output.idx,:);
 close all;
 timestr = datestr(now, 'YYmmddTHHMM');
 for i=1:size(SID_output.T, 1)
-    figure( 'Position', [100 100 800 800],'visible',false);
+    figure( 'Position', [100 100 800 800]);%,'visible',false);
     subplot(4,1,[1,2,3]);
     imagesc(reshape(SID_output.S(i,:), size(Inside))); axis image; colormap('parula'); colorbar;
     title(['NMF component ' num2str(i)]);
@@ -443,9 +446,9 @@ save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_pre
 
 %% reconstruct spatial filters
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Reconstructing spatial filters']);
-opts=Input.recon_opts;
-opts.gpu_ids=Input.gpu_ids;
-opts.microlenses=SID_output.microlenses;
+opts = Input.recon_opts;
+opts.gpu_ids = Input.gpu_ids;
+opts.microlenses = SID_output.microlenses;
 SID_output.S = reshape(SID_output.S,[size(SID_output.S,1) SID_output.movie_size(1:2)]);
 
 if Input.optimize_kernel
@@ -456,15 +459,18 @@ if Input.optimize_kernel
     while max(kernel(:))==0
         test_recon=reconstruct_S(SID_output.S(ceil(rand(1)*size(SID_output.S,1)),...
             :,:),psf_ballistic,opts);
-        kernel=find_kernel(test_recon{1},Input);
+        [kernel,SID_output.neur_rad]=find_kernel(test_recon{1},[1 1 4],...
+            Input.neur_rad,Input.native_focal_plane,...
+            Input.axial, Input.gpu_ids(1));
     end
     opts.ker_shape='user';
     opts.ker_param=kernel;
-    SID_output.kernel=kernel;
 end
 
-SID_output.recon_=reconstruct_S(SID_output.S,psf_ballistic,opts);
+SID_output.recon = reconstruct_S(SID_output.S,psf_ballistic,opts);
+SID_output.recon_opts = opts;
 
+clear opts
 %% crop reconstructed image with eroded mask, to reduce border artefacts
 if numel(Input.mask) > 1 && any(Input.mask ~= 0)
     mask_dilated = imerode(Input.mask, strel('disk', 25));
@@ -477,8 +483,8 @@ end
 
 %% Plot reconstructed spatial filters
 timestr = datestr(now, 'YYmmddTHHMM');
-for i = 1:size(S, 1)
-    figure('Position', [50 50 1200 600]); 
+for i = 1:size(SID_output.S, 1)
+    figure('Position', [50 50 1200 600]);
     subplot(1,4,[1:3])
     hold on;
     imagesc(squeeze(max(SID_output.recon{i}, [], 3)));
@@ -487,7 +493,7 @@ for i = 1:size(S, 1)
     colorbar;
     hold off;
     subplot(1,4,4)
-    imagesc(squeeze(max(SID_output.recon{i}, [], 2))); 
+    imagesc(squeeze(max(SID_output.recon{i}, [], 2)));
     axis ij;
     colorbar;
     print(fullfile(Input.output_folder, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r600');
@@ -508,25 +514,25 @@ else
     opts.neur_rad = Input.neur_rad;
 end
 opts.native_focal_plane = Input.native_focal_plane;
+
 if Input.filter
     disp('Filtering reconstructed spatial filters');
-    SID_output.segmm=filter_recon(SID_output.recon,opts);
+    SID_output.segmm = filter_recon(SID_output.recon,opts);
 else
     SID_output.segmm = SID_output.recon;
 end
 
 %% Segment reconstructed components
 threshold = 0.01;
-Input.axial=4;
-N=40;
+
 % z_1
 % z_2
 
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': generate initial brain model'])
 
-dim=[1 1 Input.axial];
-SID_output.neuron_centers_ini=[];
-Volume=SID_output.segmm{1}*0;
+dim = [1 1 Input.axial];
+SID_output.neuron_centers_ini = [];
+Volume = SID_output.segmm{1}*0;
 [~,u] = max([size(SID_output.segmm{1},1),size(SID_output.segmm{1},2)]);
 for ii=1:size(SID_output.segmm,u)
     temp_vol=Volume*0;
@@ -539,17 +545,17 @@ for ii=1:size(SID_output.segmm,u)
     disp(size(SID_output.neuron_centers_per_component{ii}));
 end
 
-[SID_output.neuron_centers_ini,SID_output.neur_id]=iterate_cluster(SID_output.neuron_centers_per_component,N,Input.neur_rad,dim); 
+[SID_output.neuron_centers_ini,SID_output.neur_id]=iterate_cluster(SID_output.neuron_centers_per_component,Input.cluster_iter,Input.neur_rad,dim);
 
 figure;plot(hist(SID_output.neuron_centers_ini(:,3),size(SID_output.recon{1},3)));
 xlabel('z-axis');
 ylabel('neuron frequency');
 if ~exist('z_1','var')
     disp('Check the axial distribution and remove top/bottom artefacts');
-    z_1 = input('Input lower cutoff \n');
+    z_1 = input('Input top cutoff \n');
 end
 if ~exist('z_2','var')
-    z_2 = input('Input upper cutoff \n');
+    z_2 = input('Input bottom cutoff \n');
 end
 id=logical((SID_output.neuron_centers_ini(:,3)>z_1).*(SID_output.neuron_centers_ini(:,3)<z_2));
 SID_output.neuron_centers_ini=SID_output.neuron_centers_ini(id,:);
@@ -559,7 +565,7 @@ SID_output.neur_id=SID_output.neur_id(id,:);
 %% Plot segmentation result
 timestr = datestr(now, 'YYmmddTHHMM');
 for i = 1:numel(SID_output.segmm)
-    figure('Position', [50 50 1200 600]); 
+    figure('Position', [50 50 1200 600]);
     colormap parula;
     subplot(1,4,[1:3])
     hold on;
@@ -581,7 +587,7 @@ for i = 1:numel(SID_output.segmm)
 end
 
 %%
-clearvars -except sensor_movie Input SID_output mean_signal psf_ballistic Hsize m sensor_movie_max sensor_movie_min;
+clearvars -except sensor_movie Input SID_output mean_signal psf_ballistic Hsize m sensor_movie_max sensor_movie_min dim;
 
 %% Initiate forward_model
 %TODO: check performance of generate_forward_model() with matfile
@@ -589,12 +595,17 @@ clearvars -except sensor_movie Input SID_output mean_signal psf_ballistic Hsize 
 if isempty(Input.gpu_ids)
     SID_output.forward_model_ini=generate_LFM_library_CPU(SID_output.neuron_centers_ini, psf_ballistic, Input.neur_rad, dim, size(SID_output.recon{1}));
 else
-    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,SID_output.neur_id,SID_output.std_image,Input,psf_ballistic);
+    opts = SID_output.recon_opts;
+    opts.image_size = SID_output.movie_size(1:2);
+    opts.axial = Input.axial;
+    opts.neur_rad = Input.neur_rad;
+    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,SID_output.neur_id,SID_output.std_image,Input,psf_ballistic,opts);
 end
 
 %% generate template
 thres=0.05;
 SID_output.template=generate_template(SID_output.neuron_centers_ini,psf_ballistic.H,SID_output.std_image,thres);
+
 %% crop model
 neur=find(squeeze(max(SID_output.forward_model_ini(:,SID_output.idx),[],2)>0));
 SID_output.forward_model_iterated=SID_output.forward_model_ini(neur,SID_output.idx);
@@ -610,7 +621,7 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
 
 tic
 opts_temp=[];
-opts_temp.tol=1e-7; 
+opts_temp.tol=1e-7;
 opts_temp.tol_=1e-2;
 opts_temp.gpu_ids=1;
 opts_temp.sample=300;
@@ -624,14 +635,10 @@ opts_temp.lambda = 0;
 
 
 if isfield(Input, 'bg_sub') && Input.bg_sub
-%     bg_spatial_=average_ML(reshape(SID_output.bg_spatial,size(SID_output.bg_spatial)),Nnum, Input.fluoslide_fn);
-%     bg_spatial_=bg_spatial_(SID_output.idx);
-%     bg_spatial_=bg_spatial_/norm(bg_spatial_(:));
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
     SID_output.indices_in_orig=[SID_output.indices_in_orig' length(SID_output.indices_in_orig)+1];
 end
 
-% sensor_movie = double(sensor_movie .* (sensor_movie_max - sensor_movie_min) + sensor_movie_min);
 sensor_movie =double(sensor_movie*sensor_movie_max);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update']);
 SID_output.forward_model_iterated=diag(1./(sqrt(sum(SID_output.forward_model_iterated.^2,2))))*SID_output.forward_model_iterated;
@@ -661,13 +668,13 @@ for iter=1:Input.num_iter
     SID_output.timeseries_iterated=SID_output.timeseries_iterated(id2,:);
     template_=template_(id2(1:end-Input.bg_sub),:);
     SID_output.neuron_centers_iterated=SID_output.neuron_centers_iterated(id2(1:end-Input.bg_sub),:);
-%     SID_output.forward_model_ini=SID_output.forward_model_ini(id2(1:end-Input.bg_sub),:);
+    %     SID_output.forward_model_ini=SID_output.forward_model_ini(id2(1:end-Input.bg_sub),:);
     tic
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting spatial update']);
     SID_output.timeseries_iterated=diag(1./(sqrt(sum(SID_output.timeseries_iterated.^2,2))))*SID_output.timeseries_iterated;
     SID_output.forward_model_iterated=update_spatial_component(SID_output.timeseries_iterated, sensor_movie, template_, opts_spat);
     toc
-   
+    
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Spatial update completed'])
     
     if isfield(Input, 'update_template') && Input.update_template
@@ -682,22 +689,22 @@ for iter=1:Input.num_iter
                 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' num2str(neuron)])
             end
         end
-    end      
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Pruning neurons']);  
+    end
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Pruning neurons']);
     id2=[];
     for k=1:size(SID_output.forward_model_iterated,1)
         trace=SID_output.forward_model_iterated(k,SID_output.microlenses(SID_output.idx)>0)>tolerance_s;
         if sum(trace)>(Nnum^2)/3
             id2=[id2 k];
         end
-                disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
+        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
     end
     SID_output.indices_in_orig=SID_output.indices_in_orig(id2);
     SID_output.timeseries_iterated=SID_output.timeseries_iterated(id2,:);
     SID_output.forward_model_iterated=SID_output.forward_model_iterated(id2,:);
     template_=template_(id2(1:end-Input.bg_sub),:);
     SID_output.neuron_centers_iterated=SID_output.neuron_centers_iterated(id2(1:end-Input.bg_sub),:);
-%     SID_output.forward_model_ini=SID_output.forward_model_ini(id2(1:end-Input.bg_sub),:);
+    %     SID_output.forward_model_ini=SID_output.forward_model_ini(id2(1:end-Input.bg_sub),:);
     tic
     SID_output.forward_model_iterated=diag(1./(sqrt(sum(SID_output.forward_model_iterated.^2,2))))*SID_output.forward_model_iterated;
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting Temporal update']);
@@ -705,7 +712,7 @@ for iter=1:Input.num_iter
     SID_output.timeseries_iterated = fast_nnls(SID_output.forward_model_iterated(:,SID_output.microlenses(SID_output.idx)>0)', sensor_movie(SID_output.microlenses(SID_output.idx)>0,:), opts_temp);
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
     toc
-        disp([num2str(iter) '. iteration completed']);
+    disp([num2str(iter) '. iteration completed']);
 end
 SID_output.template_=template_;
 opts_temp.warm_start=[];
@@ -807,8 +814,8 @@ for n_ix = 1:floor(numel(sel_nixs)/2)
     ax.ColorOrderIndex = 1;
     loop_ts = ts(sel_nixs(n_ix),:);
     if clip
-       loop_ts(loop_ts > 3*y_shift) = y_shift; 
-       loop_ts(loop_ts < -3*y_shift) = -y_shift; 
+        loop_ts(loop_ts > 3*y_shift) = y_shift;
+        loop_ts(loop_ts < -3*y_shift) = -y_shift;
     end
     t = (0:size(ts,2)-1);
     %plot(t, mat2gray(squeeze(loop_ts)) + 1*(n_ix-1));
@@ -832,8 +839,8 @@ for n_ix = ceil(numel(sel_nixs)/2):numel(sel_nixs)
     ax.ColorOrderIndex = 1;
     loop_ts = ts(sel_nixs(n_ix),:);
     if clip
-       loop_ts(loop_ts > y_shift) = y_shift; 
-       loop_ts(loop_ts < -y_shift) = -y_shift; 
+        loop_ts(loop_ts > y_shift) = y_shift;
+        loop_ts(loop_ts < -y_shift) = -y_shift;
     end
     t = (0:size(ts,2)-1);
     %plot(t, mat2gray(squeeze(loop_ts)) + 1*(n_ix-1));
@@ -854,9 +861,9 @@ print(fullfile(Input.output_folder, [timestr '_timeseries_zscore_stacked.png']),
 %% Inspect forward model and associated ts
 ix = randperm(size(SID_output.timeseries_iterated, 1), 1);
 fps = 16;
-figure('Position', [20, 20, 2000, 2000]); 
+figure('Position', [20, 20, 2000, 2000]);
 subplot(3,1,1:2);
-imagesc(reshape(SID_output.forward_model_iterated(ix,:), size(SID_output.std_image)), [0 max(SID_output.forward_model_iterated(ix,:))]); 
+imagesc(reshape(SID_output.forward_model_iterated(ix,:), size(SID_output.std_image)), [0 max(SID_output.forward_model_iterated(ix,:))]);
 axis image;
 colorbar();
 subplot(3,1,3);
