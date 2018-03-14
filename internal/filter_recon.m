@@ -1,4 +1,4 @@
-function segmm=filter_recon(recon,opts)
+function segmm=filter_recon(recon, opts)
 
 [~,u] = max([size(recon,1),size(recon,2)]);
 poolobj = gcp('nocreate');
@@ -22,7 +22,7 @@ end
 
 if isempty(poolobj)||(poolobj.NumWorkers~=opts.NumWorkers)
     delete(poolobj);
-    parpool(opts.NumWorkers);
+    poolobj=parpool(opts.NumWorkers);
 end
 
 if isfield(opts,'gpu_ids')
@@ -82,7 +82,7 @@ for kk=1:opts.NumWorkers:size(recon,u)
         end        
     end
     disp(['Filtering of Volumes from ' num2str(kk) ' to ' ...
-        num2str(min(kk+poolobj.NumWorkers-1,size(S,1))) ' completed']);
+        num2str(min(kk+poolobj.NumWorkers-1,size(recon,u))) ' completed']);
 end
 
 for ix=1:size(recon,u)
