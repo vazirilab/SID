@@ -1,11 +1,13 @@
-function kernel=find_kernel(Volume,Input)
+function [kernel, neur_rad]=find_kernel(Volume,border,neur_rad,native_focal_plane, axial, gpu_id)
 
-rr{1}=Volume;
 opts=struct;
-opts.border = [1,1,15];
-opts.gpu_ids = Input.gpu_ids;
-opts.neur_rad = Input.neur_rad;
-opts.native_focal_plane = Input.native_focal_plane;
+opts.border = border;
+if nargin==6
+    opts.gpu_ids = gpu_id;
+end
+opts.neur_rad = neur_rad;
+opts.native_focal_plane = native_focal_plane;
+rr{1}=Volume;
 segmm=filter_recon(rr,opts);
 segmm=max(segmm{1}-mean(segmm{1}(segmm{1}>0))/2,0);
 
@@ -23,20 +25,26 @@ end
 
 centers=round(segment_component(segmm,0));
 
-id=(centers(:,1)>Input.neur_rad).*(centers(:,2)>Input.neur_rad).*...
-    (centers(:,3)>Input.neur_rad/Input.axial);
+id=(centers(:,1)>neur_rad).*(centers(:,2)>neur_rad).*...
+    (centers(:,3)>neur_rad/axial);
 centers=centers(id>0,:);
-id=(centers(:,1)<size(segmm,1)-Input.neur_rad).*(centers(:,2)<size(segmm,1)-Input.neur_rad).*...
-    (centers(:,3)<size(segmm,1)-Input.neur_rad/Input.axial);
+id=(centers(:,1)<size(segmm,1)-neur_rad).*(centers(:,2)<size(segmm,1)-neur_rad).*...
+    (centers(:,3)<size(segmm,1)-neur_rad/axial);
 centers=centers(id>0,:);
 
 
-kernel=zeros(2*round(Input.neur_rad*[1 1 1/Input.axial])+1);
+kernel=zeros(2*round(neur_rad*[1 1 1/axial])+1);
 for k=1:size(centers,1)
-    kernel=kernel+Volume(centers(k,1)-round(Input.neur_rad):centers(k,1)+round(Input.neur_rad),...
-        centers(k,2)-round(Input.neur_rad):centers(k,2)+round(Input.neur_rad),...
-        centers(k,3)-round(Input.neur_rad/Input.axial):centers(k,3)+round(Input.neur_rad/Input.axial));
+    kernel=kernel+Volume(centers(k,1)-round(neur_rad):centers(k,1)+round(neur_rad),...
+        centers(k,2)-round(neur_rad):centers(k,2)+round(neur_rad),...
+        centers(k,3)-round(neur_rad/axial):centers(k,3)+round(neur_rad/axial));
 end
+
+kernel = kernel/sum(kernel(:));
+p = squeeze(sum(sum(kernel,2),3));
+p = p + squeeze(sum(sum(kernel,1),3))';
+neur_rad = 3*sqrt(sum(p'/2.*[1:length(p)].^2)-sum(p'/2.*[1:length(p)])^2);
+
 end
 
 
