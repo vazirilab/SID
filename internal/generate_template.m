@@ -40,7 +40,6 @@ end
 
 template=false([size(centers,1),size(std_image)]);
 for k=1:size(centers,1)
-    tic
     if shape
         template(k,:) = reshape(((Y-centers(k,1)).^2 + (X-centers(k,2)).^2 )<...
             radius(round(centers(k,3)))^2,1,[]);
@@ -53,7 +52,6 @@ for k=1:size(centers,1)
             +radius(round(centers(k,3)))))=true;
         template(k,:) = tmp(:);
     end
-    toc
 end
 disp([num2str(size(centers,1)) ' templates generated']);
 
