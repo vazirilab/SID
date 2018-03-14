@@ -85,34 +85,11 @@ for l=1:size(S,1)
     recon_nnmf{l} = ones([size(S,2) size(S,3) size(psf_ballistic.H,5)],'single');
 end
 
-disp('Generating kernel');
-
 if isfield(opts,'ker_param')
-    if strcmp(opts.ker_shape,'ball')
-        [X,Y,Z] = meshgrid(-opts.ker_param(1):opts.ker_param(1),-...
-            opts.ker_param(1):opts.ker_param(1),-opts.ker_param(2):opts.ker_param(2));
-        kernel = single((X.^2/opts.ker_param(1)^2 + Y.^2/opts.ker_param(1)^2 +...
-            Z.^2/opts.ker_param(2)^2)<=1);
-    elseif strcmp(opts.ker_shape,'gaussian')
-        gaussian=fspecial('gaussian',ceil(10*opts.ker_param(1))+1,...
-            opts.ker_param(1));
-        kernel=reshape(reshape(gaussian,[],1)*exp(-[-3*opts.ker_param(2):...
-            1:3*opts.ker_param(2)].^2/4/opts.ker_param(2)^2),ceil(...
-            10*opts.ker_param(1))+1,ceil(10*opts.ker_param(1))+1,[]);
-    elseif strcmp(opts.ker_shape,'lorentz')
-        [X,Y,Z] = meshgrid([-ceil(5*opts.ker_param(1)):ceil(...
-            5*opts.ker_param(1))],[-ceil(5*opts.ker_param(1)):...
-            ceil(5*opts.ker_param(1))],[-ceil(5*opts.ker_param(2)):...
-            ceil(5*opts.ker_param(2))]);
-        kernel = 1./(1 + (opts.ker_param(1)*(X.^2 + Y.^2) + opts.ker_param(2)*Z.^2));
-    elseif strcmp(opts.ker_shape,'user')
-        kernel=opts.ker_param;
-    end
-    kernel = kernel/norm(kernel(:));
+    kernel = generate_kernel(opts.ker_shape,opts.ker_param);
 else
     kernel = [];
 end
-disp('Prepared Reconstruction kernel');
 
 if isempty(opts.gpu_ids)
     disp('No GPUs selected -> CPU reconstruction');
