@@ -1,70 +1,91 @@
-function forward_model=generate_LFM_library_GPU(recon,centers,neur_id,std_image,Input,psf,options)
+function forward_model=generate_LFM_library_GPU(recon,centers,neur_id,psf,options)
 
 
 disp('generating library');
 poolobj = gcp('nocreate');
 delete(poolobj);
 
-if nargin<7
+if nargin<5
     options=[];
-    options.num_Workers=12;
+    options.NumWorkers=12;
     options.p=2;
     options.maxIter=3;
     options.mode='basic';
     options.gpu_ids=[1 2 4 5];
 end
 
-if ~isfield(options,'num_Workers')
-    options.num_Workers=6;
+if ~isfield(options,'NumWorkers')
+    if isfield(options,'gpu_ids')
+        options.NumWorkers=length(options.gpu_ids);
+    else
+        options.NumWorkers=1;
+    end
 end
 
 if ~isfield(options,'gpu_ids')
     options.gpu_ids=[1,2,4];
 end
 
+if ~isfield(options,'ker_shape')
+    options.ker_shape = 'ball';
+end
+
+if isfield(options,'ker_param')
+    kernel = generate_kernel(options.ker_shape,options.ker_param);
+else
+    kernel = [];
+end
 
 gimp=options.gpu_ids;
-parpool(options.num_Workers);
-forward_model=zeros(size(centers,1),length(std_image(:)));
+parpool(options.NumWorkers);
+forward_model=zeros(size(centers,1),prod(options.image_size));
 
-for kk=1:options.num_Workers:size(centers,1)
-    Volume=cell(options.num_Workers,1);
-    H=cell(options.num_Workers,1);
-    frwd=cell(options.num_Workers,1);
-    for worker=1:min(options.num_Workers,size(centers,1)-(kk-1))
+for kk=1:options.NumWorkers:size(centers,1)
+    Volume=cell(options.NumWorkers,1);
+    H=cell(options.NumWorkers,1);
+    frwd=cell(options.NumWorkers,1);
+    for worker=1:min(options.NumWorkers,size(centers,1)-(kk-1))
         x=round(centers(kk+worker-1,1));
         y=round(centers(kk+worker-1,2));
         z=round(centers(kk+worker-1,3));
-        Volume{worker}=zeros([size(std_image) min(z+ceil(Input.neur_rad/Input.axial),...
-            size(psf.H,5))-max(z-ceil(Input.neur_rad/Input.axial),1)+1]);
+        Volume{worker}=zeros([options.image_size min(z+ceil(options.neur_rad/options.axial),...
+            size(psf.H,5))-max(z-ceil(options.neur_rad/options.axial),1)+1]);
         
         ids=neur_id(kk+worker-1,1:size(neur_id,2));
         ids=find(ids);
         for k=1:length(ids)
-            Volume{worker}(max(x-Input.neur_rad,1):min(x+Input.neur_rad,size(std_image,1)),...
-                max(y-Input.neur_rad,1):min(y+Input.neur_rad,size(std_image,2)),:)=...
-                Volume{worker}(max(x-Input.neur_rad,1):min(x+Input.neur_rad,size(std_image,1)),...
-                max(y-Input.neur_rad,1):min(y+Input.neur_rad,size(std_image,2)),:)+...
-                recon{ids(k)}(max(x-Input.neur_rad,1):min(x+Input.neur_rad,size(std_image,1)),...
-                max(y-Input.neur_rad,1):min(y+Input.neur_rad,size(std_image,2)),...
-                max(z-ceil(Input.neur_rad/Input.axial),1):min(z+ceil(Input.neur_rad/Input.axial),size(psf.H,5)));
-                
+            Volume{worker}(max(x-options.neur_rad,1):min(x+options.neur_rad,options.image_size(1)),...
+                max(y-options.neur_rad,1):min(y+options.neur_rad,options.image_size(2)),:)=...
+                Volume{worker}(max(x-options.neur_rad,1):min(x+options.neur_rad,options.image_size(1)),...
+                max(y-options.neur_rad,1):min(y+options.neur_rad,options.image_size(2)),:)+...
+                recon{ids(k)}(max(x-options.neur_rad,1):min(x+options.neur_rad,options.image_size(1)),...
+                max(y-options.neur_rad,1):min(y+options.neur_rad,options.image_size(2)),...
+                max(z-ceil(options.neur_rad/options.axial),1):min(z+ceil(options.neur_rad/options.axial),size(psf.H,5)));
+            
         end
         Volume{worker}=Volume{worker}/length(ids);
-       
-        H{worker}=psf.H(:,:,:,:,max(z-ceil(Input.neur_rad/Input.axial),1):min(z+...
-            ceil(Input.neur_rad/Input.axial),size(psf.H,5)));   
+        
+        H{worker}=psf.H(:,:,:,:,max(z-ceil(options.neur_rad/options.axial),1):min(z+...
+            ceil(options.neur_rad/options.axial),size(psf.H,5)));
     end
     
-    parfor worker=1:min(options.num_Workers,size(centers,1)-(kk-1))
+    parfor worker=1:min(options.NumWorkers,size(centers,1)-(kk-1))
         tic
         gpuDevice(gimp(mod((worker-1),length(gimp))+1));
-        frwd{worker}=gather(forwardProjectGPU(gpuArray(H{worker}), gpuArray(Volume{worker})));
+        kern = gpuArray(kernel);
+        forwardFUN_raw = @(Xguess) forwardProjectGPU(H{worker}, Xguess );
+        if isempty(kernel)
+            forwardFUN = forwardFUN_raw;
+        else
+            forwardFUN = @(Xguess) forwardFUN_raw(convn(Xguess,kern,'same'));
+        end
+        frwd{worker}=gather(forwardFUN(gpuArray(Volume{worker})));
         toc
+        reset(gpuDevice);
         gpuDevice([]);
     end
     
-    for kp=1:min(options.num_Workers,size(centers,1)-(kk-1))
+    for kp=1:min(options.NumWorkers,size(centers,1)-(kk-1))
         forward_model(kk+kp-1,:)=frwd{kp}(:);
     end
     disp(kk)
