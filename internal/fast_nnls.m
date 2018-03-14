@@ -1,6 +1,9 @@
 function [xx, Q, df, h]=fast_nnls(A,Y,opts,Q,df,h)
 % FAST_NNLS:
 
+if nargin<3
+    opts = struct;
+end
 
 if  ~isfield(opts,'total')
     opts.total=0;
@@ -21,6 +24,10 @@ end
 
 if ~isfield(opts,'display')
     opts.display=false;
+end
+
+if ~isfield(opts,'max_iter')
+    opts.max_iter=2000;
 end
 
 if ~isfield(opts,'tol')
