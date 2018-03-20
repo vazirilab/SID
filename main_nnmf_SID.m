@@ -294,23 +294,15 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.pn
 
 
 %% Find cropping mask, leaving out areas with stddev as in background-only area
-
-disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
 if ~isfield(Input,'crop_params')
     disp('Find appropriate crop_params!')
     Input.crop_params(1)=0.2;
     Input.crop_params(2)=0.6;
     flag1 = false;
     flag2 = false;
-    flag = false;
-else
-    flag1 = true;
-    flag2 = true;
-    flag = true;
 end
-
-while max(~flag1,max(~flag2,flag))
-
+while max(~flag1,~flag2)
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
     bg = SID_output.bg_spatial/max(SID_output.bg_spatial(:));
     Nnum = psf_ballistic.Nnum;
     SID_output.microlenses=SID_output.bg_spatial;
@@ -344,14 +336,31 @@ while max(~flag1,max(~flag2,flag))
             Input.crop_params(2) = input('Enter new Value for Input.crop_params(2): ');
         end
     end
-    flag = false;
 end
 
 if Input.do_crop
     if ~isfield(Input,'crop_mask')
         Input.crop_mask=Inside;
     end
-    [sensor_movie, SID_output] = crop(sensor_movie, SID_output,Inside,Input.crop_mask,Nnum);
+    mx=mean(Input.crop_mask,2);
+    my=mean(Input.crop_mask,1);
+    SID_output.crop.x_min=min(mx>0);
+    SID_output.crop.y_min=min(my>0);
+    SID_output.crop.x_max=max(mx>0);
+    SID_output.crop.y_max=max(my>0);
+    SID_output.crop.x_min=floor(SID_output.crop.x_min/Nnum)*Nnum;
+    SID_output.crop.y_min=floor(SID_output.crop.y_min/Nnum)*Nnum;
+    SID_output.crop.x_max=ceil(SID_output.crop.x_max/Nnum)*Nnum;
+    SID_output.crop.y_max=ceil(SID_output.crop.y_max/Nnum)*Nnum;
+    sensor_movie=reshape(sensor_movie,size(SID_output.std_image,1),size(SID_output.std_image,2),[]);
+    sensor_movie=sensor_movie(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
+    SID_output.microlenses=SID_output.microlenses(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
+    SID_output.bg_spatial=SID_output.bg_spatial(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
+    Inside=Inside(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
+    SID_output.std_image=SID_output.std_image(SID_output.crop.x_min+1:SID_output.crop.x_max,SID_output.crop.y_min+1:SID_output.crop.y_max,:);
+    sensor_movie=reshape(sensor_movie,size(SID_output.std_image,1)*size(SID_output.std_image,2),[]);
+    SID_output.idx=find(Inside>0);
+    SID_output.movie_size(1:2) = size(SID_output.std_image);
 else
     Inside = SID_output.std_image * 0 + 1;
     SID_output.idx=find(Inside>0);
@@ -515,6 +524,7 @@ end
 
 %% Segment reconstructed components
 threshold = 0.01;
+
 % z_1
 % z_2
 
