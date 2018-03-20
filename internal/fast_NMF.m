@@ -8,36 +8,48 @@ function [S,T]=fast_NMF(Y,n,opts,T,S)
 % n...                  rank of the nnmf.
 % T...                  Initial condition for the temporal component of the nnmf.
 %                       If T is not set, the algorithm will compute a first guess
-%                       based on opts.ini.
+%                       based on opts.ini_method.
 % S...                  Initial guess for the spatial compontent of the nnmf.
 %                       If S is not set, it is computed by S=Y*T
 % struct opts:
-% opts.lamb_spat...      lagrangian multiplier for L1 regularizer on S
-% opts.lambda.temp...      lagrangian multiplier for L1 regularizer on T
-% opts.lamb_corr...  lagrangian multiplier for L2 regularizer on
+% opts.lamb_spat...     lagrangian multiplier for L1 regularizer on S
+% opts.lambda.temp...   lagrangian multiplier for L1 regularizer on T
+% opts.lamb_corr...     lagrangian multiplier for L2 regularizer on
 %                       corrcoef(T)-eye(size(S,2))
-% opts.lamb_orth...   lagrangian multiplier for L2 regularizer on
+% opts.lamb_orth...     lagrangian multiplier for L2 regularizer on
 %                       S'*S-eye(size(S,2))
-% opts.lamb_TotVarSpat...     lagrangian multiplier for L2 regularizer on the
+% opts.lamb_spat_TV...  lagrangian multiplier for L2 regularizer on the
 %                       total variation of the components of S.
 %                       It is necessary that the size (height & width) of
 %                       the linearized components of S is included, since
 %                       the algorithm needs the reshape S accordingly.
-% opts.ini...           Initialization method for T. opts.ini='pca' uses
+% opts.lamb_temp_TV...  lagrangian multiplier for L2 regularizer on the 
+%                       Total Variation of the components of T.
+% opts.ini_method...    Initialization method for T. opts.ini='pca' uses
 %                       the first "n" principal components. opts.ini="rand"
 %                       generates "n" smoothed random traces as
 %                       initialization for T.
 % opts.max_iter...      maximum number of iterations
-% opts.lb...            Integer; Lower bound for the number of non-negative
-%                       pixels per spatial component.
-%%
+% substruct opts.xval   see help of function xval
+% opts.diagnostic       Generates a figure during runtime that displays the
+%                       first ten components of S and T, as well as the L2
+%                       error and the S'S reg-error.
+% opts.pointwise...     Boolean; if true the updates will be performed
+%                       pointwise, that means in every pixel and frame
+%                       independently, otherwise they will be performed on
+%                       the entire S or T.
+%
+% Ouput:
+% S...                  Spatial components of the nnmf
+% T...                  Temporal components of the nnmf
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if nargin<3
     opts.lamb_spat=0;
     opts.lamb_temp=0;
     opts.lamb_corr=0;
     opts.lamb_orth=0;
-    opts.lamb_TotVarSpat=0;
-    opts.ini='pca';
+    opts.lamb_spat_TV=0;
+    opts.ini_method='pca';
 else
     if ~isfield(opts,'lamb_spat')
         opts.lamb_spat=0;
@@ -54,195 +66,95 @@ else
     if ~isfield(opts,'active')
         opts.active = ones(1,size(Y,1),'logical');
     end
-    if ~isfield(opts,'lamb_TotVarSpat')
-        opts.lamb_TotVarSpat=0;
+    if ~isfield(opts,'lamb_spat_TV')
+        opts.lamb_spat_TV=0;
     end
-    if ~isfield(opts,'ini')
-        opts.ini='pca';
+    if ~isfield(opts,'lamb_temp_TV')
+        opts.lamb_temp_TV=0;
     end
-    if ~isfield(opts,'lb')
-        opts.lb = 133;
+    if ~isfield(opts,'ini_method')
+        opts.ini_method='pca';
+    end
+    if ~isfield(opts,'diagnostic')
+        opts.diagnostic=false;
+    end
+    if ~isfield(opts,'pointwise')
+        opts.pointwise=false;
     end
 end
 
-if opts.lamb_TotVarSpat
+if opts.lamb_spat_TV
     if ~isfield(opts,'size')
-        disp('The option lamb_TotVarSpat needs additional information: size of the image (opts.size)');
+        disp('The option lamb_spat_TV needs additional information: size of the image (opts.size)');
         return
     end
-    laplace = zeros(1,3,3);
-    laplace(1,2,2)=4;
-    laplace(1,1,2)=-1;
-    laplace(1,3,2)=-1;
-    laplace(1,2,1)=-1;
-    laplace(1,2,3)=-1;
+    opts.laplace = zeros(1,3,3);
+    opts.laplace(1,2,2)=4;
+    opts.laplace(1,1,2)=-1;
+    opts.laplace(1,3,2)=-1;
+    opts.laplace(1,2,1)=-1;
+    opts.laplace(1,2,3)=-1;
 end
 
-
-opts.lamb_orth = opts.lamb_orth * norm(Y(:))*size(Y,2);
-opts.lamb_spat = opts.lamb_spat * norm(Y(:))*size(Y,2);
-opts.lamb_temp = opts.lamb_temp * norm(Y(:));
-opts.lamb_corr = opts.lamb_corr * norm(Y(:));
-opts.lamb_TotVarSpat = opts.lamb_TotVarSpat * norm(Y(:));
-
-flag_t = false;
-flag_s = false;
+nrm=norm(Y(:));
+opts.lamb_orth = opts.lamb_orth*nrm;
+opts.lamb_corr = opts.lamb_corr*nrm;
+opts.lamb_spat = opts.lamb_spat*nrm;
+opts.lamb_temp = opts.lamb_temp*nrm;
+opts.lamb_spat_TV = opts.lamb_spat_TV*nrm;
+opts.lamb_temp_TV = opts.lamb_temp_TV*nrm;
 
 if ~n
     opts.max_iter=0;
 end
 
 if nargin<4
-    if strcmp(opts.ini,'rand')
-        T_0=rand(n,size(Y,2));
-        T_0=conv2(T_0,ones(1,32),'same');
-    else
-        [T_0,~,~] = pca(Y(opts.active,:));
-        T_0 = abs(T_0(:,1:n))';
-    end
-    T = T_0;
+    [T_0,S_0] = initialize_nnmf(Y,n,opts);
 end
 
 if nargin<5
-    S=Y*T';
+    option=opts;
+    if ~isfield(opts,'max_iter')
+        option.max_iter=12;
+    end
+    option.lambda=opts.lamb_spat;
+    S_0=LS_nnls(T_0',Y',option)';
+end
+%%
+if opts.lamb_orth
+    for u=1:size(T_0,1)
+        platz = norm(S_0(:,u));
+        T_0(u,:) = T_0(u,:)*platz;
+        S_0(:,u) = S_0(:,u)/platz;
+    end
+    opts.hilf = ones(n);
+    opts.hilf(1:end,1)=0;
+    opts.hilf(1,1:end)=0;
+    opts.hilf(eye(n)>0)=0;
 end
 
-iter = 0;
-while iter<opts.max_iter
-    iter = iter + 1;
-    T(isnan(T))=0;
-    line = ~logical(sum(T,2));
-    
-    if max(line)
-        T = T_0;
-        S=Y*T';
-        opts.lamb_spat = opts.lamb_spat/10;
-        opts.lamb_temp = opts.lamb_temp/10;
-        opts.lamb_corr = opts.lamb_corr/10;
-        opts.lamb_orth = opts.lamb_orth/10;
-        opts.lamb_TotVarSpat = opts.lamb_TotVarSpat/10;
-        disp(opts);
-        iter = 0;
-        flag_t = true;
-        disp('ZERO detected - ReInitializing');
-        continue
-    elseif flag_t
-        T = T_0;
-        S=Y*T';
-        opts.lamb_spat = opts.lamb_spat/10;
-        opts.lamb_temp = opts.lamb_temp/10;
-        opts.lamb_corr = opts.lamb_corr/10;
-        opts.lamb_orth = opts.lamb_orth/10;
-        opts.lamb_TotVarSpat = opts.lamb_TotVarSpat/10;
-        disp(opts);
-        iter = 0;
-        flag_t = false;
-    end
-    
-    for u=1:size(T,1)
-        platz = norm(T(u,:));
-        T(u,:) = T(u,:)/platz;
-        S(:,u) = S(:,u)*platz;
-    end
-    
-    zsc = zscore(T);
-    N =size(T,2);
-    d = std(T,[],2);
-    
-    Q_S = S(opts.active,:)'*S(opts.active,:);
-    q_T = S(opts.active,:)'*Y(opts.active,:);
-    
-    if opts.lamb_corr
-        hilf = ((zsc*zsc')*zsc - zsc);
-        hilf = diag(1./d)*(hilf - (diag(sum(hilf,2))*ones(size(T))/N + (diag(diag(hilf*zsc'))*zsc)/N));
-        df_T = -q_T + Q_S*T + opts.lamb_temp + opts.lamb_corr*hilf;
-    else
-        df_T = -q_T + Q_S*T + opts.lamb_temp;
-    end
-    
-    passive_T = max(T>0,df_T<0);
-    
-    df_T_ = passive_T.*df_T;
-    
-    alpha_T = sum(sum(df_T_.^2,1),2)/sum(sum(df_T_.*(Q_S*df_T_),1),2);
-    
-    alpha_T(isnan(alpha_T))=0;
-    alpha_T(isinf(alpha_T))=0;
-    if ~max(isnan(alpha_T(:)))
-        T = T - alpha_T*df_T_;
-    end
-    
-    T(T<0)=0;
-    if opts.lamb_orth
-        for u=1:size(T,1)
-            platz = norm(S(:,u));
-            T(u,:) = T(u,:)*platz;
-            S(:,u) = S(:,u)/platz;
-        end
-    end
-    
-    S(isnan(S))=0;
-    
-    
-    line = ~logical(sum(S,1).*(sum(S>0,1)>opts.lb));
+if isfield(opts,'xval')
+    opts=xval(Y,n,opts);
+end
+T = T_0;
+S =S_0;
 
-    if max(line)
-        T = T_0;
-        S=Y*T';
-        opts.lamb_spat = opts.lamb_spat/10;
-        opts.lamb_temp = opts.lamb_temp/10;
-        opts.lamb_corr = opts.lamb_corr/10;
-        opts.lamb_orth = opts.lamb_orth/10;
-        opts.lamb_TotVarSpat = opts.lamb_TotVarSpat/10;
-        disp(opts);
-        iter = 0;
-        flag_s = true;
-        disp('ZERO detected - ReInitializing');
-        continue
-    elseif flag_s
-        T = T_0;
-        S=Y*T';
-        opts.lamb_spat = opts.lamb_spat/10;
-        opts.lamb_temp = opts.lamb_temp/10;
-        opts.lamb_corr = opts.lamb_corr/10;
-        opts.lamb_orth = opts.lamb_orth/10;
-        opts.lamb_TotVarSpat = opts.lamb_TotVarSpat/10;
-        disp(opts);
-        iter = 0;
-        flag_s = false;
+
+P=[];
+E=[];
+for iter=1:opts.max_iter
+    [S,T]=T_update(Y,T,S,opts);
+    [S,T]=S_update(Y,S,T,opts);
+    if opts.diagnostic
+        E(iter)=norm(reshape(std(Y-S*T,1,2),1,[]));
+        P(iter)=norm(reshape(S'*S-eye(size(S,2)),1,[]));
+        figure(12);
+        plot(E);
+        figure(13);
+        plot(P);
+        figure(14);
+        imagesc(S'*S);
     end
-    
-    Q_T = T*T';
-    q_S = Y*T';
-    
-    if opts.lamb_orth
-        df_S = -q_S + S*Q_T + opts.lamb_spat + opts.lamb_orth*(S*(S'*S)-S);
-    else
-        df_S = -q_S + S*Q_T + opts.lamb_spat;
-    end
-    
-    if opts.lamb_TotVarSpat
-        df_S = df_S + opts.lamb_TotVarSpat*reshape(convn(reshape(S',n,opts.size(1),opts.size(2)),laplace,'same'),n,[])';
-    end
-    
-    passive_S = max(S>0,df_S<0);
-    
-    df_S_ = passive_S.*df_S;
-    
-    alpha_S = sum(sum(df_S_.^2,1),2)/sum(sum(df_S_.*(df_S_*Q_T),1),2);
-    alpha_S(isnan(alpha_S))=0;
-    alpha_S(isinf(alpha_S))=0;
-    if ~max(isnan(alpha_S(:)))
-        S = S - alpha_S*df_S_;
-    end
-    
-    if (max(df_S_(:))==0)&&(max(df_T_(:))==0)
-        disp('Terminated!')
-        return;
-    end
-    
-    S(S<0)=0;
-    
     disp(['Iteration ' num2str(iter) ' completed']);
 end
 
