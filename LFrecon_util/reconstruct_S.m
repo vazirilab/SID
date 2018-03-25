@@ -21,7 +21,7 @@ function recon_nnmf=reconstruct_S(S,psf_ballistic,opts)
 %                   direction
 %       'lorentz'   2-vector (accordingly)
 %       'user'      3D-kernel
-%   maxIter         Number of terations of the deconvolution algorithm
+%   max_iter         Number of terations of the deconvolution algorithm
 %   whichSolver     String; Algorithm for deconvolution. Options are
 %                   'ISRA' for the Image space reconstruction algorithm
 %                   implemented by deconvRL, or 'fast_nnls' for gradient
@@ -31,8 +31,10 @@ function recon_nnmf=reconstruct_S(S,psf_ballistic,opts)
 %                   array is empty the algorithm will perform reconstruction
 %                   on the CPU
 %   NumWorkers      number of workers for parpool
-%   p, mode,lambda,
-%   lambda_         See help of deconv-algorithm
+%   lamb_TV_L1,
+%   lamb_TV_L2,
+%   lamb_L1,         
+%   lamb_L2         See help of deconv-algorithm
 % q...              Quantile of the image, where it should be thresholded.
 %
 % Output:
@@ -49,6 +51,22 @@ if ~isfield(opts,'NumWorkers')
     else
         opts.NumWorkers=1;
     end
+end
+
+if ~isfield(opts,'lamb_TV_L1')
+    opts.lamb_TV_L1 = 0;
+end
+if ~isfield(opts,'lamb_TV_L2')
+    opts.lamb_TV_L2 = [0 0 0];
+end
+if ~isfield(opts,'lamb_L1')
+    opts.lamb_L1 = 0;
+end
+if ~isfield(opts,'lamb_L2')
+    opts.lamb_L2 = 0;
+end
+if ~isfield(opts,'max_iter')
+    opts.max_iter = 8;
 end
 
 if ~isfield(opts,'gpu_ids')
@@ -112,9 +130,19 @@ if isempty(opts.gpu_ids)
         nrm = sqrt(sum(img(:).^2));
         disp('Backprojecting...');
         Htf = backwardFUN(single(img/nrm));
+        opts.lamb_L1 = min(quantile(Htf(:),1-1e-4),opts.lamb_L1);
         disp('Backprojection completed');
         disp('Reconstructing...')
-        recon_nnmf{ii} = nrm*fast_deconv(forwardFUN, backwardFUN, Htf, opts.maxIter, opts);
+%         recon_nnmf{ii} = nrm*fast_deconv(forwardFUN, backwardFUN, Htf, opts.max_iter, opts);
+        if strcmp(opts.whichSolver,'ISRA')
+            recon_nnmf{ii} = nrm*deconvRL(forwardFUN, backwardFUN, Htf, ...
+                opts.maxIter, Htf ,opts);
+        elseif strcmp(opts.whichSolver,'fast_nnls')
+            recon_nnmf{ii} = nrm*LS_deconv(forwardFUN, backwardFUN, Htf, opts);
+        elseif strcmp(opts.whichSolver,'fast_ls')
+            recon_nnmf{ii} = nrm*fast_deconv_neg(forwardFUN, backwardFUN, Htf, ...
+                opts.maxIter,opts);
+        end
         disp(['Reconstruction of frame ' num2str(ii) ' completed']);
     end
 else
@@ -158,12 +186,14 @@ else
             end
             nrm = sqrt(sum(img_cell{worker}(:).^2));
             Xguess = backwardFUN(img_cell{worker}/nrm);
+            options{worker}.lamb_L1 = min(quantile(Xguess(:),1-1e-4),options{worker}.lamb_L1);
             if strcmp(options{worker}.whichSolver,'ISRA')
                 Xguess = deconvRL(forwardFUN, backwardFUN, Xguess, ...
-                    options{worker}.maxIter, Xguess ,options{worker});
+                    options{worker}.max_iter, Xguess ,options{worker});
             elseif strcmp(options{worker}.whichSolver,'fast_nnls')
-                Xguess=fast_deconv(forwardFUN, backwardFUN, Xguess, ...
-                    options{worker}.maxIter,options{worker});
+                Xguess = LS_deconv(forwardFUN, backwardFUN, Xguess, options{worker});
+%                 Xguess=fast_deconv(forwardFUN, backwardFUN, Xguess, ...
+%                     options{worker}.maxIter,options{worker});
             elseif strcmp(options{worker}.whichSolver,'fast_ls')
                 Xguess=fast_deconv_neg(forwardFUN, backwardFUN, Xguess, ...
                     options{worker}.maxIter,options{worker});
