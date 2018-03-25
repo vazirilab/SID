@@ -277,6 +277,9 @@ toc
 
 if Input.bg_sub
     [SID_output.bg_spatial,SID_output.bg_temporal]=rank_1_factorization(sensor_movie,Input.bg_iter);
+else
+    SID_output.bg_spatial = zeros(size(sensor_movie,1),1);
+    SID_output.bg_temporal = zeros(1,size(sensor_movie,2));
 end
 
 SID_output.std_image=compute_std_image(sensor_movie,SID_output.bg_spatial,SID_output.bg_temporal);
@@ -298,8 +301,7 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.pn
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
 if ~isfield(Input,'crop_params')
     disp('Find appropriate crop_params!')
-    Input.crop_params(1)=0.2;
-    Input.crop_params(2)=0.6;
+    Input.crop_params = [0.2 0.6];
     flag1 = false;
     flag2 = false;
     flag = false;
@@ -393,7 +395,7 @@ if Input.detrend
     %     figure; hold on; plot(SID_output.baseline); plot(SID_output.baseline_fit(Input.frames.start:Input.frames.step:Input.prime)); hold off; title('Smoothed frame means and trend fit');  %TODO: Input.prime doesn't seem to be the correct range here
     %     print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
     %
-    sensor_movie = sensor_movie * diag(1 ./ SID_output.baseline);
+    sensor_movie = sensor_movie./SID_output.baseline;
     %TODO: check if trend fit worked, i.e. residuals are mostly gaussian
 end
 % sensor_movie_min = min(sensor_movie(:));
@@ -409,10 +411,13 @@ Input.nnmf_opts.ini_method='pca';
 SID_output.neuron_centers_ini=[];
 Input.nnmf_opts.active=SID_output.microlenses>0;
 [SID_output.S, SID_output.T]=fast_NMF(max(sensor_movie-quantile(reshape(...
-    sensor_movie(SID_output.microlenses==0,:),1,[]),p),0),Input.nnmf_opts.rank,Input.nnmf_opts);
-SID_output.S=SID_output.S(:,logical(mean(SID_output.S,1)<mean(mean(...
-    SID_output.S,1))+3*std(mean(SID_output.S,1))));
-SID_output.S=[SID_output.S SID_output.std_image(:)]';
+    sensor_movie(SID_output.microlenses==0,:),1,[]),p),0),Input.nnmf_opts);
+SID_output.S=SID_output.S(:,~isoutlier(sum(SID_output.S,1)));
+if (~Input.optimize_kernel)&&(~isfield(Input.recon_opts,'ker_shape'))
+    SID_output.S=[SID_output.S SID_output.std_image(:)]';
+else
+    SID_output.S=SID_output.S';
+end
 
 %% Crop sensor movie
 sensor_movie = sensor_movie(SID_output.idx,:);
@@ -423,7 +428,8 @@ timestr = datestr(now, 'YYmmddTHHMM');
 for i=1:size(SID_output.T, 1)
     figure( 'Position', [100 100 800 800]);%,'visible',false);
     subplot(4,1,[1,2,3]);
-    imagesc(reshape(SID_output.S(i,:), size(Inside))); axis image; colormap('parula'); colorbar;
+    imagesc(reshape(SID_output.S(i,:), size(SID_output.std_image))); 
+    axis image; colormap('parula'); colorbar;
     title(['NMF component ' num2str(i)]);
     subplot(4,1,4);
     plot(SID_output.T(i,:));
@@ -522,17 +528,20 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': generate initial brain model'])
 
 dim = [1 1 Input.axial];
 SID_output.neuron_centers_ini = [];
-Volume = SID_output.segmm{1}*0;
-[~,u] = max([size(SID_output.segmm{1},1),size(SID_output.segmm{1},2)]);
+[~,u] = max([size(SID_output.segmm,1),size(SID_output.segmm,2)]);
 for ii=1:size(SID_output.segmm,u)
-    temp_vol=Volume*0;
     SID_output.neuron_centers_per_component{ii} = segment_component(SID_output.segmm{ii},threshold);
-    for jj=1:size(SID_output.neuron_centers_per_component{ii},1)
-        temp_vol(round(SID_output.neuron_centers_per_component{ii}(jj,1)),round(SID_output.neuron_centers_per_component{ii}(jj,2)),...
-            round(SID_output.neuron_centers_per_component{ii}(jj,3)))=1;
-    end
-    Volume=Volume+temp_vol;
-    disp(size(SID_output.neuron_centers_per_component{ii}));
+    num(ii) = size(SID_output.neuron_centers_per_component{ii},1);
+    disp(num(ii));
+end
+
+ids=isoutlier(num);
+
+for ii=find(ids)
+    threshold = 0.1;
+    SID_output.neuron_centers_per_component{ii} = segment_component(SID_output.segmm{ii},threshold);
+    num(ii) = size(SID_output.neuron_centers_per_component{ii},1);
+    disp(num(ii));
 end
 
 [SID_output.neuron_centers_ini,SID_output.neur_id]=iterate_cluster(SID_output.neuron_centers_per_component,Input.cluster_iter,Input.neur_rad,dim);
@@ -550,7 +559,6 @@ end
 id=logical((SID_output.neuron_centers_ini(:,3)>z_1).*(SID_output.neuron_centers_ini(:,3)<z_2));
 SID_output.neuron_centers_ini=SID_output.neuron_centers_ini(id,:);
 SID_output.neur_id=SID_output.neur_id(id,:);
-
 
 %% Plot segmentation result
 timestr = datestr(now, 'YYmmddTHHMM');
@@ -586,10 +594,11 @@ if isempty(Input.gpu_ids)
     SID_output.forward_model_ini=generate_LFM_library_CPU(SID_output.neuron_centers_ini, psf_ballistic, Input.neur_rad, dim, size(SID_output.recon{1}));
 else
     opts = SID_output.recon_opts;
+    opts.NumWorkers=12;
     opts.image_size = SID_output.movie_size(1:2);
     opts.axial = Input.axial;
     opts.neur_rad = Input.neur_rad;
-    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,SID_output.neur_id,SID_output.std_image,Input,psf_ballistic,opts);
+    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,SID_output.neur_id,psf_ballistic,opts);
 end
 
 %% generate template
@@ -606,7 +615,7 @@ template_=SID_output.template(neur,SID_output.idx);
 Nnum=psf_ballistic.Nnum;
 % clearvars -except sensor_movie Input SID_output mean_signal template_ neur Nnum neur sensor_movie_max sensor_movie_min psf_ballistic;
 
-%% optimize model
+%% SID-Alternative-convex-search
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
 
 tic
