@@ -1,16 +1,37 @@
 function forward_model=generate_LFM_library_GPU(recon,centers,neur_id,psf,options)
-
-
+% GENERATE_LFM_LIBRARY_GPU: algorithm computes for each detected neuron the
+% LFM-image of a volume, of the appropriate size, that is empty, except for
+% a small volume around the location of the neuron where it is the mean of
+% this sub-volume of the components of 'recon' where the neuron was found
+% according to 'neur_id'.
+%
+% Input:
+% recon...              M cell-array of reconstructed LFM Volumes.
+% centers...            N x 3 array of neuronal centers.
+% neur_id...            N x M binary array; true if and only if neuron J 
+%                       was found in cell K of array 'recon.                   
+% psf...                LFM-point-spread-function.
+% struct options
+% options.gpu_ids       ids of GPUs available to the algorithm
+% options.NumWorkers    Number of Workers to run the individual jobs on the
+%                       GPUs in parallel.
+% options.ker_shape     see reconstruct_S help
+% options.ker_param     see reconstruct_S help
+%
+% Output:
+% forward_model...      N x number of pixels array; representing the 
+%                       linearized LFM image of each neuron.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('generating library');
 poolobj = gcp('nocreate');
-delete(poolobj);
+if isempty(poolobj)||(poolobj.NumWorkers~=options.NumWorkers)
+    delete(poolobj);
+    poolobj=parpool(options.NumWorkers);
+end
 
 if nargin<5
     options=[];
     options.NumWorkers=12;
-    options.p=2;
-    options.maxIter=3;
-    options.mode='basic';
     options.gpu_ids=[1 2 4 5];
 end
 
@@ -37,7 +58,6 @@ else
 end
 
 gimp=options.gpu_ids;
-parpool(options.NumWorkers);
 forward_model=zeros(size(centers,1),prod(options.image_size));
 
 for kk=1:options.NumWorkers:size(centers,1)
@@ -61,12 +81,12 @@ for kk=1:options.NumWorkers:size(centers,1)
                 recon{ids(k)}(max(x-options.neur_rad,1):min(x+options.neur_rad,options.image_size(1)),...
                 max(y-options.neur_rad,1):min(y+options.neur_rad,options.image_size(2)),...
                 max(z-ceil(options.neur_rad/options.axial),1):min(z+ceil(options.neur_rad/options.axial),size(psf.H,5)));
-            
+                
         end
         Volume{worker}=Volume{worker}/length(ids);
-        
+       
         H{worker}=psf.H(:,:,:,:,max(z-ceil(options.neur_rad/options.axial),1):min(z+...
-            ceil(options.neur_rad/options.axial),size(psf.H,5)));
+            ceil(options.neur_rad/options.axial),size(psf.H,5)));   
     end
     
     parfor worker=1:min(options.NumWorkers,size(centers,1)-(kk-1))
@@ -88,7 +108,8 @@ for kk=1:options.NumWorkers:size(centers,1)
     for kp=1:min(options.NumWorkers,size(centers,1)-(kk-1))
         forward_model(kk+kp-1,:)=frwd{kp}(:);
     end
-    disp(kk)
+    disp(['Generation of library entry ' num2str(kk) ' to ' ...
+        num2str(min(kk+poolobj.NumWorkers-1,size(centers,1))) ' completed']);
 end
 
 end

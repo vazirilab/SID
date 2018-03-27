@@ -1,5 +1,5 @@
 function forward_model=generate_LFM_library_CPU(centers,psf_ballistic,r,dim,m,kernel)
-% Algorithm generates a library of LFM-patterns for every neuron location
+% GENERATE_LFM_LIBRARY: Algorithm generates a library of LFM-patterns for every neuron location
 % found in "centers".
 %
 % Input:
