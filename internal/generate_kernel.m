@@ -2,7 +2,7 @@ function kernel = generate_kernel(ker_shape,ker_param)
 
 disp('Generating kernel');
 
-if nargin<2
+if nargin==2
     if strcmp(ker_shape,'ball')
         [X,Y,Z] = meshgrid(-ker_param(1):ker_param(1),-...
             ker_param(1):ker_param(1),-ker_param(2):ker_param(2));
