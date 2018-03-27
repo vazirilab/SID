@@ -18,8 +18,8 @@ disp(opts);
 Xguess=df;
 if strcmp(opts.mode,'TV')
     if opts.p==2
-        if length(opts.p)==1
-            opts.p=opts.p*[1,1,1];
+        if length(opts.lambda)==1
+            opts.p=opts.lambda*[1,1,1];
         end
         filt=zeros(3,3,3);
         filt(2,2,1)=opts.lambda(3);
