@@ -18,7 +18,10 @@ for k=1:beads.NumObjects
 end
 
 [~,n]=sort(-p);
-n=n([1 min(length(n),11):length(n)]);
+% n=n([1 min(length(n),11):length(n)]);
+
+n = n(11:max(length(n),10));
+
 for k=n
     segmm(beads.PixelIdxList{k})=0;
 end
@@ -26,7 +29,7 @@ end
 centers=round(segment_component(segmm,0));
 
 id=(centers(:,1)>neur_rad).*(centers(:,2)>neur_rad).*...
-    (centers(:,3)>neur_rad/axial);
+    (centers(:,3)>round(neur_rad/axial));
 centers=centers(id>0,:);
 id=(centers(:,1)<size(segmm,1)-neur_rad).*(centers(:,2)<size(segmm,1)-neur_rad).*...
     (centers(:,3)<size(segmm,1)-neur_rad/axial);
@@ -35,9 +38,11 @@ centers=centers(id>0,:);
 
 kernel=zeros(2*round(neur_rad*[1 1 1/axial])+1);
 for k=1:size(centers,1)
-    kernel=kernel+Volume(centers(k,1)-round(neur_rad):centers(k,1)+round(neur_rad),...
+    vol = Volume(centers(k,1)-round(neur_rad):centers(k,1)+round(neur_rad),...
         centers(k,2)-round(neur_rad):centers(k,2)+round(neur_rad),...
         centers(k,3)-round(neur_rad/axial):centers(k,3)+round(neur_rad/axial));
+    vol = vol/sum(vol(:));
+    kernel=kernel + vol;
 end
 
 kernel = kernel/sum(kernel(:));
