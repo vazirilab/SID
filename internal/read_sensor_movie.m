@@ -25,7 +25,7 @@ function [sensor_movie, movie_size] = read_sensor_movie(in_folder, x_offset, y_o
 %
 % Output:
 % sensor_movie...           Resulting framewise linearized movie
-% num_frames_total...       Total number of frames in "in_folder"
+% num_frames_total...       dimensions of the movie in 'in_folder'
 
 if nargin < 8
     mask = true;
