@@ -33,6 +33,15 @@ function [x,w,info]=nnls(C,d,opts)
 %
 % Follows Lawson & Hanson, Solving Least Squares Problems, Ch 23.
 
+if nargin<2
+    opts=struct;
+end
+
+if ~isfield(opts,'lamb')
+    opts.lamb = 0;
+end
+
+%%
 [~,n]=size(C);
 maxiter=4*n;
 
@@ -41,7 +50,7 @@ P=false(n,1);
 x=zeros(n,1);
 z=x;
 
-w=C'*d;
+w=C'*d - opts.lamb;
 
 % wsc_ are scales for errors
 wsc0=sqrt(sum(w.^2));
@@ -70,7 +79,7 @@ end
 % test if to use normal matrix for speed
 if(accy<2)
     A=C'*C;
-    b=C'*d;
+    b=C'*d - opts.lamb;
     %L=zeros(n,n);
     LL=zeros(0,0);
     lowtri=struct('LT',true);
@@ -180,7 +189,7 @@ while(true)
             if(accy<2)
                 w=b-A*x;
             else
-                w=C'*(d-C*x);
+                w=C'*(d-C*x) - opts.lamb;
             end
             wsc(P)=max(wsc(P),2*abs(w(P)));
             ind=true;
@@ -194,7 +203,7 @@ while(true)
         
         % test if removing last added, increase wsc to avoid loop
         if(x(ind1)==0 && ind)
-            w=C'*(d-C*z);
+            w=C'*(d-C*z)  - opts.lamb;
             wsc(ind1)=(abs(w(ind1))+wsc(ind1))*2;
         end
         P(ind1)=false;
