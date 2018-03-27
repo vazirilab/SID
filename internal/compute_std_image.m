@@ -3,6 +3,7 @@ function std_image=compute_std_image(Y,y_1,y_2)
 % difference of a movie Y and a tensorproduct.
 %
 % Input: 
+% Y...                      movie
 % y_1...                    y_1 is a size(Y,1) times 1 array.
 % y_2...                    y_2 is a 1 times size(Y,2) array.
 %
