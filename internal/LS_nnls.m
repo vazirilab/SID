@@ -73,7 +73,9 @@ while ~isempty(x)
     
     if iter>opts.max_iter
         ids=true(1,size(x,2));
-        disp('max number of iterations is reached');
+        if opts.display
+            disp('max number of iterations is reached');
+        end
     else
         if mod(iter,2)==1
             test = [test' log((sum(gather(x)-x_,1).^2)./sum(x_.^2,1))'/2]';
