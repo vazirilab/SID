@@ -22,6 +22,8 @@ I=[];
 J=[];
 S=[];
 
+outside = ~max(template,[],1);
+
 for neur=1:size(template,1)
     neuron=order(neur);
     space=find(template(neuron,:));
@@ -78,5 +80,10 @@ if isfield(opts,'gpu')
 end
 S=double(S);
 forward_model=sparse(I,J,S,size(timeseries,1),size(sensor_movie,1));
+
+if opts.bg_sub
+    Y=sensor_movie(outside,:);
+    forward_model(end,outside)=Y*timeseries(end,:)';
+end
 
 end
