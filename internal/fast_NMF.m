@@ -32,7 +32,9 @@ function [S,T]=fast_NMF(Y,opts,T,S)
 %                       generates "n" smoothed random traces as
 %                       initialization for T.
 % opts.max_iter...      maximum number of iterations
-% substruct opts.xval   see help of function xval
+%
+% substruct opts.xval   Cross validation is only performed if this field 
+%                       exists, also see help of function xval.
 % opts.diagnostic       Generates a figure during runtime that displays the
 %                       first ten components of S and T, as well as the L2
 %                       error and the S'S reg-error.
@@ -40,6 +42,8 @@ function [S,T]=fast_NMF(Y,opts,T,S)
 %                       pointwise, that means in every pixel and frame
 %                       independently, otherwise they will be performed on
 %                       the entire S or T.
+% opts.display          boolean, if false, messages during the run of the
+%                       algorithm will be suppressed.
 %
 % Ouput:
 % S...                  Spatial components of the nnmf
@@ -49,6 +53,9 @@ if nargin<2
     opts=struct;
 end
 
+if ~isfield(opts,'display')
+    opts.display=false;
+end
 if ~isfield(opts,'rank')
     opts.rank = 30;
 end
@@ -139,22 +146,25 @@ if opts.lamb_orth_L1 + opts.lamb_orth_L2
 end
 
 if isfield(opts,'xval')
-    disp('opts before cross validation');
-    disp(opts);
+    if opts.display
+        disp('opts before cross validation');
+        disp(opts);
+    end
     opts=xval(Y,opts);
-    disp('opts after cross-validation:')
-    disp(opts);
+    if opts.display
+        disp('opts after cross-validation:')
+        disp(opts);
+    end
 end
 T = T_0;
 S =S_0;
 
 P=[];
 E=[];
-% EE=[];
 for iter=1:opts.max_iter
     [S,T]=S_update(Y,S,T,opts);
     [S,T]=T_update(Y,T,S,opts);
-    if opts.diagnostic
+    if opts.diagnostic&&opts.display
         E(iter)=norm(reshape(Y-S*T,1,[]))^2;
         P(iter)=norm(reshape(S'*S-eye(size(S,2)),1,[]),1);
         figure(3);
@@ -165,19 +175,17 @@ for iter=1:opts.max_iter
         plot(P);
         axis square
         subplot(1,4,3);
-        %         EE(iter) = sum(sum( (S*(T*T'+opts.lamb_orth*opts.hilf)).*S/2 -S.*(Y*T'),1),2);
         plot(E+opts.lamb_orth_L1*P);
-        %         hold on
-        %         plot(EE);
-        %         hold off;
         subplot(1,4,4);
         imagesc(S'*S);
         axis square
-    end
-    if iter==1
-        fprintf(['Iteration completed: ' num2str(iter) ', ']);
-    else
-        fprintf([num2str(iter) ', ']);
+    end 
+    if opts.display
+        if iter==1
+            fprintf(['Iteration completed: ' num2str(iter) ', ']);
+        else
+            fprintf([num2str(iter) ', ']);
+        end
     end
 end
 
