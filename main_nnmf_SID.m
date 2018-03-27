@@ -312,7 +312,7 @@ else
 end
 
 while max(~flag1,max(~flag2,flag))
-
+    
     bg = SID_output.bg_spatial/max(SID_output.bg_spatial(:));
     Nnum = psf_ballistic.Nnum;
     SID_output.microlenses=SID_output.bg_spatial;
@@ -395,7 +395,7 @@ if Input.detrend
     %     figure; hold on; plot(SID_output.baseline); plot(SID_output.baseline_fit(Input.frames.start:Input.frames.step:Input.prime)); hold off; title('Smoothed frame means and trend fit');  %TODO: Input.prime doesn't seem to be the correct range here
     %     print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
     %
-    sensor_movie = sensor_movie./SID_output.baseline;
+    sensor_movie = sensor_movie./SID_output.baseline';
     %TODO: check if trend fit worked, i.e. residuals are mostly gaussian
 end
 % sensor_movie_min = min(sensor_movie(:));
@@ -412,7 +412,7 @@ SID_output.neuron_centers_ini=[];
 Input.nnmf_opts.active=SID_output.microlenses>0;
 [SID_output.S, SID_output.T]=fast_NMF(max(sensor_movie-quantile(reshape(...
     sensor_movie(SID_output.microlenses==0,:),1,[]),p),0),Input.nnmf_opts);
-SID_output.S=SID_output.S(:,~isoutlier(sum(SID_output.S,1)));
+SID_output.S=SID_output.S(:,~isoutlier(sum(SID_output.S,1),'ThresholdFactor',10));
 if (~Input.optimize_kernel)&&(~isfield(Input.recon_opts,'ker_shape'))
     SID_output.S=[SID_output.S SID_output.std_image(:)]';
 else
@@ -425,10 +425,10 @@ sensor_movie = sensor_movie(SID_output.idx,:);
 %% Plot NMF results
 close all;
 timestr = datestr(now, 'YYmmddTHHMM');
-for i=1:size(SID_output.T, 1)
+for i=1:size(SID_output.S, 1)
     figure( 'Position', [100 100 800 800]);%,'visible',false);
     subplot(4,1,[1,2,3]);
-    imagesc(reshape(SID_output.S(i,:), size(SID_output.std_image))); 
+    imagesc(reshape(SID_output.S(i,:), size(SID_output.std_image)));
     axis image; colormap('parula'); colorbar;
     title(['NMF component ' num2str(i)]);
     subplot(4,1,4);
@@ -535,7 +535,8 @@ for ii=1:size(SID_output.segmm,u)
     disp(num(ii));
 end
 
-ids=isoutlier(num);
+ids = isoutlier(num);
+ids = (num>mean(num)).*ids;
 
 for ii=find(ids)
     threshold = 0.1;
@@ -594,7 +595,7 @@ if isempty(Input.gpu_ids)
     SID_output.forward_model_ini=generate_LFM_library_CPU(SID_output.neuron_centers_ini, psf_ballistic, Input.neur_rad, dim, size(SID_output.recon{1}));
 else
     opts = SID_output.recon_opts;
-    opts.NumWorkers=12;
+    opts.NumWorkers=4;
     opts.image_size = SID_output.movie_size(1:2);
     opts.axial = Input.axial;
     opts.neur_rad = Input.neur_rad;
@@ -602,7 +603,7 @@ else
 end
 
 %% generate template
-thres=0.05;
+thres=0.01;
 SID_output.template=generate_template(SID_output.neuron_centers_ini,psf_ballistic.H,SID_output.std_image,thres);
 
 %% crop model
@@ -619,19 +620,13 @@ Nnum=psf_ballistic.Nnum;
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
 
 tic
-opts_temp=[];
-opts_temp.tol=1e-7;
-opts_temp.tol_=1e-2;
-opts_temp.gpu_ids=1;
-opts_temp.sample=300;
-opts_temp.display=false;
-opts_temp.gpu=true;
-opts_spat.display=false;
-opts_spat.bg_sub=Input.bg_sub;
-opts_temp.max_iter=2000;
+opts_temp=struct;
+opts_spat=struct;
 opts_temp.idx=SID_output.idx;
-opts_temp.lambda = 0;
-
+opts_temp.microlenses = SID_output.microlenses;
+opts_spat.bg_sub = Input.bg_sub;
+opts_temp.bg_sub = Input.bg_sub;
+opts_temp.Nnum = Nnum;
 
 if isfield(Input, 'bg_sub') && Input.bg_sub
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
@@ -640,7 +635,8 @@ end
 
 sensor_movie =double(sensor_movie*sensor_movie_max);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update']);
-SID_output.forward_model_iterated=diag(1./(sqrt(sum(SID_output.forward_model_iterated.^2,2))))*SID_output.forward_model_iterated;
+SID_output.forward_model_iterated=(1./(sqrt(sum(SID_output.forward_model_iterated.^2....
+    ,2)))).*SID_output.forward_model_iterated;
 SID_output.timeseries_ini = fast_nnls(SID_output.forward_model_iterated(:,SID_output.microlenses(SID_output.idx)>0)', double(sensor_movie(SID_output.microlenses(SID_output.idx)>0,:)), opts_temp);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
 
@@ -650,31 +646,14 @@ toc
 disp('---');
 disp('---');
 
-%%
-tolerance_t=1e-7;
-tolerance_s=1e-12;
 for iter=1:Input.num_iter
-    id2=[];
     disp([num2str(iter) '. iteration started']);
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Pruning neurons']);
-    for k=1:size(SID_output.forward_model_iterated,1)
-        trace=SID_output.timeseries_iterated(k,:)>tolerance_t;
-        if sum(trace)>1
-            id2=[id2 k];
-        end
-    end
-    SID_output.indices_in_orig=SID_output.indices_in_orig(id2);
-    SID_output.timeseries_iterated=SID_output.timeseries_iterated(id2,:);
-    template_=template_(id2(1:end-Input.bg_sub),:);
-    SID_output.neuron_centers_iterated=SID_output.neuron_centers_iterated(id2(1:end-Input.bg_sub),:);
-    %     SID_output.forward_model_ini=SID_output.forward_model_ini(id2(1:end-Input.bg_sub),:);
-    tic
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting spatial update']);
-    SID_output.timeseries_iterated=diag(1./(sqrt(sum(SID_output.timeseries_iterated.^2,2))))*SID_output.timeseries_iterated;
-    SID_output.forward_model_iterated=update_spatial_component(SID_output.timeseries_iterated, sensor_movie, template_, opts_spat);
-    toc
     
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Spatial update completed'])
+    [SID_output.timeseries_iterated,SID_output.forward_model_iterated,template_,...
+        SID_output.indices_in_orig] = spatial_SID_update(...
+        sensor_movie,SID_output.timeseries_iterated,...
+        SID_output.forward_model_iterated,template_,...
+        SID_output.indices_in_orig,opts_spat);
     
     if isfield(Input, 'update_template') && Input.update_template
         if iter>=2
@@ -689,31 +668,17 @@ for iter=1:Input.num_iter
             end
         end
     end
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Pruning neurons']);
-    id2=[];
-    for k=1:size(SID_output.forward_model_iterated,1)
-        trace=SID_output.forward_model_iterated(k,SID_output.microlenses(SID_output.idx)>0)>tolerance_s;
-        if sum(trace)>(Nnum^2)/3
-            id2=[id2 k];
-        end
-        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
-    end
-    SID_output.indices_in_orig=SID_output.indices_in_orig(id2);
-    SID_output.timeseries_iterated=SID_output.timeseries_iterated(id2,:);
-    SID_output.forward_model_iterated=SID_output.forward_model_iterated(id2,:);
-    template_=template_(id2(1:end-Input.bg_sub),:);
-    SID_output.neuron_centers_iterated=SID_output.neuron_centers_iterated(id2(1:end-Input.bg_sub),:);
-    %     SID_output.forward_model_ini=SID_output.forward_model_ini(id2(1:end-Input.bg_sub),:);
-    tic
-    SID_output.forward_model_iterated=diag(1./(sqrt(sum(SID_output.forward_model_iterated.^2,2))))*SID_output.forward_model_iterated;
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting Temporal update']);
-    opts_temp.warm_start=SID_output.timeseries_iterated;
-    SID_output.timeseries_iterated = fast_nnls(SID_output.forward_model_iterated(:,SID_output.microlenses(SID_output.idx)>0)', sensor_movie(SID_output.microlenses(SID_output.idx)>0,:), opts_temp);
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
-    toc
+    
+    [SID_output.forward_model_iterated,SID_output.timeseries_iterated,template_...
+        ,SID_output.indices_in_orig] = temporal_SID_update(...
+        sensor_movie,SID_output.forward_model_iterated,SID_output.timeseries_iterated...
+        ,template_,SID_output.indices_in_orig,opts_temp);
+    
     disp([num2str(iter) '. iteration completed']);
 end
-SID_output.template_=template_;
+SID_output.neuron_centers_iterated=SID_output.neuron_centers_iterated(SID_output.indices_in_orig,:);
+
+SID_output.template_iterated=template_;
 opts_temp.warm_start=[];
 clear sensor_movie;
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Model optimization completed']);
