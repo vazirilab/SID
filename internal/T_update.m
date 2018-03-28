@@ -7,8 +7,6 @@ S(isnan(S))=0;
 %     disp('zero line detected');
 % end
 
-
-
 if opts.lamb_corr>0
     for u=1:size(T,1)
         platz = norm(T(u,:));
@@ -70,7 +68,7 @@ clip = true;
 nixs = 1:size(ts,1);
 sel_nixs = nixs(sel);
 
-figure(11);
+figure(2);
 subplot(121);
 hold off
 for n_ix = 1:floor(numel(sel_nixs)/2)
