@@ -20,7 +20,7 @@ end
 
 for k=1:size(forward_model,1)
     trace=timeseries(k,:)>opts.tolerance;
-    if sum(trace)>1
+    if sum(trace)>0
         id2=[id2 k];
     end
 end

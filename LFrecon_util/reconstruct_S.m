@@ -7,7 +7,7 @@ function recon_nnmf=reconstruct_S(S,psf_ballistic,opts)
 % Input:
 % S...              Vector of LFM images
 % struct opts
-%   opts.shape      shape of the kernel
+%   opts.ker_shape  shape of the kernel
 %       'gaussian'  gaussian kernel
 %       'ball'      binary kernel in shape of ball
 %       'lorentz'   laurentzian kernel
