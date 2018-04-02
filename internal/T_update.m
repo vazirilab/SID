@@ -57,7 +57,7 @@ if ~max(isnan(alpha_T(:)))
 end
 T(T<0)=0;
 
-%%
+
 if opts.diagnostic
 ts = zscore(T(1:10,:), 0, 2);
 y_shift = 4;
@@ -80,16 +80,11 @@ for n_ix = 1:floor(numel(sel_nixs)/2)
         loop_ts(loop_ts < -3*y_shift) = -y_shift;
     end
     t = (0:size(ts,2)-1);
-    %plot(t, mat2gray(squeeze(loop_ts)) + 1*(n_ix-1));
     plot(t, squeeze(loop_ts) + y_shift*(n_ix-1));
-    %text(30, y_shift*(n_ix-1), num2str(sel_sv(n_ix)));
     hold on
 end
 xlabel('Frame');
-%ylabel('Z-score');
-%ylim([0 size(p.timeseries{1}, 1)]);
 xlim([min(t) max(t)]);
-%legend(p.labels, 'location', 'NorthEast');
 hold off;
 axis tight;
 set(gca,'LooseInset',get(gca,'TightInset'))
@@ -106,22 +101,17 @@ for n_ix = ceil(numel(sel_nixs)/2):numel(sel_nixs)
         loop_ts(loop_ts < -y_shift) = -y_shift;
     end
     t = (0:size(ts,2)-1);
-    %plot(t, mat2gray(squeeze(loop_ts)) + 1*(n_ix-1));
     plot(t, squeeze(loop_ts) + y_shift*(n_ix-1));
-    %text(30, y_shift*(n_ix-1), num2str(sel_sv(n_ix)));
     hold on;
 end
 xlabel('Frame');
-%ylabel('Z-score');
-%ylim([0 size(p.timeseries{1}, 1)]);
 xlim([min(t) max(t)]);
-%legend(p.labels, 'location', 'NorthEast');
 hold off;
 axis tight;
 set(gca,'LooseInset',get(gca,'TightInset'))
 legend('boxoff');
 drawnow expose
 end
-%%
+
 
 end
