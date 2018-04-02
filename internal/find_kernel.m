@@ -9,7 +9,7 @@ opts.neur_rad = neur_rad;
 opts.native_focal_plane = native_focal_plane;
 rr{1}=Volume;
 segmm=filter_recon(rr,opts);
-segmm=max(segmm{1}-mean(segmm{1}(segmm{1}>0))/2,0);
+segmm=max(segmm{1}-mean(segmm{1}(segmm{1}>0)),0);
 
 beads=bwconncomp(segmm);
 
@@ -22,19 +22,18 @@ end
 
 n = n(11:max(length(n),10));
 
-for k=n
+for k=reshape(n,1,[])
     segmm(beads.PixelIdxList{k})=0;
 end
 
 centers=round(segment_component(segmm,0));
 
-id=(centers(:,1)>neur_rad).*(centers(:,2)>neur_rad).*...
+id=(centers(:,1)>round(neur_rad)).*(centers(:,2)>round(neur_rad)).*...
     (centers(:,3)>round(neur_rad/axial));
 centers=centers(id>0,:);
-id=(centers(:,1)<size(segmm,1)-neur_rad).*(centers(:,2)<size(segmm,1)-neur_rad).*...
-    (centers(:,3)<size(segmm,1)-neur_rad/axial);
+id=(centers(:,1)<size(segmm,1)-round(neur_rad)).*(centers(:,2)<size(segmm,2)...
+    -round(neur_rad)).*(centers(:,3)<size(segmm,3)-round(neur_rad/axial));
 centers=centers(id>0,:);
-
 
 kernel=zeros(2*round(neur_rad*[1 1 1/axial])+1);
 for k=1:size(centers,1)
