@@ -53,8 +53,19 @@ for neur=1:size(template,1)
         for k_=1:length(space)
             idx=find(squeeze(temp(:,k_)));
             y=squeeze(Y(k_,:))';
-            x_=nnls(A(:,idx),y,opts);
-            F(idx,k_)=x_;
+            if opts.bg_sub
+                opts.lamb = opts.lambda * ones(length(idx),1);
+                opts.lamb(end) =0;
+            else
+                opts.lamb=opts.lambda;
+            end
+            nrm=norm(y(:));
+            if nrm>0
+                x_=nnls(A(:,idx),y/nrm,opts);
+                F(idx,k_)=x_*nrm;
+            else
+                F(idx,k_)=0;
+            end
         end
         
         if size(involved_neurons,2)>=1
