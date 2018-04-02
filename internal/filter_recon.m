@@ -9,7 +9,7 @@ if nargin<2
 end
 
 if ~isfield(opts,'NumWorkers')
-    if isfield(opts,'gpu_ids')
+    if isfield(opts,'gpu_ids')&&(~isempty(opts.gpu_ids))
         opts.NumWorkers=length(opts.gpu_ids);
     else
         opts.NumWorkers=1;
@@ -25,7 +25,7 @@ if isempty(poolobj)||(poolobj.NumWorkers~=opts.NumWorkers)
     poolobj=parpool(opts.NumWorkers);
 end
 
-if isfield(opts,'gpu_ids')
+if isfield(opts,'gpu_ids')&&(~isempty(opts.gpu_ids))
     n=length(opts.gpu_ids);
     gimp=opts.gpu_ids;
 else
@@ -33,8 +33,6 @@ else
     gimp=-1;    
 end
 segmm=recon;
-gpu = ~isempty(opts.gpu_ids);
-
 
 for kk=1:opts.NumWorkers:size(recon,u)
     img=cell(opts.NumWorkers,1);
@@ -68,7 +66,7 @@ for kk=1:opts.NumWorkers:size(recon,u)
     parfor worker=1:min(opts.NumWorkers,size(recon,u)-(kk-1))
         filtered_Image_=band_pass_filter(img{worker}, cellSize, 3, gimp(mod(worker-1,n)+1),1.2);
         segm_{worker}=filtered_Image_(opts.border(1):size(filtered_Image_,1)-opts.border(1),opts.border(2):size(filtered_Image_,2)-opts.border(2),opts.border(3)+1:opts.border(3)+si_V{worker});
-        if gpu
+        if ~isempty(opts.gpu_ids)
             gpuDevice([]);
         end
     end
