@@ -13,7 +13,7 @@ function [S,T]=fast_NMF(Y,opts,T,S)
 % struct opts:
 % opts.rank...          rank of the nnmf.
 % opts.lamb_spat...     lagrangian multiplier for L1 regularizer on S
-% opts.lambda.temp...   lagrangian multiplier for L1 regularizer on T
+% opts.lamb_temp...   lagrangian multiplier for L1 regularizer on T
 % opts.lamb_corr...     lagrangian multiplier for L2 regularizer on
 %                       corrcoef(T)-eye(size(S,2))
 % opts.lamb_orth_L1...  lagrangian multiplier for L1 regularizer on
@@ -55,6 +55,9 @@ end
 
 if ~isfield(opts,'display')
     opts.display=false;
+end
+if ~isfield(opts,'max_iter')
+    opts.max_iter = 600;
 end
 if ~isfield(opts,'rank')
     opts.rank = 30;
@@ -106,16 +109,7 @@ if opts.lamb_spat_TV
     opts.laplace(1,2,3)=-1;
 end
 
-Y = double(Y);
-
-opts.nrm=norm(Y(:));
-opts.lamb_orth_L1 = opts.lamb_orth_L1*opts.nrm;
-opts.lamb_orth_L2 = opts.lamb_orth_L2*opts.nrm;
-opts.lamb_corr = opts.lamb_corr*opts.nrm;
-opts.lamb_spat = opts.lamb_spat*opts.nrm;
-opts.lamb_temp = opts.lamb_temp*opts.nrm;
-opts.lamb_spat_TV = opts.lamb_spat_TV*opts.nrm;
-opts.lamb_temp_TV = opts.lamb_temp_TV*opts.nrm;
+Y = double(Y/norm(Y(:)));
 
 if ~opts.rank
     opts.max_iter=0;

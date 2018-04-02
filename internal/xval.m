@@ -67,10 +67,7 @@ switch opts.xval.multiplier
 end
 
 if ~isfield(opts.xval,'param')
-    if ~isfield(opts,'nrm')
-        opts.nrm=norm(Y(:));
-    end
-    opts.xval.param = (lambda/opts.nrm)*exp(-2*[0:4]);
+    opts.xval.param = lambda*exp(-2*[0:4]);
 end
 
 map = conv2(opts.xval.std_image.^2,ones(opts.xval.im_size+1),'valid');
@@ -95,19 +92,15 @@ end
 
 for j=1:length(opts.xval.param)
     for k=1:opts.xval.num_part
-        yy=Y_p(:,k==N); y=Y_p(:,k~=N); T=t(:,k~=N); S=s;
+        T=t(:,k~=N); S=s;
         if j==1
-            nrm(k)=norm(y(:));
+            yy{k}=Y_p(:,k==N);
+            y{k}=Y_p(:,k~=N);
+            yy{k}=yy{k}/norm(reshape(yy{k},1,[]));
+            y{k}=y{k}/norm(reshape(y{k},1,[]));
         end
-        option.lamb_orth_L1=opts.lamb_orth_L1*nrm(k)/opts.nrm;
-        option.lamb_orth_L2=opts.lamb_orth_L2*nrm(k)/opts.nrm;
-        option.lamb_spat=opts.lamb_spat*nrm(k)/opts.nrm;
-        option.lamb_temp=opts.lamb_temp*nrm(k)/opts.nrm;
-        option.lamb_corr=opts.lamb_corr*nrm(k)/opts.nrm;
-        option.lamb_temp_TV=opts.lamb_temp_TV*nrm(k)/opts.nrm;
-        option.lamb_spat_TV=opts.lamb_spat_TV*nrm(k)/opts.nrm;
-        lambda = opts.xval.param(j)*nrm(k);
         
+        lambda = opts.xval.param(j);
         switch opts.xval.multiplier
             case 'lamb_orth_L1'
                 option.lamb_orth_L1 = lambda;
@@ -125,8 +118,8 @@ for j=1:length(opts.xval.param)
                 option.temp_TV = lambda;
         end
         for iter=1:opts.xval.max_iter
-            [S,T]=S_update(y,S,T,option);
-            [S,T]=T_update(y,T,S,option);
+            [S,T]=S_update(y{k},S,T,option);
+            [S,T]=T_update(y{k},T,S,option);
         end
         for u=1:size(T,1)
             platz = norm(S(:,u));
@@ -135,8 +128,8 @@ for j=1:length(opts.xval.param)
         end
         T(isnan(T))=0;
         S(isnan(S))=0;
-        T = LS_nnls(S,yy,opts);
-        E(k) = norm(reshape(S*T-yy,1,[]))/norm(yy(:));
+        T = LS_nnls(S,yy{k},opts);
+        E(k) = norm(reshape(S*T-yy{k},1,[]));
     end
     disp(j);
     E_(j) = mean(E);
@@ -148,25 +141,25 @@ option = opts;
 switch opts.xval.multiplier
     case 'lamb_orth_L1'
         option.lamb_orth_L1 = option.lamb_orth_L1*exp(-2*(n_-1));
-        disp(opts.lamb_orth_L1);
+        disp(option.lamb_orth_L1);
     case 'lamb_orth_L2'
         option.lamb_orth_L2 = option.lamb_orth_L2*exp(-2*(n_-1));
-        disp(opts.lamb_orth_L2);
+        disp(option.lamb_orth_L2);
     case 'lamb_spat'
         option.lamb_spat = option.lamb_spat*exp(-2*(n_-1));
-        disp(opts.lamb_spat);
+        disp(option.lamb_spat);
     case 'lamb_temp'
         option.lamb_temp = option.lamb_temp*exp(-2*(n_-1));
-        disp(opts.lamb_temp);
+        disp(option.lamb_temp);
     case 'lamb_corr'
         option.lamb_corr = option.lamb_corr*exp(-2*(n_-1));
-        disp(opts.lamb_corr);
+        disp(option.lamb_corr);
     case 'lamb_spat_TV'
         option.lamb_spat_TV = option.lamb_spat_TV*exp(-2*(n_-1));
-        disp(opts.lamb_spat_TV);
+        disp(option.lamb_spat_TV);
     case 'lamb_temp_TV'
         option.lamb_temp_TV =  option.lamb_temp_TV*exp(-2*(n_-1));
-        disp(opts.lamb_temp_TV);
+        disp(option.lamb_temp_TV);
 end
 
 figure(5);title('Generalization error');plot(opts.xval.param,E_)
