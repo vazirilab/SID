@@ -83,6 +83,14 @@ else
     Input.bg_sub = 1;
 end
 
+if ~isfield(Input,'segmentation')
+    Input.segmentation.threshold = 0.01;
+end
+
+if ~isfield(Input.segmentation,'top_cutoff')
+    Input.segmentation.top_cutoff = 1;
+end
+
 
 if isfield(optional_args, 'frames')
     Input.frames = optional_args.frames;
@@ -199,7 +207,10 @@ if ~strcmp(Input.psf_cache_dir, '')
     clear psf_fname;
 end
 psf_ballistic = matfile(Input.psf_filename_ballistic);
-psf_size = size(psf_ballistic, 'H');
+
+if ~isfield(Input.segmentation,'bottom_cutoff')
+    Input.segmentation.bottom_cutoff = size(psf_ballistic.H,5);
+end
 
 %%
 % Input.fluoslide_fn = ['fluoslide_Nnum' num2str(psf_ballistic.Nnum) '.mat'];
@@ -313,9 +324,14 @@ end
 
 while max(~flag1,max(~flag2,flag))
     
-    bg = SID_output.bg_spatial/max(SID_output.bg_spatial(:));
+    if Input.bg_sub
+        img = SID_output.bg_spatial;
+    else
+        img = SID_output.std_image;
+    end
+    bg = img/max(img(:));
     Nnum = psf_ballistic.Nnum;
-    SID_output.microlenses=SID_output.bg_spatial;
+    SID_output.microlenses=img;
     for ix=1:size(SID_output.std_image,1)/Nnum
         for iy=1:size(SID_output.std_image,2)/Nnum
             SID_output.microlenses((ix-1)*Nnum+1:ix*Nnum,(iy-1)*Nnum+1:iy*Nnum)=SID_output.microlenses((ix-1)*Nnum+1:ix*Nnum,(iy-1)*Nnum+1:iy*Nnum)/norm(reshape(SID_output.microlenses((ix-1)*Nnum+1:ix*Nnum,(iy-1)*Nnum+1:iy*Nnum),1,[]));
@@ -520,17 +536,13 @@ else
 end
 
 %% Segment reconstructed components
-threshold = 0.01;
-% z_1
-% z_2
-
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': generate initial brain model'])
 
 dim = [1 1 Input.axial];
 SID_output.neuron_centers_ini = [];
 [~,u] = max([size(SID_output.segmm,1),size(SID_output.segmm,2)]);
 for ii=1:size(SID_output.segmm,u)
-    SID_output.neuron_centers_per_component{ii} = segment_component(SID_output.segmm{ii},threshold);
+    SID_output.neuron_centers_per_component{ii} = segment_component(SID_output.segmm{ii},Input.segmentation.threshold);
     num(ii) = size(SID_output.neuron_centers_per_component{ii},1);
     disp(num(ii));
 end
@@ -550,14 +562,15 @@ end
 figure;plot(hist(SID_output.neuron_centers_ini(:,3),size(SID_output.recon{1},3)));
 xlabel('z-axis');
 ylabel('neuron frequency');
-if ~exist('z_1','var')
+if ~isfield(Input.segmentation,'top_cutoff')
     disp('Check the axial distribution and remove top/bottom artefacts');
-    z_1 = input('Input top cutoff \n');
+    Input.segmentation.top_cutoff = input('Input top cutoff \n');
 end
-if ~exist('z_2','var')
-    z_2 = input('Input bottom cutoff \n');
+if ~isfield(Input.segmentation,'bottom_cutoff')
+    Input.segmentation.bottom_cutoff = input('Input bottom cutoff \n');
 end
-id=logical((SID_output.neuron_centers_ini(:,3)>z_1).*(SID_output.neuron_centers_ini(:,3)<z_2));
+id=logical((SID_output.neuron_centers_ini(:,3)>Input.segmentation.top_cutoff...
+    ).*(SID_output.neuron_centers_ini(:,3)<Input.segmentation.bottom_cutoff));
 SID_output.neuron_centers_ini=SID_output.neuron_centers_ini(id,:);
 SID_output.neur_id=SID_output.neur_id(id,:);
 
@@ -591,11 +604,16 @@ clearvars -except sensor_movie Input SID_output mean_signal psf_ballistic Hsize 
 %% Initiate forward_model
 %TODO: check performance of generate_forward_model() with matfile
 %psf_ballistic = matfile(Input.psf_filename_ballistic);
-if isempty(Input.gpu_ids)
-    SID_output.forward_model_ini=generate_LFM_library_CPU(SID_output.neuron_centers_ini, psf_ballistic, Input.neur_rad, dim, size(SID_output.recon{1}));
+
+if ~isfield(Input,'use_std_GLL')
+    Input.use_std_GLL = false;
+end
+
+if isempty(Input.gpu_ids)||Input.use_std_GLL
+    SID_output.forward_model_ini=generate_LFM_library_CPU(SID_output.neuron_centers_ini, psf_ballistic, SID_output.neur_rad, dim, size(SID_output.recon{1}));
 else
     opts = SID_output.recon_opts;
-    opts.NumWorkers=4;
+    opts.NumWorkers=10;
     opts.image_size = SID_output.movie_size(1:2);
     opts.axial = Input.axial;
     opts.neur_rad = Input.neur_rad;
@@ -627,6 +645,7 @@ opts_temp.microlenses = SID_output.microlenses;
 opts_spat.bg_sub = Input.bg_sub;
 opts_temp.bg_sub = Input.bg_sub;
 opts_temp.Nnum = Nnum;
+opts_spat.lambda=0.01;
 
 if isfield(Input, 'bg_sub') && Input.bg_sub
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
@@ -676,7 +695,7 @@ for iter=1:Input.num_iter
     
     disp([num2str(iter) '. iteration completed']);
 end
-SID_output.neuron_centers_iterated=SID_output.neuron_centers_iterated(SID_output.indices_in_orig,:);
+SID_output.neuron_centers_iterated=SID_output.neuron_centers_iterated(SID_output.indices_in_orig(1:end-1),:);
 
 SID_output.template_iterated=template_;
 opts_temp.warm_start=[];
