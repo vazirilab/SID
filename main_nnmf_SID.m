@@ -610,7 +610,7 @@ if ~isfield(Input,'use_std_GLL')
 end
 
 if isempty(Input.gpu_ids)||Input.use_std_GLL
-    SID_output.forward_model_ini=generate_LFM_library_CPU(SID_output.neuron_centers_ini, psf_ballistic, SID_output.neur_rad, dim, size(SID_output.recon{1}));
+    SID_output.forward_model_ini=generate_LFM_library_CPU(SID_output.neuron_centers_ini, psf_ballistic, ceil(SID_output.neur_rad), dim, size(SID_output.recon{1}));
 else
     opts = SID_output.recon_opts;
     opts.NumWorkers=10;
