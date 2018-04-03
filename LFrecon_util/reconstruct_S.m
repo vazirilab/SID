@@ -53,6 +53,9 @@ if ~isfield(opts,'NumWorkers')
     end
 end
 
+if ~isfield(opts,'microlenses')
+    opts.microlenses = zeros(size(S,2),size(S,3));
+end
 if ~isfield(opts,'lamb_TV_L1')
     opts.lamb_TV_L1 = 0;
 end
