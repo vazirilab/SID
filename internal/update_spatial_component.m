@@ -61,10 +61,10 @@ for neur=1:size(template,1)
             end
             nrm=norm(y(:));
             if nrm>0
-                x_=nnls(A(:,idx),y/nrm,opts);
-                F(idx,k_)=x_*nrm;
+            x_=nnls(A(:,idx),y/nrm,opts);
+            F(idx,k_)=x_*nrm;
             else
-                F(idx,k_)=0;
+            F(idx,k_)=0;
             end
         end
         
@@ -92,9 +92,9 @@ end
 S=double(S);
 forward_model=sparse(I,J,S,size(timeseries,1),size(sensor_movie,1));
 
-if opts.bg_sub
-    Y=sensor_movie(outside,:);
-    forward_model(end,outside)=Y*timeseries(end,:)';
+if opts.bg_sub&&~isempty(outside)
+    Y=sensor_movie(logical(outside),:);
+    forward_model(end,logical(outside))=Y*timeseries(end,:)';
 end
 
 end
