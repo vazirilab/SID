@@ -33,6 +33,7 @@ else
     gimp=-1;    
 end
 segmm=recon;
+decay = (1/100)^(1/min(opts.border(3),2*opts.neur_rad/opts.axial));
 
 for kk=1:opts.NumWorkers:size(recon,u)
     img=cell(opts.NumWorkers,1);
@@ -57,8 +58,8 @@ for kk=1:opts.NumWorkers:size(recon,u)
         I=zeros(size(V)+[0 0 2*opts.border(3)],'single');
         I(:,:,1+opts.border(3):si_V{worker}+opts.border(3))=single(V);
         for k=0:opts.border(3)-1
-            I(:,:,opts.border(3)-k)=I(:,:,opts.border(3)+1-k)*0.96;
-            I(:,:,opts.border(3)+si_V{worker}+k)=I(:,:,opts.border(3)+si_V{worker}-1+k)*0.96;
+            I(:,:,opts.border(3)-k)=I(:,:,opts.border(3)+1-k)*decay;
+            I(:,:,opts.border(3)+si_V{worker}+k)=I(:,:,opts.border(3)+si_V{worker}-1+k)*decay;
         end
         img{worker}=full(I/max(I(:)));
         siz_I{worker}=size(I);
