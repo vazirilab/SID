@@ -734,8 +734,13 @@ toc
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Extraction complete']);
 
 %% Signal2Noise ordering
-n=SNR_order(SID_output.timeseries_total);
-SID_output.neur
+opts.bg_sub = Input.bg_sub;
+n=SNR_order(SID_output.timeseries_total, opts);
+SID_output.neuron_centers_iterated = SID_output.neuron_centers_iterated(n,:);
+SID_output.forward_model_iterated = SID_output.forward_model_iterated(n,:);
+SID_output.timeseries_iterated = SID_output.timeseries_iterated(n,:);
+SID_output.timeseries_total = SID_output.timeseries_total(n,:);
+SID_output.indices_in_orig = SID_output.indices_in_orig(n);
 
 %% save SID_output
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Saving result'])
