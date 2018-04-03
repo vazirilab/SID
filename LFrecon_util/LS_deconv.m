@@ -1,6 +1,27 @@
 function Xguess = LS_deconv(forwardFUN, backwardFUN, df, opts)
-
-
+% LS_DECONV is an algorithm that performs projected gradient descent with
+% exact line search for a Total Variation, L2 and L1-regularized non negative
+% least squares problem. 
+%
+%   argmin_{x>=0} ||y-A(x)||_2^2 + lamb_TV_2*||TV(x)||_2^2 +
+%   lamb_L2*||x||_2^2 + lamb_L1*||x||_1
+%
+% Input:
+% forwardFUN...         function handle of the linear function A (formula above)
+% backwardFUN...        function handle of the adjoint of A.
+% df...                 single/double array representing A'(y).
+% struct opts:
+% opts.lamb_TV_L2...    1x3 array, lagrangian multiplier of the L2 norm of the Total
+%                       Variation regularizer. For each spatial direction one 
+%                       individual regularizer.
+% opts.lamb_L1...       lagrangian multiplier for the L1 regularizer
+% opts.lamb_L2...       lagrangian multiplier for the L2 regularizer
+% opts.max_iter...      number of iterations.
+%
+% Output:
+% Xguess...             The algorithms approximation of the solution of the
+%                       abover problem.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if nargin<4
     opts=struct;
 end
