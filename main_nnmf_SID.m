@@ -644,8 +644,8 @@ opts_temp.idx=SID_output.idx;
 opts_temp.microlenses = SID_output.microlenses;
 opts_spat.bg_sub = Input.bg_sub;
 opts_temp.bg_sub = Input.bg_sub;
-opts_temp.Nnum = Nnum;
-% opts_spat.lambda=3e-3;
+% opts_temp.Nnum = Nnum;
+opts_spat.lambda=1e-4;
 
 if isfield(Input, 'bg_sub') && Input.bg_sub
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
@@ -707,30 +707,27 @@ opts_temp.warm_start=[];
 clear sensor_movie;
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Model optimization completed']);
 
-%%
-forward_model=zeros(size(SID_output.forward_model_iterated,1),length(SID_output.std_image(:)));
-forward_model(:,SID_output.idx)=SID_output.forward_model_iterated;
-[SID_output.recon_NSF, x,y,z]=fast_NSF_recon(forward_model,ceil(SID_output.neuron_centers_iterated),psf_ballistic, size(SID_output.std_image));
+%% Reconstruct NSFs
+% forward_model=zeros(size(SID_output.forward_model_iterated,1),length(SID_output.std_image(:)));
+% forward_model(:,SID_output.idx)=SID_output.forward_model_iterated;
+% [SID_output.recon_NSF, x,y,z]=fast_NSF_recon(forward_model,ceil(SID_output.neuron_centers_iterated),psf_ballistic, size(SID_output.std_image));
 
 
 %% extract time series at location LFM_folder
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Extracting Timeseries']);
+
 opts_temp.warm_start=[];
-% opts_temp.idx=SID_output.idx;
-% opts_temp.max_iter=20000; % already defined in the last section
-opts_temp.frame=Input.frames; %frames for model optimization;
+% % opts_temp.idx=SID_output.idx;
+% % opts_temp.max_iter=20000; % already defined in the last section
+% opts_temp.frame=Input.frames; %frames for model optimization;
 opts_temp.outfile = fullfile(Input.output_folder, 'timeseries_debug_out.mat');
-if isfield(Input, 'detrend') && Input.detrend
-    opts_temp.baseline=SID_output.baseline;
-end
+opts.non_neg_on=true;
 tic
-[timeseries_1, Varg] = incremental_temporal_update_gpu(SID_output.forward_model_iterated, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts_temp);
+SID_output.timeseries_tota = incremental_temporal_update_gpu(SID_output.forward_model_iterated, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts_temp);
 toc
-SID_output.timeseries_total=zeros(size(timeseries_1,1),length(Varg));
-SID_output.timeseries_total(:, Varg==1) = timeseries_1;
-if nnz(Varg==0) > 0
-    SID_output.timeseries_total(:, Varg==0) = SID_output.timeseries_iterated;
-end
+% if isfield(Input, 'detrend') && Input.detrend
+%     opts_temp.baseline=SID_output.baseline;
+% end
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Extraction complete']);
 
 %% Signal2Noise ordering
