@@ -19,11 +19,13 @@ for nn=1:N
     for ii=1:size(centroid,1)
         centers{ii}=[];
         for jj=1:size(centers_per_component_,2)
-            rnd_ind=randperm(size(centers_cell{jj},1));
-            [a,n]=min(sum((dim.*(centers_per_component_{jj}(rnd_ind,:)-[centroid(ii,:)])).^2,2));
-            if a<radius^2
-                centers{ii}=[centers{ii}' centers_per_component_{jj}(rnd_ind(n),:)']';
-                centers_per_component_{jj}(rnd_ind(n),:)=inf*[1 1 1];
+            if ~isempty(centers_per_component_{jj})
+                rnd_ind=randperm(size(centers_cell{jj},1));
+                [a,n]=min(sum((dim.*(centers_per_component_{jj}(rnd_ind,:)-[centroid(ii,:)])).^2,2));
+                if a<radius^2
+                    centers{ii}=[centers{ii}' centers_per_component_{jj}(rnd_ind(n),:)']';
+                    centers_per_component_{jj}(rnd_ind(n),:)=inf*[1 1 1];
+                end
             end
         end
         centroid_=[centroid_' mean(centers{ii},1)']';
@@ -40,9 +42,11 @@ if nargout>1
     ID=false(size(centroid,1),size(centers_cell,2));
     for ii=1:size(centroid,1)
         for jj=1:size(centers_per_component_,2)
-            a=min(sum((dim.*(centers_cell{jj}-[centroid(ii,:)])).^2,2));
-            if a<radius^2
-                ID(ii,jj)=true;
+            if ~isempty(centers_per_component_{jj})
+                a=min(sum((dim.*(centers_cell{jj}-[centroid(ii,:)])).^2,2));
+                if a<radius^2
+                    ID(ii,jj)=true;
+                end
             end
         end
     end
