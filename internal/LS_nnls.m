@@ -1,5 +1,26 @@
 function [X, G] = LS_nnls(A,Y,opts,G,x)
+% LS_NNLS is a solver for large non-negative least squares problems.
+%
+%                   argmin_{x>=0}||y-A(x)||_2^2
+%
+% Input:
+% A...              Matrix corresponding to A in the formula above.
+% x...              Matrix of solution vectros of the above problem. LS_nnls
+%                   solves multiple nnls problems in parallel.
+% Y...              Matrix of inhomogenities, each row represents one nnls
+%                   problm.
+% struct opts
+% opts.display...   boolean, if true messages will be printed in console.
+% opts.lambda...    lagrangian multiplier for L1 regularization
+% opts.gpu_id...    ID of GPU to be used if GPU support is available.
 % 
+%
+%
+% Output
+% X...              Matrix of approximations of the solutions to the
+%                   nnls problems. Each row is one solution.
+% G...              Gram-matrix.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if nargin<3
     opts =struct;
 end
