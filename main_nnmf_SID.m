@@ -58,6 +58,11 @@ else
     Input.SID_output_name = tempdir();
 end
 
+if isfield(optional_args, 'template_threshold')
+    Input.template_threshold = optional_args.template_threshold;
+else
+    Input.template_threshold=0.01;
+end
 
 if isfield(optional_args, 'bg_iter')
     Input.bg_iter = optional_args.bg_iter;
@@ -83,14 +88,18 @@ else
     Input.bg_sub = 1;
 end
 
-if ~isfield(Input,'segmentation')
-    Input.segmentation.threshold = 0.01;
+if isfield(optional_args, 'SID_optimization_args')
+    Input.SID_optimization_args = optional_args.SID_optimization_args;
+else
+    Input.SID_optimization_args.lambda = 1e-4;
 end
 
-if ~isfield(Input.segmentation,'top_cutoff')
+if isfield(optional_args,'segmentation')
+    Input.segmentation = optional_args.segmentation;
+else
+    Input.segmentation.threshold = 0.01;
     Input.segmentation.top_cutoff = 1;
 end
-
 
 if isfield(optional_args, 'frames')
     Input.frames = optional_args.frames;
@@ -149,12 +158,6 @@ else
     Input.filter = 0;
 end
 
-if isfield(optional_args, 'total_deconv_opts')
-    Input.total_deconv_opts = optional_args.total_deconv_opts;
-else
-    Input.total_deconv_opts = [];
-end
-
 if isfield(optional_args, 'psf_cache_dir')  % a very fast storage location (ideally, a ramdisk), for caching the psf file. This is to avoid serialization to parfor workers
     Input.psf_cache_dir = optional_args.psf_cache_dir;
 else
@@ -178,7 +181,9 @@ else
     Input.crop_border_microlenses = [0 0 0 0];
 end
 
-if ~isfield(Input,'cluster_iter')
+if isfield(optional_args,'cluster_iter')
+    Input.cluster_iter = optional_args.cluster_iter;
+else
     Input.cluster_iter=40;
 end
 %%
@@ -208,7 +213,7 @@ if ~strcmp(Input.psf_cache_dir, '')
 end
 psf_ballistic = matfile(Input.psf_filename_ballistic);
 
-if ~isfield(Input.segmentation,'bottom_cutoff')
+if ~isfield(Input.segmentation, 'bottom_cutoff')
     Input.segmentation.bottom_cutoff = size(psf_ballistic.H,5);
 end
 
@@ -521,6 +526,7 @@ save(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_checkpoint_pos
 %% filter reconstructed spatial filters
 opts.border = [1,1,15];
 opts.gpu_ids = Input.gpu_ids;
+opts.axial = Input.axial;
 if Input.optimize_kernel
     opts.neur_rad = 6;
 else
@@ -621,8 +627,7 @@ else
 end
 
 %% generate template
-thres=0.01;
-SID_output.template=generate_template(SID_output.neuron_centers_ini,psf_ballistic.H,SID_output.std_image,thres);
+SID_output.template=generate_template(SID_output.neuron_centers_ini,psf_ballistic.H,SID_output.std_image,Input.template_threshold);
 
 %% crop model
 neur=find(squeeze(max(SID_output.forward_model_ini(:,SID_output.idx),[],2)>0));
@@ -639,13 +644,11 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
 
 tic
 opts_temp=struct;
-opts_spat=struct;
+opts_spat=Input.SID_optimization_args;
 opts_temp.idx=SID_output.idx;
 opts_temp.microlenses = SID_output.microlenses;
 opts_spat.bg_sub = Input.bg_sub;
 opts_temp.bg_sub = Input.bg_sub;
-% opts_temp.Nnum = Nnum;
-opts_spat.lambda=1e-4;
 
 if isfield(Input, 'bg_sub') && Input.bg_sub
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
@@ -723,7 +726,7 @@ opts_temp.warm_start=[];
 opts_temp.outfile = fullfile(Input.output_folder, 'timeseries_debug_out.mat');
 opts.non_neg_on=true;
 tic
-SID_output.timeseries_tota = incremental_temporal_update_gpu(SID_output.forward_model_iterated, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts_temp);
+SID_output.timeseries_total = incremental_temporal_update_gpu(SID_output.forward_model_iterated, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts_temp);
 toc
 % if isfield(Input, 'detrend') && Input.detrend
 %     opts_temp.baseline=SID_output.baseline;
@@ -731,6 +734,8 @@ toc
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Extraction complete']);
 
 %% Signal2Noise ordering
+n=SNR_order(SID_output.timeseries_total);
+SID_output.neur
 
 %% save SID_output
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Saving result'])
