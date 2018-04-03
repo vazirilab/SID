@@ -569,8 +569,8 @@ end
 if ~isfield(Input.segmentation,'bottom_cutoff')
     Input.segmentation.bottom_cutoff = input('Input bottom cutoff \n');
 end
-id=logical((SID_output.neuron_centers_ini(:,3)>Input.segmentation.top_cutoff...
-    ).*(SID_output.neuron_centers_ini(:,3)<Input.segmentation.bottom_cutoff));
+id=logical((SID_output.neuron_centers_ini(:,3)>=Input.segmentation.top_cutoff...
+    ).*(SID_output.neuron_centers_ini(:,3)<=Input.segmentation.bottom_cutoff));
 SID_output.neuron_centers_ini=SID_output.neuron_centers_ini(id,:);
 SID_output.neur_id=SID_output.neur_id(id,:);
 
@@ -610,14 +610,14 @@ if ~isfield(Input,'use_std_GLL')
 end
 
 if isempty(Input.gpu_ids)||Input.use_std_GLL
-    SID_output.forward_model_ini=generate_LFM_library_CPU(SID_output.neuron_centers_ini, psf_ballistic, ceil(SID_output.neur_rad), dim, size(SID_output.recon{1}));
+    SID_output.forward_model_ini=generate_LFM_library_CPU(SID_output.neuron_centers_ini, psf_ballistic, round(SID_output.neur_rad), dim, size(SID_output.recon{1}));
 else
     opts = SID_output.recon_opts;
     opts.NumWorkers=10;
     opts.image_size = SID_output.movie_size(1:2);
     opts.axial = Input.axial;
     opts.neur_rad = Input.neur_rad;
-    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,SID_output.neur_id,psf_ballistic,opts);
+    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,round(Input.neur_id),psf_ballistic,opts);
 end
 
 %% generate template
@@ -645,7 +645,7 @@ opts_temp.microlenses = SID_output.microlenses;
 opts_spat.bg_sub = Input.bg_sub;
 opts_temp.bg_sub = Input.bg_sub;
 opts_temp.Nnum = Nnum;
-opts_spat.lambda=0.01;
+% opts_spat.lambda=3e-3;
 
 if isfield(Input, 'bg_sub') && Input.bg_sub
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
@@ -656,7 +656,7 @@ sensor_movie =double(sensor_movie*sensor_movie_max);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update']);
 SID_output.forward_model_iterated=(1./(sqrt(sum(SID_output.forward_model_iterated.^2....
     ,2)))).*SID_output.forward_model_iterated;
-SID_output.timeseries_ini = fast_nnls(SID_output.forward_model_iterated(:,SID_output.microlenses(SID_output.idx)>0)', double(sensor_movie(SID_output.microlenses(SID_output.idx)>0,:)), opts_temp);
+SID_output.timeseries_ini = LS_nnls(SID_output.forward_model_iterated(:,SID_output.microlenses(SID_output.idx)>0)', double(sensor_movie(SID_output.microlenses(SID_output.idx)>0,:)), opts_temp);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
 
 SID_output.timeseries_iterated=SID_output.timeseries_ini;
@@ -693,6 +693,11 @@ for iter=1:Input.num_iter
         sensor_movie,SID_output.forward_model_iterated,SID_output.timeseries_iterated...
         ,template_,SID_output.indices_in_orig,opts_temp);
     
+
+    [SID_output.forward_model_iterated,SID_output.timeseries_iterated,template_...
+        ,SID_output.indices_in_orig] = merge_filters(...
+        SID_output.forward_model_iterated,SID_output.timeseries_iterated...
+        ,template_,SID_output.indices_in_orig,opts_temp);
     disp([num2str(iter) '. iteration completed']);
 end
 SID_output.neuron_centers_iterated=SID_output.neuron_centers_iterated(SID_output.indices_in_orig(1:end-1),:);
