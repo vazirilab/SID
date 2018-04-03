@@ -13,13 +13,26 @@ function [X, G] = LS_nnls(A,Y,opts,G,x)
 % opts.display...   boolean, if true messages will be printed in console.
 % opts.lambda...    lagrangian multiplier for L1 regularization
 % opts.gpu_id...    ID of GPU to be used if GPU support is available.
-% 
-%
+% opts.sample...    Read about convergence check below!
+% opts.tol...       -
+% opts.tol_...      -
 %
 % Output
 % X...              Matrix of approximations of the solutions to the
 %                   nnls problems. Each row is one solution.
 % G...              Gram-matrix.
+%
+% Convergence check:
+% LS_nnls checks for each of the nnls subproblem if a certain accuracy is
+% reached. It does that no like usually by checking the norm of the
+% gradient, but by guessing the convergence curve from the difference
+% between two consecutive iterative solutions (Consec_error).
+% It performs a linear fit of the log of Consec_error for opts.sample
+% previous iterates and if the error between the linear fit and the log of
+% the consecutive error is smaller than opts.tol_ the algorithm can use
+% this information to accurately estimate the true error. If the true error
+% is below opts.tol the algorithm stops for the nnls-sub-problem in
+% question and puts the current solution into the output array.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if nargin<3
     opts =struct;
