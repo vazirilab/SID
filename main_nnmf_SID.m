@@ -637,7 +637,7 @@ SID_output.indices_in_orig=neur;
 
 template_=SID_output.template(neur,SID_output.idx);
 Nnum=psf_ballistic.Nnum;
-% clearvars -except sensor_movie Input SID_output mean_signal template_ neur Nnum neur sensor_movie_max sensor_movie_min psf_ballistic;
+clearvars -except sensor_movie Input SID_output mean_signal template_ neur Nnum neur sensor_movie_max sensor_movie_min psf_ballistic;
 
 %% SID-Alternative-convex-search
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
@@ -703,7 +703,7 @@ for iter=1:Input.num_iter
         ,template_,SID_output.indices_in_orig,opts_temp);
     disp([num2str(iter) '. iteration completed']);
 end
-SID_output.neuron_centers_iterated=SID_output.neuron_centers_iterated(SID_output.indices_in_orig(1:end-1),:);
+SID_output.neuron_centers_iterated=SID_output.neuron_centers_ini(SID_output.indices_in_orig(1:end-1),:);
 
 SID_output.template_iterated=template_;
 opts_temp.warm_start=[];
@@ -720,7 +720,6 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Model optimization completed']);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Extracting Timeseries']);
 
 opts_temp.warm_start=[];
-% % opts_temp.idx=SID_output.idx;
 % % opts_temp.max_iter=20000; % already defined in the last section
 % opts_temp.frame=Input.frames; %frames for model optimization;
 opts_temp.outfile = fullfile(Input.output_folder, 'timeseries_debug_out.mat');
