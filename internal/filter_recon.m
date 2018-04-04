@@ -1,5 +1,19 @@
 function segmm=filter_recon(recon, opts)
-
+% FILTER_RECON performs a form a band-pass-filtering on the elements of a
+% cell array 'recon'.
+%
+% Input:
+% recon...                  cell array of Volume-data 
+% struct opts:
+% opts.NumWorkers...        Number of Workers to be used in the procedure.
+% opts.gpu_ids...           ID's of GPU's available to the workers.
+% opts.border...            1x3 vector; size for boundary padding, for the
+%                           algorithm to generate smooth boundaries, 
+%                           to avoid artefacts.
+% 
+% Output:
+% segmm...                  cell array of band-pass-filtered Volumes
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 [~,u] = max([size(recon,1),size(recon,2)]);
 poolobj = gcp('nocreate');
 
