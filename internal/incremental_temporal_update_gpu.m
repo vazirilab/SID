@@ -13,7 +13,9 @@ if ~isfield(opts,'non_neg_on')
     opts.non_neg_on=false;
 end
 
-
+if ~isfield(opts,'do_crop')
+    opts.do_crop=0;
+end
 %% making sure what has already been computed does not get computed again
 Varg=ones(1,length(infiles_struct));
 if isfield(opts,'frame')
@@ -35,6 +37,7 @@ else
     baseline=[1:length(infiles_struct)]*0+1;
 end
 %%
+
 num=length(infiles_struct);
 timeseries=zeros(size(forward_model,1)+(~isempty(bg_spatial)),num);
 mig=1:min(Junk_size,num);
@@ -51,6 +54,9 @@ while num>0
         img_rect =  ImageRect(double(imread(fullfile(indir, infiles_struct(img_ix).name), 'tiff')), x_offset, y_offset, dx, Nnum,0);
         if img_ix == mig(1)
             sensor_movie = ones(size(img_rect, 1)*size(img_rect, 2), length(mig), 'double');
+        end
+        if opts.do_crop
+            img_rect = img_rect(output.crop.x_min+1:output.crop.x_max,output.crop.y_min+1:output.crop.y_max);
         end
         if size(infiles_struct)==1
             sensor_movie(:) = img_rect(:)/baseline(img_ix);

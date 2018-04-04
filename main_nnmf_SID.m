@@ -723,6 +723,8 @@ opts_temp.warm_start=[];
 % % opts_temp.max_iter=20000; % already defined in the last section
 % opts_temp.frame=Input.frames; %frames for model optimization;
 opts_temp.outfile = fullfile(Input.output_folder, 'timeseries_debug_out.mat');
+opts_temp.do_crop = Input.do_crop;
+opts_temp.crop = SID_output.crop;
 opts.non_neg_on=true;
 tic
 SID_output.timeseries_total = incremental_temporal_update_gpu(SID_output.forward_model_iterated, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts_temp);
