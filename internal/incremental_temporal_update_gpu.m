@@ -16,6 +16,10 @@ end
 if ~isfield(opts,'do_crop')
     opts.do_crop=0;
 end
+
+if ~isfield(opts,'gpu_id')
+    opts.gpu_id=[];
+end
 %% making sure what has already been computed does not get computed again
 Varg=ones(1,length(infiles_struct));
 if isfield(opts,'frame')
@@ -52,11 +56,11 @@ while num>0
             fprintf([num2str(line(img_ix)) ' ']);
         end
         img_rect =  ImageRect(double(imread(fullfile(indir, infiles_struct(img_ix).name), 'tiff')), x_offset, y_offset, dx, Nnum,0);
+        if opts.do_crop
+            img_rect = img_rect(opts.crop.x_min+1:opts.crop.x_max,opts.crop.y_min+1:opts.crop.y_max);
+        end
         if img_ix == mig(1)
             sensor_movie = ones(size(img_rect, 1)*size(img_rect, 2), length(mig), 'double');
-        end
-        if opts.do_crop
-            img_rect = img_rect(output.crop.x_min+1:output.crop.x_max,output.crop.y_min+1:output.crop.y_max);
         end
         if size(infiles_struct)==1
             sensor_movie(:) = img_rect(:)/baseline(img_ix);
@@ -68,19 +72,30 @@ while num>0
         sensor_movie=sensor_movie(opts.idx,:);
     end
     
+    
     if flag==1
         if opts.non_neg_on
-            [timeseries(:,mig),Q,~,h]=fast_nnls(forward_model,sensor_movie,opts);
+            [timeseries(:,mig),Q,~,h]=LS_nnls(forward_model,sensor_movie,opts);
         else
+            if ~isempty(opts.gpu_id)
+                forward_model = gpuArray(full(forward_model));
+            end
             Q=inv(forward_model*forward_model');
             Q=Q*forward_model;
+            clear forward_model;
+            if ~isempty(opts.gpu_id)
+                sensor_movie=gpuArray(sensor_movie);
+            end
             timeseries(:,mig)=Q*sensor_movie;
         end
         flag=0;
     else
         if opts.non_neg_on
-            [timeseries(:,mig)]=fast_nnls(forward_model,sensor_movie,opts,Q,[],h);
+            [timeseries(:,mig)]=LS_nnls(forward_model,sensor_movie,opts,Q,[],h);
         else
+            if ~isempty(opts.gpu_id)
+                sensor_movie=gpuArray(sensor_movie);
+            end
             timeseries(:,mig)=Q*sensor_movie;
         end
     end
