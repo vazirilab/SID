@@ -373,6 +373,7 @@ end
 if Input.do_crop
     if ~isfield(Input,'crop_mask')
         Input.crop_mask=Inside;
+        SID_output.crop_mask=Inside;
     end
     [sensor_movie, SID_output] = crop(sensor_movie, SID_output,Inside,Input.crop_mask,Nnum);
 else
@@ -650,6 +651,10 @@ opts_temp.microlenses = SID_output.microlenses;
 opts_spat.bg_sub = Input.bg_sub;
 opts_temp.bg_sub = Input.bg_sub;
 
+if ~isempty(Input.gpu_ids')
+    opts_temp.gpu_id = Input.gpu_ids(1);
+end
+
 if isfield(Input, 'bg_sub') && Input.bg_sub
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
     SID_output.indices_in_orig=[SID_output.indices_in_orig' length(SID_output.indices_in_orig)+1];
@@ -737,7 +742,7 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Extraction complete']);
 %% Signal2Noise ordering
 opts.bg_sub = Input.bg_sub;
 n=SNR_order(SID_output.timeseries_total, opts);
-SID_output.neuron_centers_iterated = SID_output.neuron_centers_iterated(n,:);
+SID_output.neuron_centers_iterated = SID_output.neuron_centers_iterated(n(1:end-Input.bg_sub),:);
 SID_output.forward_model_iterated = SID_output.forward_model_iterated(n,:);
 SID_output.timeseries_iterated = SID_output.timeseries_iterated(n,:);
 SID_output.timeseries_total = SID_output.timeseries_total(n,:);
