@@ -43,14 +43,16 @@ for kk=1:opts.NumWorkers:size(recon,u)
     for worker=1:min(opts.NumWorkers,size(recon,u)-(kk-1))
         k=kk+worker-1;        
         if opts.neur_rad<5
-            [X,Y,Z]=meshgrid(1:2:2*size(recon{k},2)-1,1:2:2*size(recon{k},1)-1,[1:opts.native_focal_plane-1 opts.native_focal_plane+1:size(recon{k},3)]);
+            [X,Y,Z]=meshgrid(1:2:2*size(recon{k},2)-1,1:2:2*size(recon{k},1)-1,...
+                [1:opts.native_focal_plane-1 opts.native_focal_plane+1:size(recon{k},3)]);
             [Xq,Yq,Zq]=meshgrid(1:1:2*size(recon{k},2)-1,1:1:2*size(recon{k},1)-1,1:size(recon{k},3));
             cellSize = 4*opts.neur_rad;
         else
             cellSize = 2*opts.neur_rad;
         end       
         if opts.neur_rad<5
-            V=interp3(X,Y,Z,recon{k}(:,:,[1:opts.native_focal_plane-1 opts.native_focal_plane+1:size(recon{k},3)]),Xq,Yq,Zq);
+            V=interp3(X,Y,Z,recon{k}(:,:,[1:opts.native_focal_plane-1 opts.native_focal_plane...
+                +1:size(recon{k},3)]),Xq,Yq,Zq);
         else
             V=recon{k};
         end
@@ -64,16 +66,26 @@ for kk=1:opts.NumWorkers:size(recon,u)
         img{worker}=full(I/max(I(:)));
         siz_I{worker}=size(I);
     end
-    parfor worker=1:min(opts.NumWorkers,size(recon,u)-(kk-1))
-        filtered_Image_=band_pass_filter(img{worker}, cellSize, 3, gimp(mod(worker-1,n)+1),1.2);
-        segm_{worker}=filtered_Image_(opts.border(1):size(filtered_Image_,1)-opts.border(1),opts.border(2):size(filtered_Image_,2)-opts.border(2),opts.border(3)+1:opts.border(3)+si_V{worker});
-        if ~isempty(opts.gpu_ids)
-            gpuDevice([]);
+    if min(gimp)==-1
+        for worker=1:min(opts.NumWorkers,size(recon,u)-(kk-1))
+            filtered_Image_=band_pass_filter(img{worker}, cellSize, 3, gimp(mod(worker-1,n)+1),1.2);
+            segm_{worker}=filtered_Image_(opts.border(1):size(filtered_Image_,1)-opts.border(1)...
+                ,opts.border(2):size(filtered_Image_,2)-opts.border(2),opts.border(3)+1:opts.border(3)+si_V{worker});
+        end
+    else
+        parfor worker=1:min(opts.NumWorkers,size(recon,u)-(kk-1))
+            filtered_Image_=band_pass_filter(img{worker}, cellSize, 3, gimp(mod(worker-1,n)+1),1.2);
+            segm_{worker}=filtered_Image_(opts.border(1):size(filtered_Image_,1)-opts.border(1)...
+                ,opts.border(2):size(filtered_Image_,2)-opts.border(2),opts.border(3)+1:opts.border(3)+si_V{worker});
+            if ~isempty(opts.gpu_ids)
+                gpuDevice([]);
+            end
         end
     end
     for kp=1:min(opts.NumWorkers,size(recon,u)-(kk-1))
         filtered_Image=zeros(siz_I{kp}-[0 0 2*opts.border(3)]);
-        filtered_Image(opts.border(1):siz_I{kp}(1)-opts.border(1),opts.border(2):siz_I{kp}(2)-opts.border(2),:)=segm_{kp};
+        filtered_Image(opts.border(1):siz_I{kp}(1)-opts.border(1),opts.border(2):siz_I{kp}(2)...
+            -opts.border(2),:)=segm_{kp};
         if opts.neur_rad<5
             segmm{kk+kp-1}=filtered_Image(1:2:end,1:2:end,:);
         else
@@ -86,7 +98,8 @@ end
 
 for ix=1:size(recon,u)
     Vol = recon{ix}*0;
-    Vol(opts.border(3):end-opts.border(3),opts.border(3):end-opts.border(3),:) = segmm{ix}(opts.border(3):end-opts.border(3),opts.border(3):end-opts.border(3),:);
+    Vol(opts.border(3):end-opts.border(3),opts.border(3):end-opts.border(3),:) =...
+        segmm{ix}(opts.border(3):end-opts.border(3),opts.border(3):end-opts.border(3),:);
     segmm{ix} = Vol/max(Vol(:));
 end
 
