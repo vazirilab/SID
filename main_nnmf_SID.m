@@ -145,10 +145,8 @@ end
 if isfield(optional_args, 'recon_opts')
     Input.recon_opts = optional_args.recon_opts;
 else
-    Input.recon_opts.p=2;
     Input.recon_opts.maxIter=8;
-    Input.recon_opts.mode='basic';
-    Input.recon_opts.lambda_=3.5;
+    Input.recon_opts.lamb_L1=0.1;
     Input.recon_opts.ker_shape='user';
 end
 
@@ -186,16 +184,28 @@ if isfield(optional_args,'cluster_iter')
 else
     Input.cluster_iter=40;
 end
-%%
-Input.axial = 4;
-Input.nnmf_opts.max_iter = 600;
-Input.nnmf_opts.lamb_temp = 0;
-Input.nnmf_opts.lamb_spat = 0;
-Input.nnmf_opts.lamb_orth = 5e-4;
-Input.nnmf_opts.rank = 30;
-Input.update_template = false;
-Input.detrend = true;
-Input.optimize_kernel = false;
+
+if ~isfield(Input,'axial')
+    Input.axial = 4;
+end
+
+if ~isfield(Input,'nnmf_opts')
+    Input.nnmf_opts.max_iter = 600;
+    Input.nnmf_opts.lamb_temp = 0;
+    Input.nnmf_opts.lamb_spat = 0;
+    Input.nnmf_opts.lamb_orth_L1 = 5e-4;
+    Input.nnmf_opts.rank = 30;
+    Input.nnmf_opts.ini_method='pca';
+end
+
+if ~isfield(Input,'update_template')
+    Input.update_template = true;
+end
+
+if ~isfield(Input,'detrend')
+    Input.detrend = true;
+end
+
 mkdir(Input.output_folder)
 
 %% Cache and open PSF
@@ -429,7 +439,6 @@ toc
 %% generate NNMF
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.nnmf_opts.rank) '-factorization']);
 p=0.8;
-Input.nnmf_opts.ini_method='pca';
 SID_output.neuron_centers_ini=[];
 Input.nnmf_opts.active=SID_output.microlenses>0;
 [SID_output.S, SID_output.T]=fast_NMF(max(sensor_movie-quantile(reshape(...
@@ -638,7 +647,7 @@ SID_output.indices_in_orig=neur;
 
 template_=SID_output.template(neur,SID_output.idx);
 Nnum=psf_ballistic.Nnum;
-clearvars -except sensor_movie Input SID_output mean_signal template_ neur Nnum neur sensor_movie_max sensor_movie_min psf_ballistic;
+% clearvars -except sensor_movie Input SID_output mean_signal template_ neur Nnum neur sensor_movie_max sensor_movie_min psf_ballistic;
 
 %% SID-Alternative-convex-search
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
