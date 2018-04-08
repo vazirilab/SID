@@ -1,9 +1,15 @@
 function [S,T]=S_update(Y,S,T,opts)
 T(isnan(T))=0;
-
+S(isnan(S))=0;
 
 Q_T = T*T';
 q_S = Y*T';
+
+if opts.use_std
+    opts.T = sum(T,2);
+    Q_T = Q_T - opts.T*opts.T'/size(T,2);
+    q_S = q_S - opts.Y.*opts.T'/size(T,2);
+end
 
 if opts.lamb_orth_L1
     Q_T = Q_T + opts.lamb_orth_L1*(opts.hilf);
@@ -67,5 +73,6 @@ if opts.diagnostic
     legend('boxoff');
     drawnow expose
 end
+
 
 end

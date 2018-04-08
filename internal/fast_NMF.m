@@ -44,6 +44,7 @@ function [S,T]=fast_NMF(Y,opts,T,S)
 %                       the entire S or T.
 % opts.display          boolean, if false, messages during the run of the
 %                       algorithm will be suppressed.
+% opts.use_std...       use the standard deviation, instead of the L2 error
 %
 % Ouput:
 % S...                  Spatial components of the nnmf
@@ -58,6 +59,9 @@ if ~isfield(opts,'display')
 end
 if ~isfield(opts,'max_iter')
     opts.max_iter = 600;
+end
+if ~isfield(opts,'use_std')
+    opts.use_std=false;
 end
 if ~isfield(opts,'rank')
     opts.rank = 30;
@@ -109,17 +113,22 @@ if opts.lamb_spat_TV
     opts.laplace(1,2,3)=-1;
 end
 
-Y = double(Y/norm(Y(:)));
+if opts.use_std
+    Y=double(Y/sqrt(sum(var(Y,1,2))));
+    opts.Y = sum(Y,2);
+else
+    Y = double(Y/norm(Y(:)));
+end
 
 if ~opts.rank
     opts.max_iter=0;
 end
 
-if nargin<4
+if nargin<3
     [T_0,S_0] = initialize_nnmf(Y,opts.rank,opts);
 end
 
-if nargin<5
+if nargin==3
     option=opts;
     if ~isfield(opts,'max_iter')
         option.max_iter=12;
@@ -159,20 +168,24 @@ for iter=1:opts.max_iter
     [S,T]=S_update(Y,S,T,opts);
     [S,T]=T_update(Y,T,S,opts);
     if opts.diagnostic&&opts.display
-        E(iter)=norm(reshape(Y-S*T,1,[]))^2;
-        P(iter)=norm(reshape(S'*S-eye(size(S,2)),1,[]),1);
+        if opts.use_std
+            E(iter)=sum(var(Y-S*T,1,2),1);
+        else
+            E(iter)=sum(reshape(Y-S*T,1,[]).^2);
+        end
+%         P(iter)=norm(reshape(S'*S-eye(size(S,2)),1,[]),1);
         figure(3);
-        subplot(1,4,1);
+%         subplot(1,4,1);
         plot(E);
-        axis square
-        subplot(1,4,2);
-        plot(P);
-        axis square
-        subplot(1,4,3);
-        plot(E+opts.lamb_orth_L1*P);
-        subplot(1,4,4);
-        imagesc(S'*S);
-        axis square
+%         axis square
+%         subplot(1,4,2);
+%         plot(P);
+%         axis square
+%         subplot(1,4,3);
+%         plot(E+opts.lamb_orth_L1*P);
+%         subplot(1,4,4);
+%         imagesc(S'*S);
+%         axis square
     end 
     if opts.display
         if iter==1
