@@ -20,7 +20,7 @@ end
 id2=[];
 for k=1:size(forward_model,1)
     trace=forward_model(k,opts.microlenses(opts.idx)>0)>opts.tolerance;
-    if sum(trace)>(opts.Nnum^2)/3
+    if sum(trace)>0%(opts.Nnum^2)/3
         id2=[id2 k];
     end
     if opts.display
