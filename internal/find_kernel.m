@@ -5,6 +5,7 @@ opts.border = border;
 if nargin==6
     opts.gpu_ids = gpu_id;
 end
+opts.axial=axial;
 opts.neur_rad = neur_rad;
 opts.native_focal_plane = native_focal_plane;
 rr{1}=Volume;
