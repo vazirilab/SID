@@ -8,8 +8,9 @@ end
 
 id=true(num_neurons,1);
 msize = vol_movie_size(1:3);
-msize(1:2)=msize(1:2)-2*border_no_neurons;
 border_no_neurons = border_no_neurons*[1 1 0];
+border_no_neurons(3)=6;
+msize=msize-2*border_no_neurons;
 gt_struct.centers = border_no_neurons+ ceil(msize.*rand(num_neurons,3));
 while sum(id)
     id=false(num_neurons,1);
@@ -41,6 +42,7 @@ for ii=1:num_neurons
    SP = SP(SP>0);
    SP = SP(SP<vol_movie_size(end));
    sample = rand(1,length(SP))>1-3/dim;
+   sample(ceil(rand(1)*length(sample)))=true;
    gt_struct.spikes(ii,SP(logical(sample)))=1;
 end
 
@@ -51,7 +53,7 @@ gt_struct.timeseries_noisefree = conv2(gt_struct.spikes,gt_struct.Ca_kernel,'sam
 gt_struct.timeseries = gt_struct.timeseries_noisefree + noiselevel * rand(size(gt_struct.timeseries_noisefree));
 
 
-gt_struct.Volume = zeros(m_size);
+gt_struct.Volume = zeros(vol_movie_size(1:3));
 
 for ii=1:num_neurons
     gt_struct.Volume(gt_struct.centers(ii,1),gt_struct.centers(ii,2),gt_struct.centers(ii,3))=1;
