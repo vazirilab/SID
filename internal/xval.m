@@ -76,6 +76,7 @@ map = conv2(opts.xval.std_image.^2,ones(opts.xval.im_size+1),'valid');
 [cx,cy] = meshgrid(c_y:c_y+opts.xval.im_size,c_x:c_x+opts.xval.im_size);
 ind = sub2ind(size(opts.xval.std_image),cx(:),cy(:));
 Y_p = Y(ind,:);
+
 option=opts;
 option.diagnostic = false;
 option.max_iter=2000;
@@ -96,10 +97,15 @@ for j=1:length(opts.xval.param)
         if j==1
             yy{k}=Y_p(:,k==N);
             y{k}=Y_p(:,k~=N);
-            yy{k}=yy{k}/norm(reshape(yy{k},1,[]));
-            y{k}=y{k}/norm(reshape(y{k},1,[]));
+            if opts.use_std
+                yy{k}=yy{k}/sqrt(sum(var(yy{k},1,2)));
+                y{k}=y{k}/sqrt(sum(var(y{k},1,2)));
+            else
+                yy{k}=yy{k}/norm(reshape(yy{k},1,[]));
+                y{k}=y{k}/norm(reshape(y{k},1,[]));
+            end 
         end
-        
+        option.Y = sum(y{k},2);
         lambda = opts.xval.param(j);
         switch opts.xval.multiplier
             case 'lamb_orth_L1'
@@ -128,8 +134,12 @@ for j=1:length(opts.xval.param)
         end
         T(isnan(T))=0;
         S(isnan(S))=0;
-        T = LS_nnls(S,yy{k},opts);
-        E(k) = norm(reshape(S*T-yy{k},1,[]));
+        T = LS_nnls(S,yy{k},option);
+        if opts.use_std
+            E(k) = sqrt(sum(var(reshape(S*T-yy{k},1,[]),1,2),1));
+        else
+            E(k) = norm(reshape(S*T-yy{k},1,[]));
+        end
     end
     disp(j);
     E_(j) = mean(E);

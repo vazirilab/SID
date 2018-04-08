@@ -13,6 +13,7 @@ function [X, G] = LS_nnls(A,Y,opts,G,x)
 % opts.display...   boolean, if true messages will be printed in console.
 % opts.lambda...    lagrangian multiplier for L1 regularization
 % opts.gpu_id...    ID of GPU to be used if GPU support is available.
+% opts.use_std...   calculate least standard deviation instead of L2-norm
 % opts.sample...    Read about convergence check below!
 % opts.tol...       -
 % opts.tol_...      -
@@ -42,6 +43,10 @@ if ~isfield(opts,'display')
     opts.display = false;
 end
 
+if ~isfield(opts,'use_std')
+    opts.use_std = false;
+end
+
 if ~isfield(opts,'lambda')
     opts.lambda = 0;
 end
@@ -66,7 +71,7 @@ if ~isfield(opts,'max_iter')
     opts.max_iter = 2000;
 end
 
-h = A'*Y;
+h = A'*Y - opts.lambda;
 
 if nargin<5
     x = zeros(size(A,2),size(Y,2));
@@ -89,6 +94,13 @@ if ~isempty(opts.gpu_id)
 end
 rds=1:size(Y,2);
 
+if opts.use_std
+    G = @(x) G*x - (G*sum(x,2))/size(Y,2);
+    h = h - A'*sum(Y,2)/size(Y,2);
+else
+    G = @(x) G*x;
+end
+
 iter = 0;
 test=[];
 dn=[[1:2:2*opts.sample]', ones(opts.sample,1)];
@@ -97,10 +109,10 @@ tic
 while ~isempty(x)
     iter = iter + 1;
     x_ = gather(x);
-    df = -h + G*x + opts.lambda;
+    df = -h + G(x);
     passive=max(x>0,df<0);
     df_=df.*passive;
-    alpha=sum(df_.^2,1)./sum(df_.*(G*df_),1);
+    alpha=sum(df_.^2,1)./sum(df_.*(G(df_)),1);
     alpha(isnan(alpha))=0;
     x = x - df_.*alpha;
     x(x<0) = 0;
@@ -110,7 +122,7 @@ while ~isempty(x)
         if opts.display
             disp('max number of iterations is reached');
         end
-    else
+    elseif ~opts.use_std
         if mod(iter,2)==1
             test = [test' log((sum(gather(x)-x_,1).^2)./sum(x_.^2,1))'/2]';
             if size(test,1)>opts.sample
@@ -128,6 +140,8 @@ while ~isempty(x)
         else
             ids=[];
         end
+    else
+        ids = [];
     end
     
     if max(ids(:))
@@ -142,9 +156,11 @@ while ~isempty(x)
         test = test(:,~ids);
     end
     if opts.display
-    disp(iter);
+        disp(iter);
     end
 end
-toc
+if opts.display
+    toc
+end
 
 end
