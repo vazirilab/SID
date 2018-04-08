@@ -23,10 +23,6 @@ if ~isfield(opts,'bg_sub')
     opts.bg_sub=1;
 end
 
-if ~isfield(opts,'lambda')
-    opts.lambda=0;
-end
-
 if ~isfield(opts,'display')
     opts.display=0;
 end
@@ -68,21 +64,15 @@ for neur=1:size(template,1)
         for k_=1:length(space)
             idx=find(squeeze(temp(:,k_)));
             y=squeeze(Y(k_,:))';
-            if opts.bg_sub
-                opts.lamb = opts.lambda * ones(length(idx),1);
-                opts.lamb(end) =0;
-            else
-                opts.lamb=opts.lambda;
-            end
             nrm=norm(y(:));
             if nrm>0
-            x_=nnls(A(:,idx),y/nrm,opts);
-            F(idx,k_)=x_*nrm;
+                x_ = reg_nnls(A(:,idx),y/nrm,opts);
+                %                 x_ = nnls(A(:,idx),y/nrm,opts);
+                F(idx,k_) = x_*nrm;
             else
-            F(idx,k_)=0;
+                F(idx,k_) = 0;
             end
-        end
-        
+        end       
         if size(involved_neurons,2)>=1
             template(:,space)=0;
             [iI, iJ, iS]=find(F);
