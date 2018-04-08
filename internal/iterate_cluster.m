@@ -6,6 +6,7 @@ function [centroid, ID, centers]=iterate_cluster(centers_cell,N,radius,dim)
 %
 % Input:
 % centers_cell...   cell array of array of size [m,3]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 centroid =[];
 for jj=1:size(centers_cell,2)
     centroid=[centroid' centers_cell{jj}']';
