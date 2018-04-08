@@ -16,10 +16,16 @@ function [forward_model,timeseries,template,indices_in_orig]...
     
 corr_m = corrcoef(timeseries')-eye(size(timeseries,1));
 corr_m = corr_m(1:end-opts.bg_sub,1:end-opts.bg_sub);
+
+
 temp = single(template);
 temp =(1./min(sum(temp,2),sum(temp,2)')).*( temp*temp')-eye(size(timeseries,1)-opts.bg_sub);
+
+
 temp = single(temp>1/3) + corr_m;
+
 temp = temp(1:end-opts.bg_sub,1:end-opts.bg_sub);
+
 temp = tril(temp>1+opts.limit);
 
 for ii=find(sum(temp,1))
@@ -36,8 +42,9 @@ else
     forward_model = forward_model(sum(template,2)>0,:);
     indices_in_orig = indices_in_orig(sum(template,2)>0);
 end
-template = template(sum(template,2)>0,:);
 
+
+template = template(sum(template,2)>0,:);
 end
 
 
