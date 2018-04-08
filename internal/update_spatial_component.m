@@ -1,5 +1,24 @@
 function [forward_model]=update_spatial_component(timeseries, sensor_movie, template, opts)
-
+% UPDATE_SPATIAL_COMPONENT performs an update of the spatial components, by
+% splitting the problem in sub-problems defined by 'template' and solving
+% for each of those sub-problems a non-negative least squares problem.
+%
+% Input:
+% timeseries...         Array of timeseries
+% sensor_movie...       LFM-movie
+% template...           binary array assigning each neuron its spatial
+%                       extent.
+% struct opts:
+% opts.bg_sub...        perform background subtraction, treat the problem
+%                       so that the last component of timeseries is treated 
+%                       as the background.
+% opts.display...       boolean, if true print status information into the
+%                       console.
+% opts.lambda...        lagrange multiplier for L1-regularizer.
+%
+% Output:
+% forward_model...      updated forward_model
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ~isfield(opts,'bg_sub')
     opts.bg_sub=1;
 end
@@ -10,10 +29,6 @@ end
 
 if ~isfield(opts,'display')
     opts.display=0;
-end
-
-if ~isfield(opts,'exact')
-    opts.exact=0;
 end
 
 [~, order]=sort(sum(template,2));
