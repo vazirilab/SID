@@ -2,7 +2,7 @@ function [forward_model,timeseries,template,indices_in_orig]...
     =merge_filters(forward_model,timeseries...
         ,template,indices_in_orig,opts)
     
- if nargin<6
+ if nargin<5
      opts=struct;
  end
  
