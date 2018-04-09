@@ -668,8 +668,8 @@ if ~Input.use_std
     opts_spat.bg_sub = Input.bg_sub;
     opts_temp.bg_sub = Input.bg_sub;
 else
-    opts_spat.bg_sub = false;
-    opts_temp.bg_sub = false;
+    opts_spat.bg_sub = 0;
+    opts_temp.bg_sub = 0;
 end
 
 if ~isempty(Input.gpu_ids')
