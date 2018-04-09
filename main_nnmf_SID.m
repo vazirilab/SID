@@ -676,7 +676,7 @@ if ~isempty(Input.gpu_ids')
     opts_temp.gpu_id = Input.gpu_ids(1);
 end
 
-if isfield(Input, 'bg_sub') && Input.bg_sub
+if isfield(Input, 'bg_sub') && Input.bg_sub && ~Input.use_std
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
     SID_output.indices_in_orig=[SID_output.indices_in_orig' length(SID_output.indices_in_orig)+1];
 end
