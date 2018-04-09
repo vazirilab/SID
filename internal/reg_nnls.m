@@ -50,8 +50,8 @@ q = -A'*d;
 
 if opts.use_std
     opts.T = sum(A,1);
-    Q = Q - opts.T*opts.T/size(A,1);
-    q = q - sum(d,1)'.*opts.T/size(A,1);
+    Q = Q - opts.T'*opts.T/size(A,1);
+    q = q + opts.T'.*sum(d,1)'/size(A,1);
 end
 
 if opts.lamb_L1
