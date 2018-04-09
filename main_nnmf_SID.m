@@ -206,6 +206,10 @@ if ~isfield(Input,'detrend')
     Input.detrend = true;
 end
 
+if ~isfield(Input,'use_std')
+    Input.use_std = false;
+end
+
 mkdir(Input.output_folder)
 
 %% Cache and open PSF
@@ -439,10 +443,11 @@ toc
 %% generate NNMF
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.nnmf_opts.rank) '-factorization']);
 p=0.8;
-SID_output.neuron_centers_ini=[];
-Input.nnmf_opts.active=SID_output.microlenses>0;
+opts = Input.nnmf_opts;
+opts.active = SID_output.microlenses>0;
+opts.use_std = Input.use_std;
 [SID_output.S, SID_output.T]=fast_NMF(max(sensor_movie-quantile(reshape(...
-    sensor_movie(SID_output.microlenses==0,:),1,[]),p),0),Input.nnmf_opts);
+    sensor_movie(SID_output.microlenses==0,:),1,[]),p),0),opts);
 SID_output.S=SID_output.S(:,~isoutlier(sum(SID_output.S,1),'ThresholdFactor',10));
 if (~Input.optimize_kernel)&&(~isfield(Input.recon_opts,'ker_shape'))
     SID_output.S=[SID_output.S SID_output.std_image(:)]';
@@ -657,8 +662,12 @@ opts_temp = struct;
 opts_spat = Input.SID_optimization_args;
 opts_temp.idx = SID_output.idx;
 opts_temp.microlenses = SID_output.microlenses;
+opts_temp.use_std = Input.use_std;
+opts_spat.use_std = Input.use_std;
+if ~Input.use_std
 opts_spat.bg_sub = Input.bg_sub;
 opts_temp.bg_sub = Input.bg_sub;
+end
 
 if ~isempty(Input.gpu_ids')
     opts_temp.gpu_id = Input.gpu_ids(1);
