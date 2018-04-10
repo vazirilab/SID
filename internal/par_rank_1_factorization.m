@@ -1,7 +1,28 @@
-function [bg_temporal, bg_spatial] = par_rank_1_factorization(indir, step, max_iter, x_offset, y_offset, dx, Nnum, prime, mask)
+function [bg_temporal, bg_spatial] = par_rank_1_factorization(indir, frames, max_iter, x_offset, y_offset, dx, Nnum, mask)
+% PAR_RANK_1_FACTORIZATION Rank-1-matrix-factorization of the tif-movie Y
+% contained in the indir folder.
+%
+%       Y~bg_spatial*bg_temporal
+%
+% Input:
+% struct frames:
+%   frames.start...         First frame to be loaded.
+%   frames.step...          algorithm only loads frames with increments
+%                           of 'step' between them.
+%   frames.end...           Final frame to be loaded.
+%   frames.mean...          boolean that determines wether to load just the
+% max_iter...               maximum Number of Iterations
+% x_offset, y_offset, dx... Lenslet-parameters for the rectification.
+% Nnum...                   number of pixels behind microlens.
+%
+% Output:
+% bg_temporal...            temporal component of the rank-1-factorization
+% bg_spatial...             spatial component of the rank-1-factorization
 
 if nargin < 2
-    step = 1;
+    frames.start = 1;
+    frames.step = 1;
+    frames.end = inf;
 end
 
 if nargin < 3
@@ -15,11 +36,8 @@ if nargin < 4
     Nnum = 0;
 end
 
-if nargin < 8
-    prime = inf;
-end
 
-if nargin < 9
+if nargin < 8
     mask = true;
 end
 
@@ -47,9 +65,9 @@ if isempty(par_C)
     par_C=parpool;
 end
 
-prime=min(prime,size(infiles_struct,1));
+frames.end=min(frames.end,size(infiles_struct,1));
 
-infiles_struct = infiles_struct(1:step:prime);
+infiles_struct = infiles_struct(frames.start:frames.step:frames.end);
 N=par_C.NumWorkers;
 
 for iter=1:max_iter

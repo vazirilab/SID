@@ -1,32 +1,26 @@
-function backprojection = backwardProjectGPU_new(H, projection)
+function Backprojection = backwardProjectGPU_new(H, projection)
 
-if isa(H, 'matlab.io.MatFile')
-    psf_size = size(H, 'H');
-    preload = true;
-else
-    psf_size = size(H);
-    preload = false;
-end
-Nnum = psf_size(3);
+Nnum = size(H,3);
+x3length = size(H,5);
+Backprojection = gpuArray.zeros(size(projection, 1), size(projection, 2), x3length , 'single');
+projection=gpuArray(projection);
 
-backprojection = gpuArray.zeros(size(projection, 1), size(projection, 2), psf_size(5), 'single');
-projection = gpuArray(projection);
+Xsize = [size(projection,1),size(projection,2)];
+msize = [size(H,1), size(H,2)];
+mmid = floor(msize/2);
+Xsize = Xsize + mmid;
+Xsize = [ min( 2^ceil(log2(Xsize(1))), 256*ceil(Xsize(1)/256) ), min( 2^ceil(log2(Xsize(2))), 256*ceil(Xsize(2)/256) ) ];
+zeroImageX = gpuArray(zeros(Xsize, 'single'));
 
-for cc = 1 : psf_size(5)
-    if preload
-        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Loading PSF slice ' num2str(cc)]);
-        H_slice = gpuArray(single(H.H(:, :, :, :, cc)));
-        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Done loading PSF slice ' num2str(cc)]);
-    end
-    for aa = 1 : Nnum
-        for bb = 1 : Nnum
-            if preload
-                filter = rot90(H_slice(:, :, aa, bb), 2);
-            else
-                filter = rot90(gpuarray(single(squeeze(H(:, :, aa, bb, cc)))), 2);
-            end
-            temp = conv2FFT(projection, filter);
-            backprojection(aa:Nnum:end, bb:Nnum:end, cc) = temp(aa:Nnum:end, bb:Nnum:end);
+
+for cc=1:x3length
+    for aa=1:Nnum
+        for bb=1:Nnum                  
+            filter = gpuArray(imrotate(squeeze(H(:,:, aa,bb,cc)),180)); 
+            temp = conv2FFT_(projection, filter,zeroImageX,Xsize);
+
+%             temp=conv2FFT(projection, filter);
+            Backprojection((aa:Nnum:end),(bb:Nnum:end),cc)=temp((aa:Nnum:end),(bb:Nnum:end));
         end
     end
 end

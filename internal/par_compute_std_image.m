@@ -1,4 +1,25 @@
-function [std_image, mean_image] = par_compute_std_image(indir, step, bg_temporal, bg_spatial, prime, x_offset, y_offset, dx, Nnum, mask, crop_border_microlenses)
+function [std_image, mean_image] = par_compute_std_image(indir, step, bg_temporal, bg_spatial, final_frame, x_offset, y_offset, dx, Nnum, mask, crop_border_microlenses)
+% PAR_COMPUTE_STD_IMAGE: Algorithm for the incremental computation of the 
+% standard deviation image of the tif-movie conntained in the folderer 'indir'.
+%
+% Input: 
+% step...                   algorithm only considers frames with increments
+%                           of 'step' between them.
+% final_frame...            Final frame of the movie the algorithm to
+%                           considers.
+% x_offset, y_offset, dx... Lenslet-parameters for rectification.
+% Nnum...                   number of pixels behind microlens.
+% bg_temporal,bg_spatial... Temporal and spatial component of a 
+%                           rank-1-factorization of the tif-movie contained
+%                           in 'indir'.
+%                           If bg_temporal is not empty, the algorithm
+%                           computes the standard deviation image of the
+%                           residual of the movie in indir and the
+%                           rank-1-factorization.
+%
+% Output:
+% std_image...              Standard deviation image
+% std_image...              Mean image
 
 if nargin < 10
     mask = true;
@@ -14,7 +35,7 @@ if nargin < 4
 end
 
 if nargin < 5
-    prime = inf;
+    final_frame = inf;
 end
 
 if nargin < 9
@@ -60,9 +81,9 @@ if isempty(par_C)
     par_C=parpool;
 end
 
-prime = min(prime, size(infiles_struct,1));
+final_frame = min(final_frame, size(infiles_struct,1));
 
-infiles_struct = infiles_struct(1:step:prime);
+infiles_struct = infiles_struct(1:step:final_frame);
 N=par_C.NumWorkers;
 std_image= zeros([par_C.NumWorkers,size(img(:))]);
 mean_image = std_image;

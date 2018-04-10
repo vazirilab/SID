@@ -1,18 +1,21 @@
-function [xx, Q, df, h]=fast_nnls(A,Y,opts,Q,df,h,temp)
+function [xx, Q, df, h]=fast_nnls(A,Y,opts,Q,df,h)
+% FAST_NNLS:
 
+if nargin<3
+    opts = struct;
+end
 
-%%
 if  ~isfield(opts,'total')
     opts.total=0;
 end
 
 if nargin<3
-    opts.gpu='off';
+    opts.gpu=false;
     opts.tol=1e-12;
 end
 
 if ~isfield(opts,'gpu')
-    opts.gpu='off';
+    opts.gpu=false;
 end
 
 if ~isfield(opts,'tol_p')
@@ -20,7 +23,11 @@ if ~isfield(opts,'tol_p')
 end
 
 if ~isfield(opts,'display')
-    opts.display='off';
+    opts.display=false;
+end
+
+if ~isfield(opts,'max_iter')
+    opts.max_iter=2000;
 end
 
 if ~isfield(opts,'tol')
@@ -42,7 +49,7 @@ end
 if ~isfield(opts,'lambda')
     opts.lambda = 0;
 end
-%%
+
 if nargin<=3
     Q=A'*A;
     h=1./sqrt(diag(Q));
@@ -66,19 +73,14 @@ else
     df=df+Q*x;
 end
 
-if strcmp(opts.gpu,'on')
+if opts.gpu
     gpu = gpuDevice(opts.gpu_ids);
     x=gpuArray(x);
     Q=gpuArray(Q);
     df=gpuArray(df);
 end
 
-if nargin==7
-    passive=max(x>0,df<0).*temp;
-else
-    passive=max(x>0,df<0);
-end
-
+passive=max(x>0,df<0);
 
 h_=max(h);
 rds=1:size(Y,2);
@@ -89,9 +91,9 @@ X=[[1:2:2*opts.sample]', ones(opts.sample,1)];
 Xi=inv(X'*X)*X';
 
 while ~isempty(x)
-%     tic
+    %     tic
     x_=x;
-    if strcmp(opts.display,'on')
+    if opts.display
         disp(s)
     end
     s=s+1;
@@ -103,7 +105,9 @@ while ~isempty(x)
         x_(x_<0)=0;
         df=df+Q*(x_-x);
         x=x_;
+        
         passive=max(x>0,df<0);
+        
         
         if isfield(opts,'max_iter')
             if s>opts.max_iter
@@ -114,7 +118,7 @@ while ~isempty(x)
     else
         alpha=sum(df_.^2,1)./sum(df_.*(Q*df_),1);
         alpha(isnan(alpha))=0;
-        if strcmp(opts.gpu,'on')
+        if opts.gpu
             x = gather(x);
             x_ = gather(x_);
             df_ = gather(df_);
@@ -124,7 +128,7 @@ while ~isempty(x)
             x_(:,ii)=x(:,ii)-df_(:,ii)*alpha(ii);
         end
         
-        if strcmp(opts.gpu,'on')
+        if opts.gpu
             x = gpuArray(x);
             x_ = gpuArray(x_);
         end
@@ -136,8 +140,6 @@ while ~isempty(x)
             elseif opts.tol_p==1
                 test=[test' log(sum(abs(x_-x),1))']';
             end
-            
-            
             if size(test,1)>opts.sample
                 test=test(2:end,:);
             end
@@ -145,7 +147,6 @@ while ~isempty(x)
                 k=Xi*test;
                 ids=logical(max((max(passive)==0),(h_*exp(test(end,:))./(1-exp(k(1,:)))<opts.tol*size(x,1)*max(x,[],1)).*(sum(abs(X*k-test),1)<opts.tol_*opts.sample).*(exp(k(1,:))<1)));
             end
-            
         else
             ids=[];
         end
@@ -162,10 +163,10 @@ while ~isempty(x)
         passive=max(x>0,df<0);
         
         if max(ids(:))
-            if strcmp(opts.display,'on')
+            if opts.display
                 disp(find(ids))
             end
-            if strcmp(opts.gpu,'on')
+            if opts.gpu
                 xx(:,rds(ids))=gather(x(:,ids));
             else
                 xx(:,rds(ids))=x(:,ids);
@@ -175,16 +176,13 @@ while ~isempty(x)
             df=df(:,~ids);
             passive=passive(:,~ids);
             test=test(:,~ids);
-            if nargin==7
-                temp=temp(:,~ids);
-            end
         end
         
     end
-%     toc
+    %     toc
 end
 
-if strcmp(opts.gpu,'on')
+if opts.gpu
     if nargout>1
         Q=gather(Q);
     end

@@ -5,8 +5,16 @@
 % Input.y_offset=1023.2;
 % Input.dx=23.3;
 
-% 2017-04-02
-Rawdata_name = 'Raw_2016-03-25_QL_FishOpCond_055_openloop_fish1_blk2';
+% % 2017-04-02
+% % 2017-10-05
+% Rawdata_name = 'Raw_2016-03-25_QL_FishOpCond_055_openloop_fish1_blk2';
+% Rawdata_folder = '/rugpfs/fs0/vzri_lab/scratch/xfer/operant_conditioning_vienna/Qian_Lin/Raw/';
+% Input.x_offset=1022.0;
+% Input.y_offset=1025.6;
+% Input.dx=23.3;
+
+% 2017-10-25
+Rawdata_name = 'Raw_2016-03-25_QL_FishOpCond_057_openloop_fish2_blk2';
 Rawdata_folder = '/rugpfs/fs0/vzri_lab/scratch/xfer/operant_conditioning_vienna/Qian_Lin/Raw/';
 Input.x_offset=1022.0;
 Input.y_offset=1025.6;

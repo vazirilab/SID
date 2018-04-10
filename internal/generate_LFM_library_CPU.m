@@ -1,34 +1,38 @@
-function forward_model = generate_foward_model(centers, psf_ballistic, r, rr, m, kernel)
+function forward_model=generate_LFM_library_CPU(centers,psf_ballistic,r,dim,m,kernel)
+% GENERATE_LFM_LIBRARY: Algorithm generates a library of LFM-patterns for every neuron location
+% found in "centers".
+%
+% Input:
+% centers...            Nx3 Array of 3d coordinates of putative neurons
+% psf_ballistic...      point spread function
+% r...                  Neuron radius
+% dim...                scaling of x, y and z dimension in Volume
+% m...                  size of Volume
+% kernel...             Neuron kernel, if not set, neuron form will be set
+%                       to a ball of radius r.
+%
+% Output:
+% forward_model...      Library of LFM-patterns
+%
+
+rr=r/dim(3);
+
 tic
 dim=m(1:2);
-
-disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Load H']);
-H = psf_ballistic.H; % TN TODO: check if we can do this efficiently with matfile()
-Hsize = size(H);
-
-disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Initialize forward_model']);
+Hsize=size(psf_ballistic.H);
+disp('Initiate forward_model');
 forward_model_indices=cell(1,size(centers,1));
 forward_model_values=forward_model_indices;
 N=0;
-
 BWW=[];
-
-W=zeros(2*r+1,2*r+1,2*rr+1);
 
 if nargin==6
     W = kernel;
     r = (size(W,1)-1)/2;
     rr = (size(W,3)-1)/2;
 else
-    for ii=1:2*r+1
-        for jj=1:2*r+1
-            for kk=1:2*rr+1
-                if  ((ii-(r+1))^2/r^2+(jj-(r+1))^2/r^2+(kk-(rr+1))^2/rr^2)<=1
-                    W(ii,jj,kk)=1;
-                end
-            end
-        end
-    end
+    [X,Y,Z] = meshgrid(-r:r,-r:r,-rr:rr);
+    W = single((X.^2 + Y.^2 + (Z*r/rr).^2)<=r^2);   
 end
 
 BW=find(W);
@@ -44,15 +48,13 @@ for k=1:size(centers,1)
             B_ = [B_' bbb_']';
         end
     end
-    Q=project_forward_patched(B, dim, psf_ballistic.Nnum, H, W, B_);
+    Q=project_forward_patched(B, dim, psf_ballistic.Nnum, psf_ballistic.H,W,B_);
     Q=Q(:);
     Q=Q/norm(Q);
     forward_model_indices{k}=find(Q);
     forward_model_values{k}=Q(forward_model_indices{k});
     N=N+length(forward_model_values{k});
-    if mod(k, 20) == 1
-        fprintf([num2str(k) ' ']);
-    end
+        disp(k);
 end
 I=zeros(N,1);
 J=I;
@@ -63,9 +65,9 @@ for k=1:size(forward_model_indices,2)
     I(jj+1:jj+size(forward_model_values{k},1))=k*ones(size(forward_model_values{k}));
     S(jj+1:jj+size(forward_model_values{k},1))=forward_model_values{k};
     jj=jj+size(forward_model_values{k},1);
+    %     disp(k)
 end
 forward_model=sparse(I,J,S,size(centers,1),prod(dim));
-fprintf('\n');
 toc;
 disp([num2str(size(centers,1)) ' NSFs generated']);
 end

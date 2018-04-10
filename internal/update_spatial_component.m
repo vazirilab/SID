@@ -1,20 +1,30 @@
 function [forward_model]=update_spatial_component(timeseries, sensor_movie, template, opts)
-
+% UPDATE_SPATIAL_COMPONENT performs an update of the spatial components, by
+% splitting the problem in sub-problems defined by 'template' and solving
+% for each of those sub-problems a non-negative least squares problem.
+%
+% Input:
+% timeseries...         Array of timeseries
+% sensor_movie...       LFM-movie
+% template...           binary array assigning each neuron its spatial
+%                       extent.
+% struct opts:
+% opts.bg_sub...        perform background subtraction, treat the problem
+%                       so that the last component of timeseries is treated 
+%                       as the background.
+% opts.display...       boolean, if true print status information into the
+%                       console.
+% opts.lambda...        lagrange multiplier for L1-regularizer.
+%
+% Output:
+% forward_model...      updated forward_model
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ~isfield(opts,'bg_sub')
     opts.bg_sub=1;
 end
 
-
-if ~isfield(opts,'lambda')
-    opts.lambda=0;
-end
-
 if ~isfield(opts,'display')
     opts.display=0;
-end
-
-if ~isfield(opts,'exact')
-    opts.exact=0;
 end
 
 [~, order]=sort(sum(template,2));
@@ -22,6 +32,8 @@ end
 I=[];
 J=[];
 S=[];
+
+outside = ~max(template,[],1);
 
 for neur=1:size(template,1)
     neuron=order(neur);
@@ -45,26 +57,21 @@ for neur=1:size(template,1)
             end
         end
         Y=sensor_movie(space,:);
-        if opts.solver==0
-            opts.anti=1;
-            F=NONnegLSQ_gpu(timeseries(involved_neurons,:),[],Y,temp,opts);
-        elseif opts.solver==1
-            opts.Accy=0;
-            A=timeseries(involved_neurons,:)';
-            F=zeros(length(involved_neurons),size(space,2));
-            for k_=1:length(space)
-                idx=find(squeeze(temp(:,k_)));
-                y=squeeze(Y(k_,:))';
-                x_=nnls(A(:,idx),y,opts);
-                F(idx,k_)=x_;
+        
+        opts.Accy=0;
+        A=timeseries(involved_neurons,:)';
+        F=zeros(length(involved_neurons),size(space,2));
+        for k_=1:length(space)
+            idx=find(squeeze(temp(:,k_)));
+            y=squeeze(Y(k_,:))';
+            nrm=norm(y(:));
+            if nrm>0
+                x_ = reg_nnls(A(:,idx),y/nrm,opts);
+                %                 x_ = nnls(A(:,idx),y/nrm,opts);
+                F(idx,k_) = x_*nrm;
+            else
+                F(idx,k_) = 0;
             end
-        elseif opts.solver==2                                               %memory saving
-            A=timeseries(involved_neurons,:)';
-            H=full(A'*A);
-            Q=H./sqrt(diag(H)*diag(H)');
-            option=opts;
-            option.display='off';
-            F=fast_nnls(A,Y',option,Q,[],H,temp);
         end       
         if size(involved_neurons,2)>=1
             template(:,space)=0;
@@ -77,17 +84,22 @@ for neur=1:size(template,1)
             S=[S' iS']';
         end
     end
-    if strcmp(opts.display,'on')
+    if opts.display
         disp(neuron);
     end
 end
 
 if isfield(opts,'gpu')
-    if strcmp(opts.gpu,'on')
+    if opts.gpu
         gpuDevice([]);
     end
 end
 S=double(S);
 forward_model=sparse(I,J,S,size(timeseries,1),size(sensor_movie,1));
+
+if opts.bg_sub&&~isempty(outside)
+    Y=sensor_movie(logical(outside),:);
+    forward_model(end,logical(outside))=Y*timeseries(end,:)';
+end
 
 end
