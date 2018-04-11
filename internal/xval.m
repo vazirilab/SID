@@ -82,6 +82,7 @@ option.diagnostic = false;
 option.max_iter=2000;
 option.active = opts.active(c_y:c_y+opts.xval.im_size,c_x:c_x+opts.xval.im_size);
 [t,s] = initialize_nnmf(Y_p,opts.rank,option);
+option.max_iter=opts.max_iter;
 if opts.lamb_orth_L2 + opts.lamb_orth_L2
     for u=1:size(t,1)
         platz = norm(s(:,u));
