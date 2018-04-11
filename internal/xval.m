@@ -136,7 +136,7 @@ for j=1:length(opts.xval.param)
         S(isnan(S))=0;
         T = LS_nnls(S,yy{k},option);
         if opts.use_std
-            E(k) = sqrt(sum(var(reshape(S*T-yy{k},1,[]),1,2),1));
+            E(k) = sqrt(sum(var(S*T-yy{k},1,2),1));
         else
             E(k) = norm(reshape(S*T-yy{k},1,[]));
         end
