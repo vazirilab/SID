@@ -10,15 +10,15 @@ function std_image=compute_std_image(Y,y_1,y_2)
 % Output:
 % std_image...              Standard deviation image
 
-if Y<2
+if nargin<2
     y_1=zeros(size(Y,1),1);
     y_2=zeros(1,size(Y,2));
 end
 
-A=var(Y,1,2);
-B=(y_1.^2)*var(y_2);
-C=(y_1.^2-(sum(Y,2).*(y_1*mean(y_2))))/(length(y_2)-1);
+A = sum(Y.^2,2);
+B = mean(Y,2);
+C = mean(y_2);
 
-std_image=sqrt(A+B-2*C);
+std_image=sqrt((A - y_1.^2)/length(y_2) - B.^2 + 2*B.*y_1*C - y_1.^2*C^2);
 end
 
