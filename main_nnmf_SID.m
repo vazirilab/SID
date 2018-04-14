@@ -91,7 +91,8 @@ end
 if isfield(optional_args, 'SID_optimization_args')
     Input.SID_optimization_args = optional_args.SID_optimization_args;
 else
-    Input.SID_optimization_args.lamb_orth_L1 = 1e-4;
+    Input.SID_optimization_args.spatial.lamb_orth_L1 = 1e-4;
+    Input.SID_optimization_args.temporal.lambda = 1e-4;
 end
 
 if isfield(optional_args,'segmentation')
@@ -658,8 +659,8 @@ Nnum=psf_ballistic.Nnum;
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
 
 tic
-opts_temp = struct;
-opts_spat = Input.SID_optimization_args;
+opts_temp = Input.SID_optimization_args.temporal;
+opts_spat = Input.SID_optimization_args.spatial;
 opts_temp.idx = SID_output.idx;
 opts_temp.microlenses = SID_output.microlenses;
 opts_temp.use_std = Input.use_std;
