@@ -169,6 +169,12 @@ else
     Input.do_crop = true;
 end
 
+if isfield(optional_args, 'delta')
+    Input.delta = optional_args.delta;
+else
+    Input.delta = 100;
+end
+
 % Width of borders to crop, in units of microlenses. Set to empty array to
 % disable. When giving a value of floor([ix1_lo_border_width ix1_hi_border_width ix2_hi_border_width
 % ix2_hi_border_width] / Nnum)
