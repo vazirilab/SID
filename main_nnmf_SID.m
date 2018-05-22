@@ -707,9 +707,9 @@ for iter=1:Input.num_iter
     if isfield(Input, 'update_template') && Input.update_template
         if iter>=2
             for neuron=1:size(template_,1)
-                crop=zeros(size(SID_output.std_image));
-                crop(SID_output.idx)=template_(neuron,:);
-                img=reshape(crop,size(SID_output.std_image));
+                cropp=zeros(size(SID_output.std_image));
+                cropp(SID_output.idx)=template_(neuron,:);
+                img=reshape(cropp,size(SID_output.std_image));
                 img=conv2(img,ones(2*Nnum),'same')>0;
                 img=img(:);
                 template_(neuron,:)=(img(SID_output.idx)>0.1);
