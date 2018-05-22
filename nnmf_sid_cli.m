@@ -3,7 +3,7 @@ function [ ret ] = nnmf_sid_cli(indir, outdir, psffile, offset_x, offset_y, dx, 
 disp([datestr(now) ': Starting nnmf_sid_cli']);
 
 parser = inputParser;
-parser.addRequired('indir', @(f) is_existing_file_or_dir(f, {'tif' 'tiff'}));
+parser.addRequired('indir', @(f) is_existing_file_or_dir(f));
 parser.addRequired('outdir');
 parser.addRequired('psffile', @(f) is_existing_file(f, 'mat'));
 parser.addRequired('offset_x', @is_double);

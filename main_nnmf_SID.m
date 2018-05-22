@@ -639,7 +639,7 @@ else
     opts.image_size = SID_output.movie_size(1:2);
     opts.axial = Input.axial;
     opts.neur_rad = Input.neur_rad;
-    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,round(Input.neur_id),psf_ballistic,opts);
+    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,round(SID_output.neur_id),psf_ballistic,opts);
 end
 
 %% generate template
