@@ -1,7 +1,11 @@
 function [forward_model,timeseries,template,indices_in_orig]...
     =merge_filters(forward_model,timeseries...
         ,template,indices_in_orig,opts)
-    
+% MERGE_FILTERS merges components of the SID-nnmf, that overlap over 30% in
+% their templates and have a correlation of more than opts.limit (default:
+% 0.9).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
  if nargin<5
      opts=struct;
  end

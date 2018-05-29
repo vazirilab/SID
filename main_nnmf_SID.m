@@ -91,7 +91,8 @@ end
 if isfield(optional_args, 'SID_optimization_args')
     Input.SID_optimization_args = optional_args.SID_optimization_args;
 else
-    Input.SID_optimization_args.lamb_orth_L1 = 1e-4;
+    Input.SID_optimization_args.spatial.lamb_orth_L1 = 1e-4;
+    Input.SID_optimization_args.temporal.lambda = 1e-4;
 end
 
 if isfield(optional_args,'segmentation')
@@ -303,6 +304,40 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
 tic;
 [sensor_movie,SID_output.movie_size] = read_sensor_movie(Input.LFM_folder, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, Input.rectify, Input.frames, Input.mask, Input.crop_border_microlenses);
 toc
+%% de-trend
+tic
+if Input.detrend
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
+    SID_output.baseline_raw = squeeze(mean(sensor_movie,1))';
+    %     delta=Input.delta;
+    %     for t = 1 : size(SID_output.baseline_raw, 1)
+    %         base(t) = min(SID_output.baseline_raw(max(1, t - delta) : min(size(SID_output.baseline_raw, 1), t + delta)));
+    %     end
+    %     base = double(base);
+    if Input.delta <= 0
+        smooth_window_span = numel(SID_output.baseline_raw) / max(1, abs(Input.delta));
+    else
+        smooth_window_span = 2 * Input.delta / Input.frames.step;
+    end
+    SID_output.baseline = smooth(SID_output.baseline_raw, smooth_window_span, 'sgolay', 3);
+    figure; hold on; plot(SID_output.baseline_raw); plot(SID_output.baseline); title('Frame means (post bg subtract), raw + trend fit'); hold off;
+    print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
+    
+    %fit_t_rng = Input.frames.start : Input.frames.step : ((size(sensor_movie,2)-1) * Input.frames.step + Input.frames.start);
+    %SID_output.baseline_fit_params = exp2fit(fit_t_rng, base, 1);
+    %SID_output.baseline_fit = SID_output.baseline_fit_params(1) + SID_output.baseline_fit_params(2) * exp(- (1 : num_frames) / SID_output.baseline_fit_params(3));
+    %     figure; hold on; plot(SID_output.baseline); plot(SID_output.baseline_fit(Input.frames.start:Input.frames.step:Input.prime)); hold off; title('Smoothed frame means and trend fit');  %TODO: Input.prime doesn't seem to be the correct range here
+    %     print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
+    %
+    sensor_movie = sensor_movie./SID_output.baseline';
+    %TODO: check if trend fit worked, i.e. residuals are mostly gaussian
+end
+% sensor_movie_min = min(sensor_movie(:));
+sensor_movie_max = max(sensor_movie(:));
+% sensor_movie = (sensor_movie - sensor_movie_min) ./ (sensor_movie_max - sensor_movie_min);
+sensor_movie = sensor_movie/sensor_movie_max;
+toc
+
 %% Compute background and std-image
 
 if Input.bg_sub
@@ -327,7 +362,6 @@ print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_stddev_img.pn
 
 
 %% Find cropping mask, leaving out areas with stddev as in background-only area
-
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Finding crop space']);
 if ~isfield(Input,'crop_params')
     disp('Find appropriate crop_params!')
@@ -406,39 +440,6 @@ axis image;
 hold off;
 print(fullfile(Input.output_folder, [timestr '_crop_mask.png']), '-dpng', '-r300');
 
-%% de-trend
-tic
-if Input.detrend
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
-    SID_output.baseline_raw = squeeze(mean(sensor_movie,1))';
-    %     delta=Input.delta;
-    %     for t = 1 : size(SID_output.baseline_raw, 1)
-    %         base(t) = min(SID_output.baseline_raw(max(1, t - delta) : min(size(SID_output.baseline_raw, 1), t + delta)));
-    %     end
-    %     base = double(base);
-    if Input.delta <= 0
-        smooth_window_span = numel(SID_output.baseline_raw) / max(1, abs(Input.delta));
-    else
-        smooth_window_span = 2 * Input.delta / Input.frames.step;
-    end
-    SID_output.baseline = smooth(SID_output.baseline_raw, smooth_window_span, 'sgolay', 3);
-    figure; hold on; plot(SID_output.baseline_raw); plot(SID_output.baseline); title('Frame means (post bg subtract), raw + trend fit'); hold off;
-    print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
-    
-    %fit_t_rng = Input.frames.start : Input.frames.step : ((size(sensor_movie,2)-1) * Input.frames.step + Input.frames.start);
-    %SID_output.baseline_fit_params = exp2fit(fit_t_rng, base, 1);
-    %SID_output.baseline_fit = SID_output.baseline_fit_params(1) + SID_output.baseline_fit_params(2) * exp(- (1 : num_frames) / SID_output.baseline_fit_params(3));
-    %     figure; hold on; plot(SID_output.baseline); plot(SID_output.baseline_fit(Input.frames.start:Input.frames.step:Input.prime)); hold off; title('Smoothed frame means and trend fit');  %TODO: Input.prime doesn't seem to be the correct range here
-    %     print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
-    %
-    sensor_movie = sensor_movie./SID_output.baseline';
-    %TODO: check if trend fit worked, i.e. residuals are mostly gaussian
-end
-% sensor_movie_min = min(sensor_movie(:));
-sensor_movie_max = max(sensor_movie(:));
-% sensor_movie = (sensor_movie - sensor_movie_min) ./ (sensor_movie_max - sensor_movie_min);
-sensor_movie = sensor_movie/sensor_movie_max;
-toc
 
 %% generate NNMF
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Generating rank-' num2str(Input.nnmf_opts.rank) '-factorization']);
@@ -568,7 +569,7 @@ for ii=1:size(SID_output.segmm,u)
     disp(num(ii));
 end
 
-ids = isoutlier(num);
+ids = isoutlier(num,'ThresholdFactor',10);
 ids = (num>mean(num)).*ids;
 
 for ii=find(ids)
@@ -658,30 +659,30 @@ Nnum=psf_ballistic.Nnum;
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Start optimizing model'])
 
 tic
-opts_temp = struct;
-opts_spat = Input.SID_optimization_args;
+opts_temp = Input.SID_optimization_args.temporal;
+opts_spat = Input.SID_optimization_args.spatial;
 opts_temp.idx = SID_output.idx;
 opts_temp.microlenses = SID_output.microlenses;
 opts_temp.use_std = Input.use_std;
 opts_spat.use_std = Input.use_std;
-if ~Input.use_std
+% if ~Input.use_std
     opts_spat.bg_sub = Input.bg_sub;
     opts_temp.bg_sub = Input.bg_sub;
-else
-    opts_spat.bg_sub = 0;
-    opts_temp.bg_sub = 0;
-end
+% else
+%     opts_spat.bg_sub = 0;
+%     opts_temp.bg_sub = 0;
+% end
 
 if ~isempty(Input.gpu_ids')
     opts_temp.gpu_id = Input.gpu_ids(1);
 end
 
-if isfield(Input, 'bg_sub') && Input.bg_sub && ~Input.use_std
+if isfield(Input, 'bg_sub') && Input.bg_sub% && ~Input.use_std
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
     SID_output.indices_in_orig=[SID_output.indices_in_orig' length(SID_output.indices_in_orig)+1];
 end
 
-sensor_movie =double(sensor_movie*sensor_movie_max);
+sensor_movie =double(sensor_movie);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update']);
 SID_output.forward_model_iterated=(1./(sqrt(sum(SID_output.forward_model_iterated.^2....
     ,2)))).*SID_output.forward_model_iterated;
@@ -751,7 +752,7 @@ opts_temp.warm_start=[];
 opts_temp.outfile = fullfile(Input.output_folder, 'timeseries_debug_out.mat');
 opts_temp.do_crop = Input.do_crop;
 opts_temp.crop = SID_output.crop;
-opts.non_neg_on=true;
+% opts_temp.non_neg_on=true;
 tic
 SID_output.timeseries_total = incremental_temporal_update_gpu(SID_output.forward_model_iterated, Input.LFM_folder, [], Input.Junk_size, Input.x_offset,Input.y_offset,Input.dx,Nnum,opts_temp);
 toc
@@ -772,7 +773,7 @@ SID_output.indices_in_orig = SID_output.indices_in_orig(n);
 %% save SID_output
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Saving result'])
 SID_output.Input = Input;
-save(fullfile(Input.output_folder, Input.SID_output_name), 'Input', 'SID_output', '-v7.3');
+save(fullfile(Input.output_folder, Input.output_name), 'Input', 'SID_output', '-v7.3');
 
 %% Summary figure: NNMF MIPs, with centers overlaid
 timestr = datestr(now, 'YYmmddTHHMM');

@@ -21,7 +21,7 @@ if strcmp(opts.ini_method,'rand')
     T=conv2(rand(n,size(Y,2)),ones(1,32),'same');
     option=opts;
     if ~isfield(opts,'max_iter')
-        option.max_iter=12;
+        option.max_iter=2000;
     end
     option.lambda=opts.lamb_spat;
     S=LS_nnls(T',Y',option)';

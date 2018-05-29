@@ -80,8 +80,10 @@ Y_p = Y(ind,:);
 option=opts;
 option.diagnostic = false;
 option.max_iter=2000;
-option.active = opts.active(c_y:c_y+opts.xval.im_size,c_x:c_x+opts.xval.im_size);
+option.active = reshape(opts.active,size(opts.xval.std_image));
+option.active = option.active(c_y:c_y+opts.xval.im_size,c_x:c_x+opts.xval.im_size);
 [t,s] = initialize_nnmf(Y_p,opts.rank,option);
+option.max_iter=opts.max_iter;
 if opts.lamb_orth_L2 + opts.lamb_orth_L2
     for u=1:size(t,1)
         platz = norm(s(:,u));
@@ -136,7 +138,7 @@ for j=1:length(opts.xval.param)
         S(isnan(S))=0;
         T = LS_nnls(S,yy{k},option);
         if opts.use_std
-            E(k) = sqrt(sum(var(reshape(S*T-yy{k},1,[]),1,2),1));
+            E(k) = sqrt(sum(var(S*T-yy{k},1,2),1));
         else
             E(k) = norm(reshape(S*T-yy{k},1,[]));
         end
