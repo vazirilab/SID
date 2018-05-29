@@ -49,7 +49,14 @@ function [S,T]=fast_NMF(Y,opts,T,S)
 % Ouput:
 % S...                  Spatial components of the nnmf
 % T...                  Temporal components of the nnmf
+% 
+% This algorithm performs updates on the variable S and T, overall resulting in an implementation of block-wise coordinate descent with exact line search and projected gradient descent.
 
+% Between the lines 131 and 140, 
+% Between the lines 142 and 152, cross validation is performed, if required.
+% The rest of the code consists of the repeated updates performed by S_update and T_update, and in case you activate diagnostic, it contains the computation and plotting of the curve of the objective function and the gram matrix of S.
+
+%% Set the default values, and in case initialization is required set initial values according to the parameters.
 if nargin<2
     opts=struct;
 end
@@ -137,6 +144,8 @@ if nargin==3
     S_0=LS_nnls(T_0',Y',option)';
 end
 
+%% Modify orthogonality regularizers
+% This includes normalization of S and generation of the variable opts.hilf. This variable will be needed when computing the gradients of either of the orthogonality regularizers.
 if opts.lamb_orth_L1 + opts.lamb_orth_L2
     for u=1:size(T_0,1)
         platz = norm(S_0(:,u));
@@ -148,6 +157,7 @@ if opts.lamb_orth_L1 + opts.lamb_orth_L2
     opts.hilf(1,1:end) = 0;
 end
 
+%% Perform cross-validation
 if isfield(opts,'xval')
     if opts.display
         disp('opts before cross validation');
@@ -162,6 +172,9 @@ end
 T = T_0;
 S =S_0;
 
+%% Iteratively update estimates of S and T
+% Actual updates are performed by *S\_update* and *T\_update*
+% In case opts.diagnostic is true, objective function and Gramian matrix of S are evaluated and plotted
 P=[];
 E=[];
 for iter=1:opts.max_iter

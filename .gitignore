@@ -93,3 +93,4 @@ ENV/
 *.asv
 *.log
 
+*.sublime-workspace
