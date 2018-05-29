@@ -1,0 +1,434 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>fast_NMF</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="fast_NMF.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#2">FAST_NMF: the algorithm performs a non-negative matrix factorization</a></li></ul></div><pre class="codeinput"><span class="keyword">function</span> [S,T]=fast_NMF(Y,opts,T,S)
+</pre><h2 id="2">FAST_NMF: the algorithm performs a non-negative matrix factorization</h2><p>(nnmf) on the movie Y, using an alternating convex search approach. Each of the updates is performed by gradient descent with exact line search.</p><p>Input: T...                  Initial condition for the temporal component of the nnmf.                       If T is not set, the algorithm will compute a first guess                       based on opts.ini_method. S...                  Initial guess for the spatial compontent of the nnmf.                       If S is not set, it is computed by S=Y*T struct opts: opts.rank...          rank of the nnmf. opts.lamb_spat...     lagrangian multiplier for L1 regularizer on S opts.lamb_temp...   lagrangian multiplier for L1 regularizer on T opts.lamb_corr...     lagrangian multiplier for L2 regularizer on                       corrcoef(T)-eye(size(S,2)) opts.lamb_orth_L1...  lagrangian multiplier for L1 regularizer on                       S'*S-eye(size(S,2)) opts.lamb_orth_L2...  lagrangian multiplier for L2 regularizer on                       S'*S-eye(size(S,2)) opts.lamb_spat_TV...  lagrangian multiplier for L2 regularizer on the                       total variation of the components of S.                       It is necessary that the size (height &amp; width) of                       the linearized components of S is included, since                       the algorithm needs the reshape S accordingly. opts.lamb_temp_TV...  lagrangian multiplier for L2 regularizer on the                       Total Variation of the components of T. opts.ini_method...    Initialization method for T. opts.ini='pca' uses                       the first "n" principal components. opts.ini="rand"                       generates "n" smoothed random traces as                       initialization for T. opts.max_iter...      maximum number of iterations</p><p>substruct opts.xval   Cross validation is only performed if this field                       exists, also see help of function xval. opts.diagnostic       Generates a figure during runtime that displays the                       first ten components of S and T, as well as the L2                       error and the S'S reg-error. opts.pointwise...     Boolean; if true the updates will be performed                       pointwise, that means in every pixel and frame                       independently, otherwise they will be performed on                       the entire S or T. opts.display          boolean, if false, messages during the run of the                       algorithm will be suppressed. opts.use_std...       use the standard deviation, instead of the L2 error</p><p>Ouput: S...                  Spatial components of the nnmf T...                  Temporal components of the nnmf</p><pre class="codeinput"><span class="keyword">if</span> nargin&lt;2
+    opts=struct;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'display'</span>)
+    opts.display=false;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'max_iter'</span>)
+    opts.max_iter = 600;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'use_std'</span>)
+    opts.use_std=false;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'rank'</span>)
+    opts.rank = 30;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'lamb_spat'</span>)
+    opts.lamb_spat=0;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'lamb_temp'</span>)
+    opts.lamb_temp=0;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'lamb_corr'</span>)
+    opts.lamb_corr=0;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'lamb_orth_L1'</span>)
+    opts.lamb_orth_L1=0;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'lamb_orth_L2'</span>)
+    opts.lamb_orth_L2=0;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'active'</span>)
+    opts.active = ones(1,size(Y,1),<span class="string">'logical'</span>);
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'lamb_spat_TV'</span>)
+    opts.lamb_spat_TV=0;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'lamb_temp_TV'</span>)
+    opts.lamb_temp_TV=0;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'ini_method'</span>)
+    opts.ini_method=<span class="string">'pca'</span>;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'diagnostic'</span>)
+    opts.diagnostic=false;
+<span class="keyword">end</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'pointwise'</span>)
+    opts.pointwise=false;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> opts.lamb_spat_TV
+    <span class="keyword">if</span> ~isfield(opts,<span class="string">'size'</span>)
+        disp(<span class="string">'The option lamb_spat_TV needs additional information: size of the image (opts.size)'</span>);
+        <span class="keyword">return</span>
+    <span class="keyword">end</span>
+    opts.laplace = zeros(1,3,3);
+    opts.laplace(1,2,2)=4;
+    opts.laplace(1,1,2)=-1;
+    opts.laplace(1,3,2)=-1;
+    opts.laplace(1,2,1)=-1;
+    opts.laplace(1,2,3)=-1;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> opts.use_std
+    Y=double(Y/sqrt(sum(var(Y,1,2))));
+    opts.Y = sum(Y,2);
+<span class="keyword">else</span>
+    Y = double(Y/norm(Y(:)));
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~opts.rank
+    opts.max_iter=0;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> nargin&lt;3
+    [T_0,S_0] = initialize_nnmf(Y,opts.rank,opts);
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> nargin==3
+    option=opts;
+    <span class="keyword">if</span> ~isfield(opts,<span class="string">'max_iter'</span>)
+        option.max_iter=12;
+    <span class="keyword">end</span>
+    option.lambda=opts.lamb_spat;
+    S_0=LS_nnls(T_0',Y',option)';
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> opts.lamb_orth_L1 + opts.lamb_orth_L2
+    <span class="keyword">for</span> u=1:size(T_0,1)
+        platz = norm(S_0(:,u));
+        T_0(u,:) = T_0(u,:)*platz;
+        S_0(:,u) = S_0(:,u)/platz;
+    <span class="keyword">end</span>
+    opts.hilf = ones(opts.rank)-eye(opts.rank);
+    opts.hilf(1:end,1) = 0;
+    opts.hilf(1,1:end) = 0;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> isfield(opts,<span class="string">'xval'</span>)
+    <span class="keyword">if</span> opts.display
+        disp(<span class="string">'opts before cross validation'</span>);
+        disp(opts);
+    <span class="keyword">end</span>
+    opts=xval(Y,opts);
+    <span class="keyword">if</span> opts.display
+        disp(<span class="string">'opts after cross-validation:'</span>)
+        disp(opts);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+T = T_0;
+S =S_0;
+
+P=[];
+E=[];
+<span class="keyword">for</span> iter=1:opts.max_iter
+    [S,T]=S_update(Y,S,T,opts);
+    [S,T]=T_update(Y,T,S,opts);
+    <span class="keyword">if</span> opts.diagnostic&amp;&amp;opts.display
+        <span class="keyword">if</span> opts.use_std
+            E(iter)=sum(var(Y-S*T,1,2),1);
+        <span class="keyword">else</span>
+            E(iter)=sum(reshape(Y-S*T,1,[]).^2);
+        <span class="keyword">end</span>
+<span class="comment">%         P(iter)=norm(reshape(S'*S-eye(size(S,2)),1,[]),1);</span>
+        figure(3);
+<span class="comment">%         subplot(1,4,1);</span>
+        plot(E);
+<span class="comment">%         axis square</span>
+<span class="comment">%         subplot(1,4,2);</span>
+<span class="comment">%         plot(P);</span>
+<span class="comment">%         axis square</span>
+<span class="comment">%         subplot(1,4,3);</span>
+<span class="comment">%         plot(E+opts.lamb_orth_L1*P);</span>
+<span class="comment">%         subplot(1,4,4);</span>
+<span class="comment">%         imagesc(S'*S);</span>
+<span class="comment">%         axis square</span>
+    <span class="keyword">end</span>
+    <span class="keyword">if</span> opts.display
+        <span class="keyword">if</span> iter==1
+            fprintf([<span class="string">'Iteration completed: '</span> num2str(iter) <span class="string">', '</span>]);
+        <span class="keyword">else</span>
+            fprintf([num2str(iter) <span class="string">', '</span>]);
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+fprintf(<span class="string">'\n'</span>);
+
+<span class="keyword">for</span> u=1:size(T,1)
+    platz = norm(T(u,:));
+    T(u,:) = T(u,:)/platz;
+    S(:,u) = S(:,u)*platz;
+<span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function [S,T]=fast_NMF(Y,opts,T,S)
+%% FAST_NMF: the algorithm performs a non-negative matrix factorization
+% (nnmf) on the movie Y, using an alternating convex search
+% approach. Each of the updates is performed by gradient descent with
+% exact line search.
+%
+% Input:
+% T...                  Initial condition for the temporal component of the nnmf.
+%                       If T is not set, the algorithm will compute a first guess
+%                       based on opts.ini_method.
+% S...                  Initial guess for the spatial compontent of the nnmf.
+%                       If S is not set, it is computed by S=Y*T
+% struct opts:
+% opts.rank...          rank of the nnmf.
+% opts.lamb_spat...     lagrangian multiplier for L1 regularizer on S
+% opts.lamb_temp...   lagrangian multiplier for L1 regularizer on T
+% opts.lamb_corr...     lagrangian multiplier for L2 regularizer on
+%                       corrcoef(T)-eye(size(S,2))
+% opts.lamb_orth_L1...  lagrangian multiplier for L1 regularizer on
+%                       S'*S-eye(size(S,2))
+% opts.lamb_orth_L2...  lagrangian multiplier for L2 regularizer on
+%                       S'*S-eye(size(S,2))
+% opts.lamb_spat_TV...  lagrangian multiplier for L2 regularizer on the
+%                       total variation of the components of S.
+%                       It is necessary that the size (height & width) of
+%                       the linearized components of S is included, since
+%                       the algorithm needs the reshape S accordingly.
+% opts.lamb_temp_TV...  lagrangian multiplier for L2 regularizer on the
+%                       Total Variation of the components of T.
+% opts.ini_method...    Initialization method for T. opts.ini='pca' uses
+%                       the first "n" principal components. opts.ini="rand"
+%                       generates "n" smoothed random traces as
+%                       initialization for T.
+% opts.max_iter...      maximum number of iterations
+%
+% substruct opts.xval   Cross validation is only performed if this field 
+%                       exists, also see help of function xval.
+% opts.diagnostic       Generates a figure during runtime that displays the
+%                       first ten components of S and T, as well as the L2
+%                       error and the S'S reg-error.
+% opts.pointwise...     Boolean; if true the updates will be performed
+%                       pointwise, that means in every pixel and frame
+%                       independently, otherwise they will be performed on
+%                       the entire S or T.
+% opts.display          boolean, if false, messages during the run of the
+%                       algorithm will be suppressed.
+% opts.use_std...       use the standard deviation, instead of the L2 error
+%
+% Ouput:
+% S...                  Spatial components of the nnmf
+% T...                  Temporal components of the nnmf
+
+if nargin<2
+    opts=struct;
+end
+
+if ~isfield(opts,'display')
+    opts.display=false;
+end
+if ~isfield(opts,'max_iter')
+    opts.max_iter = 600;
+end
+if ~isfield(opts,'use_std')
+    opts.use_std=false;
+end
+if ~isfield(opts,'rank')
+    opts.rank = 30;
+end
+if ~isfield(opts,'lamb_spat')
+    opts.lamb_spat=0;
+end
+if ~isfield(opts,'lamb_temp')
+    opts.lamb_temp=0;
+end
+if ~isfield(opts,'lamb_corr')
+    opts.lamb_corr=0;
+end
+if ~isfield(opts,'lamb_orth_L1')
+    opts.lamb_orth_L1=0;
+end
+if ~isfield(opts,'lamb_orth_L2')
+    opts.lamb_orth_L2=0;
+end
+if ~isfield(opts,'active')
+    opts.active = ones(1,size(Y,1),'logical');
+end
+if ~isfield(opts,'lamb_spat_TV')
+    opts.lamb_spat_TV=0;
+end
+if ~isfield(opts,'lamb_temp_TV')
+    opts.lamb_temp_TV=0;
+end
+if ~isfield(opts,'ini_method')
+    opts.ini_method='pca';
+end
+if ~isfield(opts,'diagnostic')
+    opts.diagnostic=false;
+end
+if ~isfield(opts,'pointwise')
+    opts.pointwise=false;
+end
+
+if opts.lamb_spat_TV
+    if ~isfield(opts,'size')
+        disp('The option lamb_spat_TV needs additional information: size of the image (opts.size)');
+        return
+    end
+    opts.laplace = zeros(1,3,3);
+    opts.laplace(1,2,2)=4;
+    opts.laplace(1,1,2)=-1;
+    opts.laplace(1,3,2)=-1;
+    opts.laplace(1,2,1)=-1;
+    opts.laplace(1,2,3)=-1;
+end
+
+if opts.use_std
+    Y=double(Y/sqrt(sum(var(Y,1,2))));
+    opts.Y = sum(Y,2);
+else
+    Y = double(Y/norm(Y(:)));
+end
+
+if ~opts.rank
+    opts.max_iter=0;
+end
+
+if nargin<3
+    [T_0,S_0] = initialize_nnmf(Y,opts.rank,opts);
+end
+
+if nargin==3
+    option=opts;
+    if ~isfield(opts,'max_iter')
+        option.max_iter=12;
+    end
+    option.lambda=opts.lamb_spat;
+    S_0=LS_nnls(T_0',Y',option)';
+end
+
+if opts.lamb_orth_L1 + opts.lamb_orth_L2
+    for u=1:size(T_0,1)
+        platz = norm(S_0(:,u));
+        T_0(u,:) = T_0(u,:)*platz;
+        S_0(:,u) = S_0(:,u)/platz;
+    end
+    opts.hilf = ones(opts.rank)-eye(opts.rank);
+    opts.hilf(1:end,1) = 0;
+    opts.hilf(1,1:end) = 0;
+end
+
+if isfield(opts,'xval')
+    if opts.display
+        disp('opts before cross validation');
+        disp(opts);
+    end
+    opts=xval(Y,opts);
+    if opts.display
+        disp('opts after cross-validation:')
+        disp(opts);
+    end
+end
+T = T_0;
+S =S_0;
+
+P=[];
+E=[];
+for iter=1:opts.max_iter
+    [S,T]=S_update(Y,S,T,opts);
+    [S,T]=T_update(Y,T,S,opts);
+    if opts.diagnostic&&opts.display
+        if opts.use_std
+            E(iter)=sum(var(Y-S*T,1,2),1);
+        else
+            E(iter)=sum(reshape(Y-S*T,1,[]).^2);
+        end
+%         P(iter)=norm(reshape(S'*S-eye(size(S,2)),1,[]),1);
+        figure(3);
+%         subplot(1,4,1);
+        plot(E);
+%         axis square
+%         subplot(1,4,2);
+%         plot(P);
+%         axis square
+%         subplot(1,4,3);
+%         plot(E+opts.lamb_orth_L1*P);
+%         subplot(1,4,4);
+%         imagesc(S'*S);
+%         axis square
+    end 
+    if opts.display
+        if iter==1
+            fprintf(['Iteration completed: ' num2str(iter) ', ']);
+        else
+            fprintf([num2str(iter) ', ']);
+        end
+    end
+end
+
+fprintf('\n');
+
+for u=1:size(T,1)
+    platz = norm(T(u,:));
+    T(u,:) = T(u,:)/platz;
+    S(:,u) = S(:,u)*platz;
+end
+
+end
+##### SOURCE END #####
+--></body></html>

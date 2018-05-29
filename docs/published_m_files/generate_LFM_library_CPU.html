@@ -1,0 +1,218 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>generate_LFM_library_CPU</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="generate_LFM_library_CPU.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> forward_model=generate_LFM_library_CPU(centers,psf_ballistic,r,dim,m,kernel)
+<span class="comment">% GENERATE_LFM_LIBRARY: Algorithm generates a library of LFM-patterns for every neuron location</span>
+<span class="comment">% found in "centers".</span>
+<span class="comment">%</span>
+<span class="comment">% Input:</span>
+<span class="comment">% centers...            Nx3 Array of 3d coordinates of putative neurons</span>
+<span class="comment">% psf_ballistic...      point spread function</span>
+<span class="comment">% r...                  Neuron radius</span>
+<span class="comment">% dim...                scaling of x, y and z dimension in Volume</span>
+<span class="comment">% m...                  size of Volume</span>
+<span class="comment">% kernel...             Neuron kernel, if not set, neuron form will be set</span>
+<span class="comment">%                       to a ball of radius r.</span>
+<span class="comment">%</span>
+<span class="comment">% Output:</span>
+<span class="comment">% forward_model...      Library of LFM-patterns</span>
+<span class="comment">%</span>
+
+rr=r/dim(3);
+
+tic
+dim=m(1:2);
+Hsize=size(psf_ballistic.H);
+disp(<span class="string">'Initiate forward_model'</span>);
+forward_model_indices=cell(1,size(centers,1));
+forward_model_values=forward_model_indices;
+N=0;
+BWW=[];
+
+<span class="keyword">if</span> nargin==6
+    W = kernel;
+    r = (size(W,1)-1)/2;
+    rr = (size(W,3)-1)/2;
+<span class="keyword">else</span>
+    [X,Y,Z] = meshgrid(-r:r,-r:r,-rr:rr);
+    W = single((X.^2 + Y.^2 + (Z*r/rr).^2)&lt;=r^2);
+<span class="keyword">end</span>
+
+BW=find(W);
+[BWW(:,1), BWW(:,2), BWW(:,3)] = ind2sub([2*r+1,2*r+1,2*rr+1],BW);
+<span class="keyword">for</span> k=1:size(centers,1)
+    B = [];
+    B_ = [];
+    <span class="keyword">for</span> j=1:size(BWW,1)
+        bbb = round(BWW(j,:)-[(r+1)*[1 1] (rr +1)]+centers(k,:));
+        bbb_ = round(BWW(j,:));
+        <span class="keyword">if</span> (bbb(1)&lt;=m(1))&amp;&amp;(bbb(1)&gt;0)&amp;&amp;(bbb(2)&lt;=m(2))&amp;&amp;(bbb(2)&gt;0)&amp;&amp;(bbb(3)&lt;=Hsize(5))&amp;&amp;(bbb(3)&gt;0)
+            B = [B' bbb']';
+            B_ = [B_' bbb_']';
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    Q=project_forward_patched(B, dim, psf_ballistic.Nnum, psf_ballistic.H,W,B_);
+    Q=Q(:);
+    Q=Q/norm(Q);
+    forward_model_indices{k}=find(Q);
+    forward_model_values{k}=Q(forward_model_indices{k});
+    N=N+length(forward_model_values{k});
+        disp(k);
+<span class="keyword">end</span>
+I=zeros(N,1);
+J=I;
+S=I;
+jj=0;
+<span class="keyword">for</span> k=1:size(forward_model_indices,2)
+    J(jj+1:jj+size(forward_model_values{k},1))= forward_model_indices{k};
+    I(jj+1:jj+size(forward_model_values{k},1))=k*ones(size(forward_model_values{k}));
+    S(jj+1:jj+size(forward_model_values{k},1))=forward_model_values{k};
+    jj=jj+size(forward_model_values{k},1);
+    <span class="comment">%     disp(k)</span>
+<span class="keyword">end</span>
+forward_model=sparse(I,J,S,size(centers,1),prod(dim));
+toc;
+disp([num2str(size(centers,1)) <span class="string">' NSFs generated'</span>]);
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function forward_model=generate_LFM_library_CPU(centers,psf_ballistic,r,dim,m,kernel)
+% GENERATE_LFM_LIBRARY: Algorithm generates a library of LFM-patterns for every neuron location
+% found in "centers".
+%
+% Input:
+% centers...            Nx3 Array of 3d coordinates of putative neurons
+% psf_ballistic...      point spread function
+% r...                  Neuron radius
+% dim...                scaling of x, y and z dimension in Volume
+% m...                  size of Volume
+% kernel...             Neuron kernel, if not set, neuron form will be set
+%                       to a ball of radius r.
+%
+% Output:
+% forward_model...      Library of LFM-patterns
+%
+
+rr=r/dim(3);
+
+tic
+dim=m(1:2);
+Hsize=size(psf_ballistic.H);
+disp('Initiate forward_model');
+forward_model_indices=cell(1,size(centers,1));
+forward_model_values=forward_model_indices;
+N=0;
+BWW=[];
+
+if nargin==6
+    W = kernel;
+    r = (size(W,1)-1)/2;
+    rr = (size(W,3)-1)/2;
+else
+    [X,Y,Z] = meshgrid(-r:r,-r:r,-rr:rr);
+    W = single((X.^2 + Y.^2 + (Z*r/rr).^2)<=r^2);   
+end
+
+BW=find(W);
+[BWW(:,1), BWW(:,2), BWW(:,3)] = ind2sub([2*r+1,2*r+1,2*rr+1],BW);
+for k=1:size(centers,1)
+    B = [];
+    B_ = [];
+    for j=1:size(BWW,1)
+        bbb = round(BWW(j,:)-[(r+1)*[1 1] (rr +1)]+centers(k,:));
+        bbb_ = round(BWW(j,:));
+        if (bbb(1)<=m(1))&&(bbb(1)>0)&&(bbb(2)<=m(2))&&(bbb(2)>0)&&(bbb(3)<=Hsize(5))&&(bbb(3)>0)
+            B = [B' bbb']';
+            B_ = [B_' bbb_']';
+        end
+    end
+    Q=project_forward_patched(B, dim, psf_ballistic.Nnum, psf_ballistic.H,W,B_);
+    Q=Q(:);
+    Q=Q/norm(Q);
+    forward_model_indices{k}=find(Q);
+    forward_model_values{k}=Q(forward_model_indices{k});
+    N=N+length(forward_model_values{k});
+        disp(k);
+end
+I=zeros(N,1);
+J=I;
+S=I;
+jj=0;
+for k=1:size(forward_model_indices,2)
+    J(jj+1:jj+size(forward_model_values{k},1))= forward_model_indices{k};
+    I(jj+1:jj+size(forward_model_values{k},1))=k*ones(size(forward_model_values{k}));
+    S(jj+1:jj+size(forward_model_values{k},1))=forward_model_values{k};
+    jj=jj+size(forward_model_values{k},1);
+    %     disp(k)
+end
+forward_model=sparse(I,J,S,size(centers,1),prod(dim));
+toc;
+disp([num2str(size(centers,1)) ' NSFs generated']);
+end
+##### SOURCE END #####
+--></body></html>

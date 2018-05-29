@@ -1,5 +1,5 @@
 function [S,T]=fast_NMF(Y,opts,T,S)
-% FAST_NMF: the algorithm performs a non-negative matrix factorization
+%% FAST_NMF: the algorithm performs a non-negative matrix factorization
 % (nnmf) on the movie Y, using an alternating convex search
 % approach. Each of the updates is performed by gradient descent with
 % exact line search.
@@ -49,7 +49,7 @@ function [S,T]=fast_NMF(Y,opts,T,S)
 % Ouput:
 % S...                  Spatial components of the nnmf
 % T...                  Temporal components of the nnmf
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 if nargin<2
     opts=struct;
 end

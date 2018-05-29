@@ -1,0 +1,282 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>update_spatial_component</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="update_spatial_component.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> [forward_model]=update_spatial_component(timeseries, sensor_movie, template, opts)
+<span class="comment">% UPDATE_SPATIAL_COMPONENT performs an update of the spatial components, by</span>
+<span class="comment">% splitting the problem in sub-problems defined by 'template' and solving</span>
+<span class="comment">% for each of those sub-problems a non-negative least squares problem.</span>
+<span class="comment">%</span>
+<span class="comment">% Input:</span>
+<span class="comment">% timeseries...         Array of timeseries</span>
+<span class="comment">% sensor_movie...       LFM-movie</span>
+<span class="comment">% template...           binary array assigning each neuron its spatial</span>
+<span class="comment">%                       extent.</span>
+<span class="comment">% struct opts:</span>
+<span class="comment">% opts.bg_sub...        perform background subtraction, treat the problem</span>
+<span class="comment">%                       so that the last component of timeseries is treated</span>
+<span class="comment">%                       as the background.</span>
+<span class="comment">% opts.display...       boolean, if true print status information into the</span>
+<span class="comment">%                       console.</span>
+<span class="comment">% opts.lambda...        lagrange multiplier for L1-regularizer.</span>
+<span class="comment">%</span>
+<span class="comment">% Output:</span>
+<span class="comment">% forward_model...      updated forward_model</span>
+<span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'bg_sub'</span>)
+    opts.bg_sub=1;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'display'</span>)
+    opts.display=0;
+<span class="keyword">end</span>
+
+[~, order]=sort(sum(template,2));
+
+I=[];
+J=[];
+S=[];
+
+outside = ~max(template,[],1);
+
+<span class="keyword">for</span> neur=1:size(template,1)
+    neuron=order(neur);
+    space=find(template(neuron,:));
+    <span class="keyword">if</span> ~isempty(space)
+        involved_neurons=find(max(template(:,space),[],2));
+        <span class="keyword">if</span> opts.bg_sub==0
+            temp=template(involved_neurons,space);
+            <span class="keyword">if</span> size(template,1)~=size(timeseries,1)
+                disp(<span class="string">'Error: template and timeseries have the wrong dimensions'</span>);
+                <span class="keyword">return</span>
+            <span class="keyword">end</span>
+        <span class="keyword">else</span>
+            temp=zeros(length(involved_neurons)+1,length(space));
+            temp(1:length(involved_neurons),:)=template(involved_neurons,space);
+            temp(length(involved_neurons)+1,:)=ones(1,length(space));
+            involved_neurons=[involved_neurons' size(timeseries,1)];
+            <span class="keyword">if</span> size(template,1)==size(timeseries,1)
+                disp(<span class="string">'Error: template and timeseries have the wrong dimensions'</span>);
+                <span class="keyword">return</span>
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+        Y=sensor_movie(space,:);
+
+        opts.Accy=0;
+        A=timeseries(involved_neurons,:)';
+        F=zeros(length(involved_neurons),size(space,2));
+        <span class="keyword">for</span> k_=1:length(space)
+            idx=find(squeeze(temp(:,k_)));
+            y=squeeze(Y(k_,:))';
+            nrm=norm(y(:));
+            <span class="keyword">if</span> nrm&gt;0
+                x_ = reg_nnls(A(:,idx),y/nrm,opts);
+                <span class="comment">%                 x_ = nnls(A(:,idx),y/nrm,opts);</span>
+                F(idx,k_) = x_*nrm;
+            <span class="keyword">else</span>
+                F(idx,k_) = 0;
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+        <span class="keyword">if</span> size(involved_neurons,2)&gt;=1
+            template(:,space)=0;
+            [iI, iJ, iS]=find(F);
+            iJ=space(iJ);
+            iI=involved_neurons(iI);
+            iS=reshape(iS,length(iS),1);
+            I=[I reshape(iI,1,[])];
+            J=[J reshape(iJ,1,[])];
+            S=[S' iS']';
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    <span class="keyword">if</span> opts.display
+        disp(neuron);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> isfield(opts,<span class="string">'gpu'</span>)
+    <span class="keyword">if</span> opts.gpu
+        gpuDevice([]);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+S=double(S);
+forward_model=sparse(I,J,S,size(timeseries,1),size(sensor_movie,1));
+
+<span class="keyword">if</span> opts.bg_sub&amp;&amp;~isempty(outside)
+    Y=sensor_movie(logical(outside),:);
+    forward_model(end,logical(outside))=Y*timeseries(end,:)';
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function [forward_model]=update_spatial_component(timeseries, sensor_movie, template, opts)
+% UPDATE_SPATIAL_COMPONENT performs an update of the spatial components, by
+% splitting the problem in sub-problems defined by 'template' and solving
+% for each of those sub-problems a non-negative least squares problem.
+%
+% Input:
+% timeseries...         Array of timeseries
+% sensor_movie...       LFM-movie
+% template...           binary array assigning each neuron its spatial
+%                       extent.
+% struct opts:
+% opts.bg_sub...        perform background subtraction, treat the problem
+%                       so that the last component of timeseries is treated 
+%                       as the background.
+% opts.display...       boolean, if true print status information into the
+%                       console.
+% opts.lambda...        lagrange multiplier for L1-regularizer.
+%
+% Output:
+% forward_model...      updated forward_model
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if ~isfield(opts,'bg_sub')
+    opts.bg_sub=1;
+end
+
+if ~isfield(opts,'display')
+    opts.display=0;
+end
+
+[~, order]=sort(sum(template,2));
+
+I=[];
+J=[];
+S=[];
+
+outside = ~max(template,[],1);
+
+for neur=1:size(template,1)
+    neuron=order(neur);
+    space=find(template(neuron,:));
+    if ~isempty(space)
+        involved_neurons=find(max(template(:,space),[],2));
+        if opts.bg_sub==0
+            temp=template(involved_neurons,space);
+            if size(template,1)~=size(timeseries,1)
+                disp('Error: template and timeseries have the wrong dimensions');
+                return
+            end
+        else
+            temp=zeros(length(involved_neurons)+1,length(space));
+            temp(1:length(involved_neurons),:)=template(involved_neurons,space);
+            temp(length(involved_neurons)+1,:)=ones(1,length(space));
+            involved_neurons=[involved_neurons' size(timeseries,1)];
+            if size(template,1)==size(timeseries,1)
+                disp('Error: template and timeseries have the wrong dimensions');
+                return
+            end
+        end
+        Y=sensor_movie(space,:);
+        
+        opts.Accy=0;
+        A=timeseries(involved_neurons,:)';
+        F=zeros(length(involved_neurons),size(space,2));
+        for k_=1:length(space)
+            idx=find(squeeze(temp(:,k_)));
+            y=squeeze(Y(k_,:))';
+            nrm=norm(y(:));
+            if nrm>0
+                x_ = reg_nnls(A(:,idx),y/nrm,opts);
+                %                 x_ = nnls(A(:,idx),y/nrm,opts);
+                F(idx,k_) = x_*nrm;
+            else
+                F(idx,k_) = 0;
+            end
+        end       
+        if size(involved_neurons,2)>=1
+            template(:,space)=0;
+            [iI, iJ, iS]=find(F);
+            iJ=space(iJ);
+            iI=involved_neurons(iI);
+            iS=reshape(iS,length(iS),1);
+            I=[I reshape(iI,1,[])];
+            J=[J reshape(iJ,1,[])];
+            S=[S' iS']';
+        end
+    end
+    if opts.display
+        disp(neuron);
+    end
+end
+
+if isfield(opts,'gpu')
+    if opts.gpu
+        gpuDevice([]);
+    end
+end
+S=double(S);
+forward_model=sparse(I,J,S,size(timeseries,1),size(sensor_movie,1));
+
+if opts.bg_sub&&~isempty(outside)
+    Y=sensor_movie(logical(outside),:);
+    forward_model(end,logical(outside))=Y*timeseries(end,:)';
+end
+
+end
+##### SOURCE END #####
+--></body></html>

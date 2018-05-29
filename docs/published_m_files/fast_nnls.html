@@ -1,0 +1,480 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>fast_nnls</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="fast_nnls.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> [xx, Q, df, h]=fast_nnls(A,Y,opts,Q,df,h)
+<span class="comment">% FAST_NNLS:</span>
+
+<span class="keyword">if</span> nargin&lt;3
+    opts = struct;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span>  ~isfield(opts,<span class="string">'total'</span>)
+    opts.total=0;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> nargin&lt;3
+    opts.gpu=false;
+    opts.tol=1e-12;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'gpu'</span>)
+    opts.gpu=false;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'tol_p'</span>)
+    opts.tol_p=1;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'display'</span>)
+    opts.display=false;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'max_iter'</span>)
+    opts.max_iter=2000;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'tol'</span>)
+    opts.tol=1e-6;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'tol_'</span>)
+    opts.tol_=1e-1;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'sample'</span>)
+    opts.sample=30;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'warm_start'</span>)
+    opts.warm_start=[];
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts,<span class="string">'lambda'</span>)
+    opts.lambda = 0;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> nargin&lt;=3
+    Q=A'*A;
+    h=1./sqrt(diag(Q));
+    Q=Q./sqrt(diag(Q)*diag(Q)');
+    df=diag(h)*(-A'*Y + opts.lambda);
+<span class="keyword">else</span>
+    <span class="keyword">if</span> isempty(df)
+        df=diag(h)*(-A'*Y + opts.lambda);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> isempty(opts.warm_start)
+    x=zeros(size(A,2),size(Y,2));
+<span class="keyword">elseif</span> opts.warm_start==1
+    x=inv(Q)*(-df);
+    x(x&lt;0)=0;
+    df=df+Q*x;
+    disp(<span class="string">'warm_start'</span>);
+<span class="keyword">else</span>
+    x=diag(1./h)*opts.warm_start;
+    df=df+Q*x;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> opts.gpu
+    gpu = gpuDevice(opts.gpu_ids);
+    x=gpuArray(x);
+    Q=gpuArray(Q);
+    df=gpuArray(df);
+<span class="keyword">end</span>
+
+passive=max(x&gt;0,df&lt;0);
+
+h_=max(h);
+rds=1:size(Y,2);
+xx=ones(size(x));
+s=1;
+test=[];
+X=[[1:2:2*opts.sample]', ones(opts.sample,1)];
+Xi=inv(X'*X)*X';
+
+<span class="keyword">while</span> ~isempty(x)
+    <span class="comment">%     tic</span>
+    x_=x;
+    <span class="keyword">if</span> opts.display
+        disp(s)
+    <span class="keyword">end</span>
+    s=s+1;
+    df_=df.*passive;
+    <span class="keyword">if</span> opts.total
+        alpha=sum(sum(df_.^2,1),2)./sum(sum(df_.*(Q*df_),1),2);
+        alpha(isnan(alpha))=0;
+        x_=x-df_*alpha;
+        x_(x_&lt;0)=0;
+        df=df+Q*(x_-x);
+        x=x_;
+
+        passive=max(x&gt;0,df&lt;0);
+
+
+        <span class="keyword">if</span> isfield(opts,<span class="string">'max_iter'</span>)
+            <span class="keyword">if</span> s&gt;opts.max_iter
+                disp(<span class="string">'max number of iterations is reached'</span>);
+                <span class="keyword">break</span>;
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+    <span class="keyword">else</span>
+        alpha=sum(df_.^2,1)./sum(df_.*(Q*df_),1);
+        alpha(isnan(alpha))=0;
+        <span class="keyword">if</span> opts.gpu
+            x = gather(x);
+            x_ = gather(x_);
+            df_ = gather(df_);
+            alpha = gather(alpha);
+        <span class="keyword">end</span>
+        <span class="keyword">for</span> ii=1:size(x,2)
+            x_(:,ii)=x(:,ii)-df_(:,ii)*alpha(ii);
+        <span class="keyword">end</span>
+
+        <span class="keyword">if</span> opts.gpu
+            x = gpuArray(x);
+            x_ = gpuArray(x_);
+        <span class="keyword">end</span>
+        x_(x_&lt;0)=0;
+        <span class="keyword">if</span> mod(s,2)==1
+
+            <span class="keyword">if</span> opts.tol_p==2
+                test=[test' log(sqrt(sum((x_-x).^2,1)))']';
+            <span class="keyword">elseif</span> opts.tol_p==1
+                test=[test' log(sum(abs(x_-x),1))']';
+            <span class="keyword">end</span>
+            <span class="keyword">if</span> size(test,1)&gt;opts.sample
+                test=test(2:end,:);
+            <span class="keyword">end</span>
+            <span class="keyword">if</span> s&gt;2*opts.sample
+                k=Xi*test;
+                ids=logical(max((max(passive)==0),(h_*exp(test(end,:))./(1-exp(k(1,:)))&lt;opts.tol*size(x,1)*max(x,[],1)).*(sum(abs(X*k-test),1)&lt;opts.tol_*opts.sample).*(exp(k(1,:))&lt;1)));
+            <span class="keyword">end</span>
+        <span class="keyword">else</span>
+            ids=[];
+        <span class="keyword">end</span>
+        df=df+Q*(x_-x);
+
+        <span class="keyword">if</span> isfield(opts,<span class="string">'max_iter'</span>)
+            <span class="keyword">if</span> s&gt;opts.max_iter
+                ids=1:size(x,2);
+                disp(<span class="string">'max number of iterations is reached'</span>);
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+        x=x_;
+
+        passive=max(x&gt;0,df&lt;0);
+
+        <span class="keyword">if</span> max(ids(:))
+            <span class="keyword">if</span> opts.display
+                disp(find(ids))
+            <span class="keyword">end</span>
+            <span class="keyword">if</span> opts.gpu
+                xx(:,rds(ids))=gather(x(:,ids));
+            <span class="keyword">else</span>
+                xx(:,rds(ids))=x(:,ids);
+            <span class="keyword">end</span>
+            rds=rds(~ids);
+            x=x(:,~ids);
+            df=df(:,~ids);
+            passive=passive(:,~ids);
+            test=test(:,~ids);
+        <span class="keyword">end</span>
+
+    <span class="keyword">end</span>
+    <span class="comment">%     toc</span>
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> opts.gpu
+    <span class="keyword">if</span> nargout&gt;1
+        Q=gather(Q);
+    <span class="keyword">end</span>
+    <span class="keyword">if</span> ~isempty(h)
+        xx=gather(diag(h)*xx);
+    <span class="keyword">else</span>
+        xx=gather(xx);
+    <span class="keyword">end</span>
+    clear <span class="string">gpu</span>;
+    gpuDevice([]);
+<span class="keyword">else</span>
+    <span class="keyword">if</span> ~isempty(h)
+        xx=diag(h)*xx;
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function [xx, Q, df, h]=fast_nnls(A,Y,opts,Q,df,h)
+% FAST_NNLS:
+
+if nargin<3
+    opts = struct;
+end
+
+if  ~isfield(opts,'total')
+    opts.total=0;
+end
+
+if nargin<3
+    opts.gpu=false;
+    opts.tol=1e-12;
+end
+
+if ~isfield(opts,'gpu')
+    opts.gpu=false;
+end
+
+if ~isfield(opts,'tol_p')
+    opts.tol_p=1;
+end
+
+if ~isfield(opts,'display')
+    opts.display=false;
+end
+
+if ~isfield(opts,'max_iter')
+    opts.max_iter=2000;
+end
+
+if ~isfield(opts,'tol')
+    opts.tol=1e-6;
+end
+
+if ~isfield(opts,'tol_')
+    opts.tol_=1e-1;
+end
+
+if ~isfield(opts,'sample')
+    opts.sample=30;
+end
+
+if ~isfield(opts,'warm_start')
+    opts.warm_start=[];
+end
+
+if ~isfield(opts,'lambda')
+    opts.lambda = 0;
+end
+
+if nargin<=3
+    Q=A'*A;
+    h=1./sqrt(diag(Q));
+    Q=Q./sqrt(diag(Q)*diag(Q)');
+    df=diag(h)*(-A'*Y + opts.lambda);
+else
+    if isempty(df)
+        df=diag(h)*(-A'*Y + opts.lambda);
+    end
+end
+
+if isempty(opts.warm_start)
+    x=zeros(size(A,2),size(Y,2));
+elseif opts.warm_start==1
+    x=inv(Q)*(-df);
+    x(x<0)=0;
+    df=df+Q*x;
+    disp('warm_start');
+else
+    x=diag(1./h)*opts.warm_start;
+    df=df+Q*x;
+end
+
+if opts.gpu
+    gpu = gpuDevice(opts.gpu_ids);
+    x=gpuArray(x);
+    Q=gpuArray(Q);
+    df=gpuArray(df);
+end
+
+passive=max(x>0,df<0);
+
+h_=max(h);
+rds=1:size(Y,2);
+xx=ones(size(x));
+s=1;
+test=[];
+X=[[1:2:2*opts.sample]', ones(opts.sample,1)];
+Xi=inv(X'*X)*X';
+
+while ~isempty(x)
+    %     tic
+    x_=x;
+    if opts.display
+        disp(s)
+    end
+    s=s+1;
+    df_=df.*passive;
+    if opts.total
+        alpha=sum(sum(df_.^2,1),2)./sum(sum(df_.*(Q*df_),1),2);
+        alpha(isnan(alpha))=0;
+        x_=x-df_*alpha;
+        x_(x_<0)=0;
+        df=df+Q*(x_-x);
+        x=x_;
+        
+        passive=max(x>0,df<0);
+        
+        
+        if isfield(opts,'max_iter')
+            if s>opts.max_iter
+                disp('max number of iterations is reached');
+                break;
+            end
+        end
+    else
+        alpha=sum(df_.^2,1)./sum(df_.*(Q*df_),1);
+        alpha(isnan(alpha))=0;
+        if opts.gpu
+            x = gather(x);
+            x_ = gather(x_);
+            df_ = gather(df_);
+            alpha = gather(alpha);
+        end
+        for ii=1:size(x,2)
+            x_(:,ii)=x(:,ii)-df_(:,ii)*alpha(ii);
+        end
+        
+        if opts.gpu
+            x = gpuArray(x);
+            x_ = gpuArray(x_);
+        end
+        x_(x_<0)=0;
+        if mod(s,2)==1
+            
+            if opts.tol_p==2
+                test=[test' log(sqrt(sum((x_-x).^2,1)))']';
+            elseif opts.tol_p==1
+                test=[test' log(sum(abs(x_-x),1))']';
+            end
+            if size(test,1)>opts.sample
+                test=test(2:end,:);
+            end
+            if s>2*opts.sample
+                k=Xi*test;
+                ids=logical(max((max(passive)==0),(h_*exp(test(end,:))./(1-exp(k(1,:)))<opts.tol*size(x,1)*max(x,[],1)).*(sum(abs(X*k-test),1)<opts.tol_*opts.sample).*(exp(k(1,:))<1)));
+            end
+        else
+            ids=[];
+        end
+        df=df+Q*(x_-x);
+        
+        if isfield(opts,'max_iter')
+            if s>opts.max_iter
+                ids=1:size(x,2);
+                disp('max number of iterations is reached');
+            end
+        end
+        x=x_;
+        
+        passive=max(x>0,df<0);
+        
+        if max(ids(:))
+            if opts.display
+                disp(find(ids))
+            end
+            if opts.gpu
+                xx(:,rds(ids))=gather(x(:,ids));
+            else
+                xx(:,rds(ids))=x(:,ids);
+            end
+            rds=rds(~ids);
+            x=x(:,~ids);
+            df=df(:,~ids);
+            passive=passive(:,~ids);
+            test=test(:,~ids);
+        end
+        
+    end
+    %     toc
+end
+
+if opts.gpu
+    if nargout>1
+        Q=gather(Q);
+    end
+    if ~isempty(h)
+        xx=gather(diag(h)*xx);
+    else
+        xx=gather(xx);
+    end
+    clear gpu;
+    gpuDevice([]);
+else
+    if ~isempty(h)
+        xx=diag(h)*xx;
+    end
+end
+
+end
+
+
+
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,302 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>generate_LFM_library_GPU</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="generate_LFM_library_GPU.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> forward_model=generate_LFM_library_GPU(recon,centers,neur_id,psf,options)
+<span class="comment">% GENERATE_LFM_LIBRARY_GPU: algorithm computes for each detected neuron the</span>
+<span class="comment">% LFM-image of a volume, of the appropriate size, that is empty, except for</span>
+<span class="comment">% a small volume around the location of the neuron where it is the mean of</span>
+<span class="comment">% this sub-volume of the components of 'recon' where the neuron was found</span>
+<span class="comment">% according to 'neur_id'.</span>
+<span class="comment">%</span>
+<span class="comment">% Input:</span>
+<span class="comment">% recon...              M cell-array of reconstructed LFM Volumes.</span>
+<span class="comment">% centers...            N x 3 array of neuronal centers.</span>
+<span class="comment">% neur_id...            N x M binary array; true if and only if neuron J</span>
+<span class="comment">%                       was found in cell K of array 'recon.</span>
+<span class="comment">% psf...                LFM-point-spread-function.</span>
+<span class="comment">% struct options</span>
+<span class="comment">% options.gpu_ids       ids of GPUs available to the algorithm</span>
+<span class="comment">% options.NumWorkers    Number of Workers to run the individual jobs on the</span>
+<span class="comment">%                       GPUs in parallel.</span>
+<span class="comment">% options.ker_shape     see reconstruct_S help</span>
+<span class="comment">% options.ker_param     see reconstruct_S help</span>
+<span class="comment">%</span>
+<span class="comment">% Output:</span>
+<span class="comment">% forward_model...      N x number of pixels array; representing the</span>
+<span class="comment">%                       linearized LFM image of each neuron.</span>
+<span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
+disp(<span class="string">'generating library'</span>);
+poolobj = gcp(<span class="string">'nocreate'</span>);
+<span class="keyword">if</span> isempty(poolobj)||(poolobj.NumWorkers~=options.NumWorkers)
+    delete(poolobj);
+    poolobj=parpool(options.NumWorkers);
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> nargin&lt;5
+    options=[];
+    options.NumWorkers=12;
+    options.gpu_ids=[1 2 4 5];
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(options,<span class="string">'NumWorkers'</span>)
+    <span class="keyword">if</span> isfield(options,<span class="string">'gpu_ids'</span>)
+        options.NumWorkers=length(options.gpu_ids);
+    <span class="keyword">else</span>
+        options.NumWorkers=1;
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(options,<span class="string">'gpu_ids'</span>)
+    options.gpu_ids=[1,2,4];
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(options,<span class="string">'ker_shape'</span>)
+    options.ker_shape = <span class="string">'ball'</span>;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> isfield(options,<span class="string">'ker_param'</span>)
+    kernel = generate_kernel(options.ker_shape,options.ker_param);
+<span class="keyword">else</span>
+    kernel = [];
+<span class="keyword">end</span>
+
+gimp=options.gpu_ids;
+forward_model=zeros(size(centers,1),prod(options.image_size));
+
+<span class="keyword">for</span> kk=1:options.NumWorkers:size(centers,1)
+    Volume=cell(options.NumWorkers,1);
+    H=cell(options.NumWorkers,1);
+    frwd=cell(options.NumWorkers,1);
+    <span class="keyword">for</span> worker=1:min(options.NumWorkers,size(centers,1)-(kk-1))
+        x=round(centers(kk+worker-1,1));
+        y=round(centers(kk+worker-1,2));
+        z=round(centers(kk+worker-1,3));
+        Volume{worker}=zeros([options.image_size min(z+ceil(options.neur_rad/options.axial),<span class="keyword">...</span>
+            size(psf.H,5))-max(z-ceil(options.neur_rad/options.axial),1)+1]);
+
+        ids=neur_id(kk+worker-1,1:size(neur_id,2));
+        ids=find(ids);
+        <span class="keyword">for</span> k=1:length(ids)
+            Volume{worker}(max(x-options.neur_rad,1):min(x+options.neur_rad,options.image_size(1)),<span class="keyword">...</span>
+                max(y-options.neur_rad,1):min(y+options.neur_rad,options.image_size(2)),:)=<span class="keyword">...</span>
+                Volume{worker}(max(x-options.neur_rad,1):min(x+options.neur_rad,options.image_size(1)),<span class="keyword">...</span>
+                max(y-options.neur_rad,1):min(y+options.neur_rad,options.image_size(2)),:)+<span class="keyword">...</span>
+                recon{ids(k)}(max(x-options.neur_rad,1):min(x+options.neur_rad,options.image_size(1)),<span class="keyword">...</span>
+                max(y-options.neur_rad,1):min(y+options.neur_rad,options.image_size(2)),<span class="keyword">...</span>
+                max(z-ceil(options.neur_rad/options.axial),1):min(z+ceil(options.neur_rad/options.axial),size(psf.H,5)));
+
+        <span class="keyword">end</span>
+        Volume{worker}=Volume{worker}/length(ids);
+
+        H{worker}=psf.H(:,:,:,:,max(z-ceil(options.neur_rad/options.axial),1):min(z+<span class="keyword">...</span>
+            ceil(options.neur_rad/options.axial),size(psf.H,5)));
+    <span class="keyword">end</span>
+
+    <span class="keyword">parfor</span> worker=1:min(options.NumWorkers,size(centers,1)-(kk-1))
+        tic
+        gpuDevice(gimp(mod((worker-1),length(gimp))+1));
+        kern = gpuArray(kernel);
+        forwardFUN_raw = @(Xguess) forwardProjectGPU(H{worker}, Xguess );
+        <span class="keyword">if</span> isempty(kernel)
+            forwardFUN = forwardFUN_raw;
+        <span class="keyword">else</span>
+            forwardFUN = @(Xguess) forwardFUN_raw(convn(Xguess,kern,<span class="string">'same'</span>));
+        <span class="keyword">end</span>
+        frwd{worker}=gather(forwardFUN(gpuArray(Volume{worker})));
+        toc
+        reset(gpuDevice);
+        gpuDevice([]);
+    <span class="keyword">end</span>
+
+    <span class="keyword">for</span> kp=1:min(options.NumWorkers,size(centers,1)-(kk-1))
+        forward_model(kk+kp-1,:)=frwd{kp}(:);
+    <span class="keyword">end</span>
+    disp([<span class="string">'Generation of library entry '</span> num2str(kk) <span class="string">' to '</span> <span class="keyword">...</span>
+        num2str(min(kk+poolobj.NumWorkers-1,size(centers,1))) <span class="string">' completed'</span>]);
+<span class="keyword">end</span>
+
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function forward_model=generate_LFM_library_GPU(recon,centers,neur_id,psf,options)
+% GENERATE_LFM_LIBRARY_GPU: algorithm computes for each detected neuron the
+% LFM-image of a volume, of the appropriate size, that is empty, except for
+% a small volume around the location of the neuron where it is the mean of
+% this sub-volume of the components of 'recon' where the neuron was found
+% according to 'neur_id'.
+%
+% Input:
+% recon...              M cell-array of reconstructed LFM Volumes.
+% centers...            N x 3 array of neuronal centers.
+% neur_id...            N x M binary array; true if and only if neuron J 
+%                       was found in cell K of array 'recon.                   
+% psf...                LFM-point-spread-function.
+% struct options
+% options.gpu_ids       ids of GPUs available to the algorithm
+% options.NumWorkers    Number of Workers to run the individual jobs on the
+%                       GPUs in parallel.
+% options.ker_shape     see reconstruct_S help
+% options.ker_param     see reconstruct_S help
+%
+% Output:
+% forward_model...      N x number of pixels array; representing the 
+%                       linearized LFM image of each neuron.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+disp('generating library');
+poolobj = gcp('nocreate');
+if isempty(poolobj)||(poolobj.NumWorkers~=options.NumWorkers)
+    delete(poolobj);
+    poolobj=parpool(options.NumWorkers);
+end
+
+if nargin<5
+    options=[];
+    options.NumWorkers=12;
+    options.gpu_ids=[1 2 4 5];
+end
+
+if ~isfield(options,'NumWorkers')
+    if isfield(options,'gpu_ids')
+        options.NumWorkers=length(options.gpu_ids);
+    else
+        options.NumWorkers=1;
+    end
+end
+
+if ~isfield(options,'gpu_ids')
+    options.gpu_ids=[1,2,4];
+end
+
+if ~isfield(options,'ker_shape')
+    options.ker_shape = 'ball';
+end
+
+if isfield(options,'ker_param')
+    kernel = generate_kernel(options.ker_shape,options.ker_param);
+else
+    kernel = [];
+end
+
+gimp=options.gpu_ids;
+forward_model=zeros(size(centers,1),prod(options.image_size));
+
+for kk=1:options.NumWorkers:size(centers,1)
+    Volume=cell(options.NumWorkers,1);
+    H=cell(options.NumWorkers,1);
+    frwd=cell(options.NumWorkers,1);
+    for worker=1:min(options.NumWorkers,size(centers,1)-(kk-1))
+        x=round(centers(kk+worker-1,1));
+        y=round(centers(kk+worker-1,2));
+        z=round(centers(kk+worker-1,3));
+        Volume{worker}=zeros([options.image_size min(z+ceil(options.neur_rad/options.axial),...
+            size(psf.H,5))-max(z-ceil(options.neur_rad/options.axial),1)+1]);
+        
+        ids=neur_id(kk+worker-1,1:size(neur_id,2));
+        ids=find(ids);
+        for k=1:length(ids)
+            Volume{worker}(max(x-options.neur_rad,1):min(x+options.neur_rad,options.image_size(1)),...
+                max(y-options.neur_rad,1):min(y+options.neur_rad,options.image_size(2)),:)=...
+                Volume{worker}(max(x-options.neur_rad,1):min(x+options.neur_rad,options.image_size(1)),...
+                max(y-options.neur_rad,1):min(y+options.neur_rad,options.image_size(2)),:)+...
+                recon{ids(k)}(max(x-options.neur_rad,1):min(x+options.neur_rad,options.image_size(1)),...
+                max(y-options.neur_rad,1):min(y+options.neur_rad,options.image_size(2)),...
+                max(z-ceil(options.neur_rad/options.axial),1):min(z+ceil(options.neur_rad/options.axial),size(psf.H,5)));
+                
+        end
+        Volume{worker}=Volume{worker}/length(ids);
+       
+        H{worker}=psf.H(:,:,:,:,max(z-ceil(options.neur_rad/options.axial),1):min(z+...
+            ceil(options.neur_rad/options.axial),size(psf.H,5)));   
+    end
+    
+    parfor worker=1:min(options.NumWorkers,size(centers,1)-(kk-1))
+        tic
+        gpuDevice(gimp(mod((worker-1),length(gimp))+1));
+        kern = gpuArray(kernel);
+        forwardFUN_raw = @(Xguess) forwardProjectGPU(H{worker}, Xguess );
+        if isempty(kernel)
+            forwardFUN = forwardFUN_raw;
+        else
+            forwardFUN = @(Xguess) forwardFUN_raw(convn(Xguess,kern,'same'));
+        end
+        frwd{worker}=gather(forwardFUN(gpuArray(Volume{worker})));
+        toc
+        reset(gpuDevice);
+        gpuDevice([]);
+    end
+    
+    for kp=1:min(options.NumWorkers,size(centers,1)-(kk-1))
+        forward_model(kk+kp-1,:)=frwd{kp}(:);
+    end
+    disp(['Generation of library entry ' num2str(kk) ' to ' ...
+        num2str(min(kk+poolobj.NumWorkers-1,size(centers,1))) ' completed']);
+end
+
+end
+##### SOURCE END #####
+--></body></html>

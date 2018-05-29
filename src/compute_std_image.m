@@ -1,14 +1,13 @@
 function std_image=compute_std_image(Y,y_1,y_2)
-% COMPUTE_STD_IMAGE: Algorithm computes the standard deviation image of the
-% difference of a movie Y and a tensorproduct.
+%% COMPUTE_STD_IMAGE  Compute the standard deviation image of the difference of a movie Y and a tensor product.
 %
 % Input: 
-% Y...                      movie
-% y_1...                    y_1 is a size(Y,1) times 1 array.
-% y_2...                    y_2 is a 1 times size(Y,2) array.
+% Y                     2D-array of size (M,N)
+% y_1                   M x 1 array
+% y_2                   1 x N array
 %
 % Output:
-% std_image...              Standard deviation image
+% std_image             Standard deviation image
 
 if nargin<2
     y_1=zeros(size(Y,1),1);

@@ -1,0 +1,430 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>xval</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="xval.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> option=xval(Y,opts)
+<span class="comment">% XVAL: algorithm performs cross-validation for one lagrangian multiplier</span>
+<span class="comment">% for the nnmf problem defined by Y,n and opts.</span>
+<span class="comment">%</span>
+<span class="comment">% Input:</span>
+<span class="comment">% opts...               options to be modified by xval</span>
+<span class="comment">% Y...                  movie</span>
+<span class="comment">% struct opts.xval:</span>
+<span class="comment">% opts.xval.im_size     size of the std_image of Y</span>
+<span class="comment">% opts.xval.max_iter    maximal number of iterations of the nnmf inside xval</span>
+<span class="comment">% opts.xval.num_part    number of partitions in which the data is decomposed</span>
+<span class="comment">% opts.multiplier       string; name of the lagrangian multiplier</span>
+<span class="comment">%                       example opts.multiplier='lamb_orth_L2'</span>
+<span class="comment">% param                 paramter range of the multiplier that needs to be</span>
+<span class="comment">%                       scanned by xval</span>
+<span class="comment">%</span>
+<span class="comment">% Output:</span>
+<span class="comment">% options...           output options</span>
+<span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
+<span class="keyword">if</span> nargin&lt;2
+    opts=struct;
+    opts.xval=struct;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts.xval,<span class="string">'im_size'</span>)
+    opts.xval.im_size = 100;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts.xval,<span class="string">'max_iter'</span>)
+    opts.xval.max_iter=opts.max_iter;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts.xval,<span class="string">'num_part'</span>)
+    opts.xval.num_part=5;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts.xval,<span class="string">'num_part'</span>)
+    opts.xval.num_part=5;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts.xval,<span class="string">'multiplier'</span>)
+    opts.xval.multiplier=<span class="string">'lamb_orth_L1'</span>;
+<span class="keyword">end</span>
+
+<span class="keyword">switch</span> opts.xval.multiplier
+    <span class="keyword">case</span> <span class="string">'lamb_orth_L1'</span>
+        lambda = opts.lamb_orth_L1;
+        disp(<span class="string">'lamb_orth_L1'</span>);
+    <span class="keyword">case</span> <span class="string">'lamb_orth_L2'</span>
+        lambda = opts.lamb_orth_L2;
+        disp(<span class="string">'lamb_orth_L2'</span>);
+    <span class="keyword">case</span> <span class="string">'lamb_spat'</span>
+        lambda = opts.lamb_spat;
+        disp(<span class="string">'lamb_spat'</span>);
+    <span class="keyword">case</span> <span class="string">'lamb_temp'</span>
+        lambda = opts.lamb_temp;
+        disp(<span class="string">'lamb_temp'</span>);
+    <span class="keyword">case</span> <span class="string">'lamb_corr'</span>
+        lambda = opts.lamb_corr;
+        disp(<span class="string">'lamb_corr'</span>);
+    <span class="keyword">case</span> <span class="string">'lamb_spat_TV'</span>
+        lambda = opts.lamb_spat_TV;
+        disp(<span class="string">'lamb_spat_TV'</span>);
+    <span class="keyword">case</span> <span class="string">'lamb_temp_TV'</span>
+        lambda = opts.temp_TV;
+        disp(<span class="string">'lamb_temp_TV'</span>);
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> ~isfield(opts.xval,<span class="string">'param'</span>)
+    opts.xval.param = lambda*exp(-2*[0:4]);
+<span class="keyword">end</span>
+
+map = conv2(opts.xval.std_image.^2,ones(opts.xval.im_size+1),<span class="string">'valid'</span>);
+[~,m] = max(map(:));
+[c_x,c_y] = ind2sub(size(map),m);
+[cx,cy] = meshgrid(c_y:c_y+opts.xval.im_size,c_x:c_x+opts.xval.im_size);
+ind = sub2ind(size(opts.xval.std_image),cx(:),cy(:));
+Y_p = Y(ind,:);
+
+option=opts;
+option.diagnostic = false;
+option.max_iter=2000;
+option.active = reshape(opts.active,size(opts.xval.std_image));
+option.active = option.active(c_y:c_y+opts.xval.im_size,c_x:c_x+opts.xval.im_size);
+[t,s] = initialize_nnmf(Y_p,opts.rank,option);
+option.max_iter=opts.max_iter;
+<span class="keyword">if</span> opts.lamb_orth_L2 + opts.lamb_orth_L2
+    <span class="keyword">for</span> u=1:size(t,1)
+        platz = norm(s(:,u));
+        t(u,:) = t(u,:)*platz;
+        s(:,u) = s(:,u)/platz;
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+[N,~] = discretize([1:size(Y_p,2)],opts.xval.num_part);
+
+<span class="keyword">for</span> j=1:length(opts.xval.param)
+    <span class="keyword">for</span> k=1:opts.xval.num_part
+        T=t(:,k~=N); S=s;
+        <span class="keyword">if</span> j==1
+            yy{k}=Y_p(:,k==N);
+            y{k}=Y_p(:,k~=N);
+            <span class="keyword">if</span> opts.use_std
+                yy{k}=yy{k}/sqrt(sum(var(yy{k},1,2)));
+                y{k}=y{k}/sqrt(sum(var(y{k},1,2)));
+            <span class="keyword">else</span>
+                yy{k}=yy{k}/norm(reshape(yy{k},1,[]));
+                y{k}=y{k}/norm(reshape(y{k},1,[]));
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+        option.Y = sum(y{k},2);
+        lambda = opts.xval.param(j);
+        <span class="keyword">switch</span> opts.xval.multiplier
+            <span class="keyword">case</span> <span class="string">'lamb_orth_L1'</span>
+                option.lamb_orth_L1 = lambda;
+            <span class="keyword">case</span> <span class="string">'lamb_orth_L2'</span>
+                option.lamb_orth_L2 = lambda;
+            <span class="keyword">case</span> <span class="string">'lamb_spat'</span>
+                option.lamb_spat = lambda;
+            <span class="keyword">case</span> <span class="string">'lamb_temp'</span>
+                option.lamb_temp = lambda;
+            <span class="keyword">case</span> <span class="string">'lamb_corr'</span>
+                option.lamb_corr = lambda;
+            <span class="keyword">case</span> <span class="string">'lamb_spat_TV'</span>
+                option.lamb_spat_TV = lambda;
+            <span class="keyword">case</span> <span class="string">'lamb_temp_TV'</span>
+                option.temp_TV = lambda;
+        <span class="keyword">end</span>
+        <span class="keyword">for</span> iter=1:opts.xval.max_iter
+            [S,T]=S_update(y{k},S,T,option);
+            [S,T]=T_update(y{k},T,S,option);
+        <span class="keyword">end</span>
+        <span class="keyword">for</span> u=1:size(T,1)
+            platz = norm(S(:,u));
+            T(u,:) = T(u,:)*platz;
+            S(:,u) = S(:,u)/platz;
+        <span class="keyword">end</span>
+        T(isnan(T))=0;
+        S(isnan(S))=0;
+        T = LS_nnls(S,yy{k},option);
+        <span class="keyword">if</span> opts.use_std
+            E(k) = sqrt(sum(var(S*T-yy{k},1,2),1));
+        <span class="keyword">else</span>
+            E(k) = norm(reshape(S*T-yy{k},1,[]));
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    disp(j);
+    E_(j) = mean(E);
+    disp(E_(j));
+<span class="keyword">end</span>
+[~,n_] = min(E_);
+
+option = opts;
+<span class="keyword">switch</span> opts.xval.multiplier
+    <span class="keyword">case</span> <span class="string">'lamb_orth_L1'</span>
+        option.lamb_orth_L1 = option.lamb_orth_L1*exp(-2*(n_-1));
+        disp(option.lamb_orth_L1);
+    <span class="keyword">case</span> <span class="string">'lamb_orth_L2'</span>
+        option.lamb_orth_L2 = option.lamb_orth_L2*exp(-2*(n_-1));
+        disp(option.lamb_orth_L2);
+    <span class="keyword">case</span> <span class="string">'lamb_spat'</span>
+        option.lamb_spat = option.lamb_spat*exp(-2*(n_-1));
+        disp(option.lamb_spat);
+    <span class="keyword">case</span> <span class="string">'lamb_temp'</span>
+        option.lamb_temp = option.lamb_temp*exp(-2*(n_-1));
+        disp(option.lamb_temp);
+    <span class="keyword">case</span> <span class="string">'lamb_corr'</span>
+        option.lamb_corr = option.lamb_corr*exp(-2*(n_-1));
+        disp(option.lamb_corr);
+    <span class="keyword">case</span> <span class="string">'lamb_spat_TV'</span>
+        option.lamb_spat_TV = option.lamb_spat_TV*exp(-2*(n_-1));
+        disp(option.lamb_spat_TV);
+    <span class="keyword">case</span> <span class="string">'lamb_temp_TV'</span>
+        option.lamb_temp_TV =  option.lamb_temp_TV*exp(-2*(n_-1));
+        disp(option.lamb_temp_TV);
+<span class="keyword">end</span>
+
+figure(5);title(<span class="string">'Generalization error'</span>);plot(opts.xval.param,E_)
+drawnow <span class="string">expose</span>
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function option=xval(Y,opts)
+% XVAL: algorithm performs cross-validation for one lagrangian multiplier
+% for the nnmf problem defined by Y,n and opts.
+%
+% Input:
+% opts...               options to be modified by xval
+% Y...                  movie
+% struct opts.xval:
+% opts.xval.im_size     size of the std_image of Y
+% opts.xval.max_iter    maximal number of iterations of the nnmf inside xval
+% opts.xval.num_part    number of partitions in which the data is decomposed
+% opts.multiplier       string; name of the lagrangian multiplier
+%                       example opts.multiplier='lamb_orth_L2'
+% param                 paramter range of the multiplier that needs to be
+%                       scanned by xval
+%
+% Output:
+% options...           output options
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if nargin<2
+    opts=struct;
+    opts.xval=struct;
+end
+
+if ~isfield(opts.xval,'im_size')
+    opts.xval.im_size = 100;
+end
+
+if ~isfield(opts.xval,'max_iter')
+    opts.xval.max_iter=opts.max_iter;
+end
+
+if ~isfield(opts.xval,'num_part')
+    opts.xval.num_part=5;
+end
+
+if ~isfield(opts.xval,'num_part')
+    opts.xval.num_part=5;
+end
+
+if ~isfield(opts.xval,'multiplier')
+    opts.xval.multiplier='lamb_orth_L1';
+end
+
+switch opts.xval.multiplier
+    case 'lamb_orth_L1'
+        lambda = opts.lamb_orth_L1;
+        disp('lamb_orth_L1');
+    case 'lamb_orth_L2'
+        lambda = opts.lamb_orth_L2;
+        disp('lamb_orth_L2');
+    case 'lamb_spat'
+        lambda = opts.lamb_spat;
+        disp('lamb_spat');
+    case 'lamb_temp'
+        lambda = opts.lamb_temp;
+        disp('lamb_temp');
+    case 'lamb_corr'
+        lambda = opts.lamb_corr;
+        disp('lamb_corr');
+    case 'lamb_spat_TV'
+        lambda = opts.lamb_spat_TV;
+        disp('lamb_spat_TV');
+    case 'lamb_temp_TV'
+        lambda = opts.temp_TV;
+        disp('lamb_temp_TV');
+end
+
+if ~isfield(opts.xval,'param')
+    opts.xval.param = lambda*exp(-2*[0:4]);
+end
+
+map = conv2(opts.xval.std_image.^2,ones(opts.xval.im_size+1),'valid');
+[~,m] = max(map(:));
+[c_x,c_y] = ind2sub(size(map),m);
+[cx,cy] = meshgrid(c_y:c_y+opts.xval.im_size,c_x:c_x+opts.xval.im_size);
+ind = sub2ind(size(opts.xval.std_image),cx(:),cy(:));
+Y_p = Y(ind,:);
+
+option=opts;
+option.diagnostic = false;
+option.max_iter=2000;
+option.active = reshape(opts.active,size(opts.xval.std_image));
+option.active = option.active(c_y:c_y+opts.xval.im_size,c_x:c_x+opts.xval.im_size);
+[t,s] = initialize_nnmf(Y_p,opts.rank,option);
+option.max_iter=opts.max_iter;
+if opts.lamb_orth_L2 + opts.lamb_orth_L2
+    for u=1:size(t,1)
+        platz = norm(s(:,u));
+        t(u,:) = t(u,:)*platz;
+        s(:,u) = s(:,u)/platz;
+    end
+end
+[N,~] = discretize([1:size(Y_p,2)],opts.xval.num_part);
+
+for j=1:length(opts.xval.param)
+    for k=1:opts.xval.num_part
+        T=t(:,k~=N); S=s;
+        if j==1
+            yy{k}=Y_p(:,k==N);
+            y{k}=Y_p(:,k~=N);
+            if opts.use_std
+                yy{k}=yy{k}/sqrt(sum(var(yy{k},1,2)));
+                y{k}=y{k}/sqrt(sum(var(y{k},1,2)));
+            else
+                yy{k}=yy{k}/norm(reshape(yy{k},1,[]));
+                y{k}=y{k}/norm(reshape(y{k},1,[]));
+            end 
+        end
+        option.Y = sum(y{k},2);
+        lambda = opts.xval.param(j);
+        switch opts.xval.multiplier
+            case 'lamb_orth_L1'
+                option.lamb_orth_L1 = lambda;
+            case 'lamb_orth_L2'
+                option.lamb_orth_L2 = lambda;
+            case 'lamb_spat'
+                option.lamb_spat = lambda;
+            case 'lamb_temp'
+                option.lamb_temp = lambda;
+            case 'lamb_corr'
+                option.lamb_corr = lambda;
+            case 'lamb_spat_TV'
+                option.lamb_spat_TV = lambda;
+            case 'lamb_temp_TV'
+                option.temp_TV = lambda;
+        end
+        for iter=1:opts.xval.max_iter
+            [S,T]=S_update(y{k},S,T,option);
+            [S,T]=T_update(y{k},T,S,option);
+        end
+        for u=1:size(T,1)
+            platz = norm(S(:,u));
+            T(u,:) = T(u,:)*platz;
+            S(:,u) = S(:,u)/platz;
+        end
+        T(isnan(T))=0;
+        S(isnan(S))=0;
+        T = LS_nnls(S,yy{k},option);
+        if opts.use_std
+            E(k) = sqrt(sum(var(S*T-yy{k},1,2),1));
+        else
+            E(k) = norm(reshape(S*T-yy{k},1,[]));
+        end
+    end
+    disp(j);
+    E_(j) = mean(E);
+    disp(E_(j));
+end
+[~,n_] = min(E_);
+
+option = opts;
+switch opts.xval.multiplier
+    case 'lamb_orth_L1'
+        option.lamb_orth_L1 = option.lamb_orth_L1*exp(-2*(n_-1));
+        disp(option.lamb_orth_L1);
+    case 'lamb_orth_L2'
+        option.lamb_orth_L2 = option.lamb_orth_L2*exp(-2*(n_-1));
+        disp(option.lamb_orth_L2);
+    case 'lamb_spat'
+        option.lamb_spat = option.lamb_spat*exp(-2*(n_-1));
+        disp(option.lamb_spat);
+    case 'lamb_temp'
+        option.lamb_temp = option.lamb_temp*exp(-2*(n_-1));
+        disp(option.lamb_temp);
+    case 'lamb_corr'
+        option.lamb_corr = option.lamb_corr*exp(-2*(n_-1));
+        disp(option.lamb_corr);
+    case 'lamb_spat_TV'
+        option.lamb_spat_TV = option.lamb_spat_TV*exp(-2*(n_-1));
+        disp(option.lamb_spat_TV);
+    case 'lamb_temp_TV'
+        option.lamb_temp_TV =  option.lamb_temp_TV*exp(-2*(n_-1));
+        disp(option.lamb_temp_TV);
+end
+
+figure(5);title('Generalization error');plot(opts.xval.param,E_)
+drawnow expose
+end
+##### SOURCE END #####
+--></body></html>
