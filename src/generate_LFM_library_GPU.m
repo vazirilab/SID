@@ -58,7 +58,7 @@ else
 end
 
 gimp=options.gpu_ids;
-forward_model=zeros(size(centers,1),prod(options.image_size));
+forward_model=zeros(size(centers,1),prod(options.image_size), 'single');
 
 for kk=1:options.NumWorkers:size(centers,1)
     Volume=cell(options.NumWorkers,1);
