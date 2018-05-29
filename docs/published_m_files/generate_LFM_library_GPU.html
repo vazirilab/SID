@@ -126,7 +126,7 @@ poolobj = gcp(<span class="string">'nocreate'</span>);
 <span class="keyword">end</span>
 
 gimp=options.gpu_ids;
-forward_model=zeros(size(centers,1),prod(options.image_size));
+forward_model=zeros(size(centers,1),prod(options.image_size), <span class="string">'single'</span>);
 
 <span class="keyword">for</span> kk=1:options.NumWorkers:size(centers,1)
     Volume=cell(options.NumWorkers,1);
@@ -243,7 +243,7 @@ else
 end
 
 gimp=options.gpu_ids;
-forward_model=zeros(size(centers,1),prod(options.image_size));
+forward_model=zeros(size(centers,1),prod(options.image_size), 'single');
 
 for kk=1:options.NumWorkers:size(centers,1)
     Volume=cell(options.NumWorkers,1);

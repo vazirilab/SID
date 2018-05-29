@@ -66,20 +66,8 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> [bg_spatial,bg_temporal]=rank_1_factorization(Y,maxIter)
-<span class="comment">% RANK_1_FACTORIZATION Rank-1-matrix-factorization of the movie Y</span>
-<span class="comment">%</span>
-<span class="comment">%       Y~bg_spatial*bg_temporal</span>
-<span class="comment">%</span>
-<span class="comment">% Input:</span>
-<span class="comment">% Y...                      movie</span>
-<span class="comment">% max_iter...               maximum Number of Iterations</span>
-<span class="comment">%</span>
-<span class="comment">% Output:</span>
-<span class="comment">% bg_temporal...            temporal component of the rank-1-factorization</span>
-<span class="comment">% bg_spatial...             spatial component of the rank-1-factorization</span>
-
-<span class="keyword">if</span> nargin&lt;2
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#2">RANK_1_FACTORIZATION  Rank-1-matrix-factorization of the movie Y</a></li></ul></div><pre class="codeinput"><span class="keyword">function</span> [bg_spatial, bg_temporal] = rank_1_factorization(Y, maxIter)
+</pre><h2 id="2">RANK_1_FACTORIZATION  Rank-1-matrix-factorization of the movie Y</h2><pre>     Y ~ bg_spatial * bg_temporal</pre><p>Input: Y                      movie max_iter               maximum Number of Iterations</p><p>Output: bg_temporal            temporal component of the rank-1-factorization bg_spatial             spatial component of the rank-1-factorization</p><p>This algorithm performs a form a block-wise gradient descent on the objective function</p><p><img src="rank_1_factorization_eq12437402337770952128.png" alt="$$L \left( s, t \right) = \sum_{i j}^{} \left( Y_{i j} - s_i t_j \right) ^2$$"></p><p>Here, s corresponds to <b>bg_spatial</b>, and t corresponds to <b>bg_temporal</b>. This can be seen by calculating the gradient along s and t</p><p><img src="rank_1_factorization_eq10373555535668620999.png" alt="$$D_s L=2\left( \|s\|_2^2\,s - s\,Y\right)$$"></p><p><img src="rank_1_factorization_eq06871874213104749800.png" alt="$$D_t L=2\left( \|t\|_2^2\,t - t\,Y\right)$$"></p><p>and set them to zero. Between update we normalize the previously updated component. This simplifies the code and leads to better performance in the general case of NNMF.</p><pre class="codeinput"><span class="keyword">if</span> nargin&lt;2
     maxIter=1;
 <span class="keyword">end</span>
 
@@ -92,23 +80,34 @@ bg_spatial = ones(size(Y,1),1)/sqrt(size(Y,1));
         bg_spatial = bg_spatial/norm(bg_spatial(:));
     <span class="keyword">end</span>
 <span class="keyword">end</span>
-
-
-<span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
 </pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
 ##### SOURCE BEGIN #####
-function [bg_spatial,bg_temporal]=rank_1_factorization(Y,maxIter)
-% RANK_1_FACTORIZATION Rank-1-matrix-factorization of the movie Y
-%
-%       Y~bg_spatial*bg_temporal
+function [bg_spatial, bg_temporal] = rank_1_factorization(Y, maxIter)
+%% RANK_1_FACTORIZATION  Rank-1-matrix-factorization of the movie Y
+%       Y ~ bg_spatial * bg_temporal
 %
 % Input:
-% Y...                      movie
-% max_iter...               maximum Number of Iterations
+% Y                      movie
+% max_iter               maximum Number of Iterations
 %
 % Output:
-% bg_temporal...            temporal component of the rank-1-factorization
-% bg_spatial...             spatial component of the rank-1-factorization
+% bg_temporal            temporal component of the rank-1-factorization
+% bg_spatial             spatial component of the rank-1-factorization
+%
+% This algorithm performs a form a block-wise gradient descent on the objective function
+%
+% $$L \left( s, t \right) = \sum_{i j}^{} \left( Y_{i j} - s_i t_j \right) ^2$$
+% 
+% Here, s corresponds to *bg_spatial*, and t corresponds to *bg_temporal*.
+% This can be seen by calculating the gradient along s and t
+% 
+% $$D_s L=2\left( \|s\|_2^2\,s - s\,Y\right)$$
+% 
+% $$D_t L=2\left( \|t\|_2^2\,t - t\,Y\right)$$
+%
+% and set them to zero. Between update we normalize the previously updated component. 
+% This simplifies the code and leads to better performance in the general case of NNMF.
 
 if nargin<2
     maxIter=1;
@@ -123,8 +122,7 @@ for iter=1:maxIter
         bg_spatial = bg_spatial/norm(bg_spatial(:));
     end
 end
-
-
 end
+
 ##### SOURCE END #####
 --></body></html>

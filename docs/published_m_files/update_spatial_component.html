@@ -66,49 +66,25 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> [forward_model]=update_spatial_component(timeseries, sensor_movie, template, opts)
-<span class="comment">% UPDATE_SPATIAL_COMPONENT performs an update of the spatial components, by</span>
-<span class="comment">% splitting the problem in sub-problems defined by 'template' and solving</span>
-<span class="comment">% for each of those sub-problems a non-negative least squares problem.</span>
-<span class="comment">%</span>
-<span class="comment">% Input:</span>
-<span class="comment">% timeseries...         Array of timeseries</span>
-<span class="comment">% sensor_movie...       LFM-movie</span>
-<span class="comment">% template...           binary array assigning each neuron its spatial</span>
-<span class="comment">%                       extent.</span>
-<span class="comment">% struct opts:</span>
-<span class="comment">% opts.bg_sub...        perform background subtraction, treat the problem</span>
-<span class="comment">%                       so that the last component of timeseries is treated</span>
-<span class="comment">%                       as the background.</span>
-<span class="comment">% opts.display...       boolean, if true print status information into the</span>
-<span class="comment">%                       console.</span>
-<span class="comment">% opts.lambda...        lagrange multiplier for L1-regularizer.</span>
-<span class="comment">%</span>
-<span class="comment">% Output:</span>
-<span class="comment">% forward_model...      updated forward_model</span>
-<span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
-<span class="keyword">if</span> ~isfield(opts,<span class="string">'bg_sub'</span>)
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#2">UPDATE_SPATIAL_COMPONENT  Perform an update of the spatial components</a></li><li><a href="#3">Set default values for parameters not set by user</a></li><li><a href="#4">Order neurons according to the size of their template</a></li><li><a href="#5">Initialize components for the sparse matrix generation</a></li><li><a href="#6">Determine which part of the image is not covered by the template</a></li><li><a href="#7">Loop over neurons</a></li><li><a href="#9">Get all indices of pixels where the spatial component can be non-zero according to &#8216;template&#8217;</a></li><li><a href="#10">If any such pixels remain proceed to the next line</a></li><li><a href="#11">Find all neurons that are non-zero</a></li><li><a href="#12">Check if the dimensions of timeseries and template have the right number of components</a></li><li><a href="#13">Get the sub-movie corresponding to the indices found above</a></li><li><a href="#14">Generate the matrix A for the objective function of the sub-problem and F to store the solution of the sub-problem</a></li><li><a href="#15">Loop over each pixel corresponding to indices found above. Solve for each pixel separately</a></li><li><a href="#16">Add the current results to the components I, J and S for the sparse matrix generation</a></li><li><a href="#19">Release GPUs</a></li><li><a href="#20">Generate sparse matrix</a></li><li><a href="#21">Compute the values for the spatial background outside of the area covered by template</a></li></ul></div><pre class="codeinput"><span class="keyword">function</span> [forward_model] = update_spatial_component(timeseries, sensor_movie, template, opts)
+</pre><h2 id="2">UPDATE_SPATIAL_COMPONENT  Perform an update of the spatial components</h2><p>by splitting the problem in sub-problems defined by 'template' and solving for each of those sub-problems a non-negative least squares problem.</p><p>Input: timeseries         Array of timeseries sensor_movie       LFM-movie template           binary array assigning each neuron its spatial                       extent. struct opts: opts.bg_sub        perform background subtraction, treat the problem                       so that the last component of timeseries is treated                       as the background. opts.display       boolean, if true print status information into the                       console. opts.lambda        lagrange multiplier for L1-regularizer.</p><p>Output: forward_model      updated forward_model</p><h2 id="3">Set default values for parameters not set by user</h2><pre class="codeinput"><span class="keyword">if</span> ~isfield(opts,<span class="string">'bg_sub'</span>)
     opts.bg_sub=1;
 <span class="keyword">end</span>
 
 <span class="keyword">if</span> ~isfield(opts,<span class="string">'display'</span>)
     opts.display=0;
 <span class="keyword">end</span>
-
-[~, order]=sort(sum(template,2));
-
-I=[];
+</pre><h2 id="4">Order neurons according to the size of their template</h2><p>this is done so that sub-problems tend to be smaller.</p><pre class="codeinput">[~, order]=sort(sum(template,2));
+</pre><h2 id="5">Initialize components for the sparse matrix generation</h2><pre class="codeinput">I=[];
 J=[];
 S=[];
-
-outside = ~max(template,[],1);
-
-<span class="keyword">for</span> neur=1:size(template,1)
-    neuron=order(neur);
-    space=find(template(neuron,:));
-    <span class="keyword">if</span> ~isempty(space)
-        involved_neurons=find(max(template(:,space),[],2));
-        <span class="keyword">if</span> opts.bg_sub==0
+</pre><h2 id="6">Determine which part of the image is not covered by the template</h2><p>(and therefore needs to be updated separately if opts.bg_sub is true)</p><pre class="codeinput">outside = ~max(template,[],1);
+</pre><h2 id="7">Loop over neurons</h2><pre class="codeinput"><span class="keyword">for</span> neur=1:size(template,1)
+</pre><pre class="codeinput">    neuron=order(neur);
+</pre><h2 id="9">Get all indices of pixels where the spatial component can be non-zero according to &#8216;template&#8217;</h2><pre class="codeinput">    space=find(template(neuron,:));
+</pre><h2 id="10">If any such pixels remain proceed to the next line</h2><pre class="codeinput">    <span class="keyword">if</span> ~isempty(space)
+</pre><h2 id="11">Find all neurons that are non-zero</h2><pre class="codeinput">        involved_neurons=find(max(template(:,space),[],2));
+</pre><h2 id="12">Check if the dimensions of timeseries and template have the right number of components</h2><p>(according to whether opts.bg_sub is true, or not). Generate the sub array of template corresponding to the indices found above. If opts.bg_sub is true add a ones() line at the end of the array, to incorporate the background</p><pre class="codeinput">        <span class="keyword">if</span> opts.bg_sub==0
             temp=template(involved_neurons,space);
             <span class="keyword">if</span> size(template,1)~=size(timeseries,1)
                 disp(<span class="string">'Error: template and timeseries have the wrong dimensions'</span>);
@@ -124,11 +100,10 @@ outside = ~max(template,[],1);
                 <span class="keyword">return</span>
             <span class="keyword">end</span>
         <span class="keyword">end</span>
-        Y=sensor_movie(space,:);
-
-        opts.Accy=0;
-        A=timeseries(involved_neurons,:)';
+</pre><h2 id="13">Get the sub-movie corresponding to the indices found above</h2><pre class="codeinput">        Y=sensor_movie(space,:);
+</pre><h2 id="14">Generate the matrix A for the objective function of the sub-problem and F to store the solution of the sub-problem</h2><pre class="codeinput">        A=timeseries(involved_neurons,:)';
         F=zeros(length(involved_neurons),size(space,2));
+</pre><h2 id="15">Loop over each pixel corresponding to indices found above. Solve for each pixel separately</h2><pre class="codeinput">        opts.Accy=0;
         <span class="keyword">for</span> k_=1:length(space)
             idx=find(squeeze(temp(:,k_)));
             y=squeeze(Y(k_,:))';
@@ -141,7 +116,7 @@ outside = ~max(template,[],1);
                 F(idx,k_) = 0;
             <span class="keyword">end</span>
         <span class="keyword">end</span>
-        <span class="keyword">if</span> size(involved_neurons,2)&gt;=1
+</pre><h2 id="16">Add the current results to the components I, J and S for the sparse matrix generation</h2><pre class="codeinput">        <span class="keyword">if</span> size(involved_neurons,2)&gt;=1
             template(:,space)=0;
             [iI, iJ, iS]=find(F);
             iJ=space(iJ);
@@ -151,49 +126,47 @@ outside = ~max(template,[],1);
             J=[J reshape(iJ,1,[])];
             S=[S' iS']';
         <span class="keyword">end</span>
-    <span class="keyword">end</span>
+</pre><pre class="codeinput">    <span class="keyword">end</span>
     <span class="keyword">if</span> opts.display
         disp(neuron);
     <span class="keyword">end</span>
-<span class="keyword">end</span>
-
-<span class="keyword">if</span> isfield(opts,<span class="string">'gpu'</span>)
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><h2 id="19">Release GPUs</h2><pre class="codeinput"><span class="keyword">if</span> isfield(opts,<span class="string">'gpu'</span>)
     <span class="keyword">if</span> opts.gpu
         gpuDevice([]);
     <span class="keyword">end</span>
 <span class="keyword">end</span>
-S=double(S);
+</pre><h2 id="20">Generate sparse matrix</h2><pre class="codeinput">S=double(S);
 forward_model=sparse(I,J,S,size(timeseries,1),size(sensor_movie,1));
-
-<span class="keyword">if</span> opts.bg_sub&amp;&amp;~isempty(outside)
+</pre><h2 id="21">Compute the values for the spatial background outside of the area covered by template</h2><pre class="codeinput"><span class="keyword">if</span> opts.bg_sub&amp;&amp;~isempty(outside)
     Y=sensor_movie(logical(outside),:);
     forward_model(end,logical(outside))=Y*timeseries(end,:)';
 <span class="keyword">end</span>
-
-<span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
 </pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
 ##### SOURCE BEGIN #####
-function [forward_model]=update_spatial_component(timeseries, sensor_movie, template, opts)
-% UPDATE_SPATIAL_COMPONENT performs an update of the spatial components, by
-% splitting the problem in sub-problems defined by 'template' and solving
+function [forward_model] = update_spatial_component(timeseries, sensor_movie, template, opts)
+%% UPDATE_SPATIAL_COMPONENT  Perform an update of the spatial components
+% by splitting the problem in sub-problems defined by 'template' and solving
 % for each of those sub-problems a non-negative least squares problem.
 %
 % Input:
-% timeseries...         Array of timeseries
-% sensor_movie...       LFM-movie
-% template...           binary array assigning each neuron its spatial
+% timeseries         Array of timeseries
+% sensor_movie       LFM-movie
+% template           binary array assigning each neuron its spatial
 %                       extent.
 % struct opts:
-% opts.bg_sub...        perform background subtraction, treat the problem
+% opts.bg_sub        perform background subtraction, treat the problem
 %                       so that the last component of timeseries is treated 
 %                       as the background.
-% opts.display...       boolean, if true print status information into the
+% opts.display       boolean, if true print status information into the
 %                       console.
-% opts.lambda...        lagrange multiplier for L1-regularizer.
+% opts.lambda        lagrange multiplier for L1-regularizer.
 %
 % Output:
-% forward_model...      updated forward_model
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% forward_model      updated forward_model
+
+%% Set default values for parameters not set by user
 if ~isfield(opts,'bg_sub')
     opts.bg_sub=1;
 end
@@ -202,19 +175,35 @@ if ~isfield(opts,'display')
     opts.display=0;
 end
 
+%% Order neurons according to the size of their template
+% this is done so that sub-problems tend to be smaller.
 [~, order]=sort(sum(template,2));
 
+%% Initialize components for the sparse matrix generation
 I=[];
 J=[];
 S=[];
 
+%% Determine which part of the image is not covered by the template
+% (and therefore needs to be updated separately if opts.bg_sub is true)
 outside = ~max(template,[],1);
 
+%% Loop over neurons
 for neur=1:size(template,1)
     neuron=order(neur);
+
+    %% Get all indices of pixels where the spatial component can be non-zero according to ‘template’
     space=find(template(neuron,:));
+
+    %% If any such pixels remain proceed to the next line
     if ~isempty(space)
+        %% Find all neurons that are non-zero
         involved_neurons=find(max(template(:,space),[],2));
+
+        %% Check if the dimensions of timeseries and template have the right number of components
+        % (according to whether opts.bg_sub is true, or not). 
+        % Generate the sub array of template corresponding to the indices found above. 
+        % If opts.bg_sub is true add a ones() line at the end of the array, to incorporate the background
         if opts.bg_sub==0
             temp=template(involved_neurons,space);
             if size(template,1)~=size(timeseries,1)
@@ -231,11 +220,16 @@ for neur=1:size(template,1)
                 return
             end
         end
+
+        %% Get the sub-movie corresponding to the indices found above
         Y=sensor_movie(space,:);
-        
-        opts.Accy=0;
+
+        %% Generate the matrix A for the objective function of the sub-problem and F to store the solution of the sub-problem
         A=timeseries(involved_neurons,:)';
         F=zeros(length(involved_neurons),size(space,2));
+
+        %% Loop over each pixel corresponding to indices found above. Solve for each pixel separately
+        opts.Accy=0;
         for k_=1:length(space)
             idx=find(squeeze(temp(:,k_)));
             y=squeeze(Y(k_,:))';
@@ -247,7 +241,9 @@ for neur=1:size(template,1)
             else
                 F(idx,k_) = 0;
             end
-        end       
+        end
+
+        %% Add the current results to the components I, J and S for the sparse matrix generation
         if size(involved_neurons,2)>=1
             template(:,space)=0;
             [iI, iJ, iS]=find(F);
@@ -264,19 +260,24 @@ for neur=1:size(template,1)
     end
 end
 
+%% Release GPUs
 if isfield(opts,'gpu')
     if opts.gpu
         gpuDevice([]);
     end
 end
+
+%% Generate sparse matrix
 S=double(S);
 forward_model=sparse(I,J,S,size(timeseries,1),size(sensor_movie,1));
 
+%% Compute the values for the spatial background outside of the area covered by template
 if opts.bg_sub&&~isempty(outside)
     Y=sensor_movie(logical(outside),:);
     forward_model(end,logical(outside))=Y*timeseries(end,:)';
 end
 
 end
+
 ##### SOURCE END #####
 --></body></html>

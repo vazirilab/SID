@@ -66,34 +66,30 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> [S,T]=S_update(Y,S,T,opts)
-T(isnan(T))=0;
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#2">S_update  Perform a gradient descent with exact line search update for the variables in S</a></li><li><a href="#3">Compute components of the gradient of the 2-norm of Y-S*T</a></li><li><a href="#5">Modify matrix Q_T to include the contribution of the 1-norm orthogonality regularizer</a></li><li><a href="#6">Generate a function handle that computes the contribution of the spatial Total Variation regularizer</a></li><li><a href="#7">Assemble gradient from its components</a></li><li><a href="#8">Generate the direction v in which the update shall be performed</a></li><li><a href="#9">Exact line search for the direction v</a></li><li><a href="#10">Update S</a></li><li><a href="#11">Project onto constraints</a></li><li><a href="#12">Output diagnostic info</a></li></ul></div><pre class="codeinput"><span class="keyword">function</span> [S, T] = S_update(Y, S, T, opts)
+</pre><h2 id="2">S_update  Perform a gradient descent with exact line search update for the variables in S</h2><pre class="codeinput">T(isnan(T))=0;
 S(isnan(S))=0;
-
-Q_T = T*T';
+</pre><h2 id="3">Compute components of the gradient of the 2-norm of Y-S*T</h2><pre class="codeinput">Q_T = T*T';
 q_S = Y*T';
-
-<span class="keyword">if</span> opts.use_std
+</pre><pre class="codeinput"><span class="keyword">if</span> opts.use_std
     opts.T = sum(T,2);
-    Q_T = Q_T - opts.T*opts.T'/size(T,2);
+    Q_T = Q_T - opts.T * opts.T'/size(T,2);
     q_S = q_S - opts.Y.*opts.T'/size(T,2);
 <span class="keyword">end</span>
-
-<span class="keyword">if</span> opts.lamb_orth_L1
+</pre><h2 id="5">Modify matrix Q_T to include the contribution of the 1-norm orthogonality regularizer</h2><pre class="codeinput"><span class="keyword">if</span> opts.lamb_orth_L1
     Q_T = Q_T + opts.lamb_orth_L1*(opts.hilf);
 <span class="keyword">end</span>
-
-<span class="keyword">if</span> opts.lamb_spat_TV
+</pre><h2 id="6">Generate a function handle that computes the contribution of the spatial Total Variation regularizer</h2><pre class="codeinput"><span class="keyword">if</span> opts.lamb_spat_TV
     lb_spat_TV =@(X) opts.lamb_spat_TV*reshape(convn(reshape(X',opts.rank,opts.size(1),<span class="keyword">...</span>
         opts.size(2)),laplace,<span class="string">'same'</span>),opts.rank,[])';
 <span class="keyword">else</span>
     lb_spat_TV =@(X) 0;
 <span class="keyword">end</span>
-
-df_S = -q_S + S*Q_T + lb_spat_TV(S) + opts.lamb_spat;
-
-<span class="keyword">if</span> (opts.lamb_orth_L1 + opts.lamb_orth_L2)
+</pre><h2 id="7">Assemble gradient from its components</h2><pre class="codeinput">df_S = -q_S + S*Q_T + lb_spat_TV(S) + opts.lamb_spat;
+</pre><h2 id="8">Generate the direction v in which the update shall be performed</h2><p>v is generated from the gradient by projecting along the normalization constraint that is imposed when useing an orthogonality regularizer, and by projecting onto the surface of the non-negativity constraint</p><pre class="codeinput"><span class="keyword">if</span> (opts.lamb_orth_L1 + opts.lamb_orth_L2)
     <span class="keyword">if</span> opts.lamb_orth_L2
+        <span class="comment">% Final assembly of the gradient for the 2-norm orthogonality regularizer</span>
+        <span class="comment">% (indirectly, via modification of the direction v)</span>
         v = df_S + opts.lamb_orth_L2*(S*(opts.hilf*(S'*S)));
     <span class="keyword">else</span>
         v = df_S;
@@ -106,8 +102,7 @@ df_S = -q_S + S*Q_T + lb_spat_TV(S) + opts.lamb_spat;
     passive_S = max(S&gt;0,df_S&lt;0);
     v = passive_S.*df_S;
 <span class="keyword">end</span>
-
-<span class="keyword">if</span> opts.pointwise
+</pre><h2 id="9">Exact line search for the direction v</h2><p>In the case of the 2-norm orthogonality regularizer, the exact line search is approximated by exact line search for the residual gradient only. If this results in a value that leads into the opposing direction of the negative gradient, the learning rate is set to a fixed value 1e-6. This is done since the corresponding regularizer leads to a non-quadratic problem.</p><pre class="codeinput"><span class="keyword">if</span> opts.pointwise
     alpha_S = sum(v.*df_S,2)./sum(v.*(v*Q_T + lb_spat_TV(v)),2);
 <span class="keyword">else</span>
     alpha_S = (v(:)'*df_S(:))/sum(sum(v.*(v*Q_T + lb_spat_TV(v)),1),2);
@@ -118,18 +113,15 @@ df_S = -q_S + S*Q_T + lb_spat_TV(S) + opts.lamb_spat;
 
 alpha_S(isnan(alpha_S))=0;
 alpha_S(isinf(alpha_S))=0;
-
-S = S - alpha_S.*v;
-
-S(S&lt;0)=0;
+</pre><h2 id="10">Update S</h2><pre class="codeinput">S = S - alpha_S.*v;
+</pre><h2 id="11">Project onto constraints</h2><pre class="codeinput">S(S&lt;0)=0;
 
 <span class="keyword">if</span> opts.lamb_orth_L1 + opts.lamb_orth_L2
         platz = sqrt(sum(S.^2,1));
         T = platz'.*T;
         S = S./platz;
 <span class="keyword">end</span>
-
-<span class="keyword">if</span> opts.diagnostic
+</pre><h2 id="12">Output diagnostic info</h2><pre class="codeinput"><span class="keyword">if</span> opts.diagnostic
     figure(1);
     clf(<span class="string">'reset'</span>)
     <span class="keyword">for</span> i=1:min(10,opts.rank)
@@ -141,28 +133,32 @@ S(S&lt;0)=0;
     legend(<span class="string">'boxoff'</span>);
     drawnow <span class="string">expose</span>
 <span class="keyword">end</span>
-
-
-<span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
 </pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
 ##### SOURCE BEGIN #####
-function [S,T]=S_update(Y,S,T,opts)
+function [S, T] = S_update(Y, S, T, opts)
+%% S_update  Perform a gradient descent with exact line search update for the variables in S
+
 T(isnan(T))=0;
 S(isnan(S))=0;
 
+%% Compute components of the gradient of the 2-norm of Y-S*T
 Q_T = T*T';
 q_S = Y*T';
 
+%%
 if opts.use_std
     opts.T = sum(T,2);
-    Q_T = Q_T - opts.T*opts.T'/size(T,2);
+    Q_T = Q_T - opts.T * opts.T'/size(T,2);
     q_S = q_S - opts.Y.*opts.T'/size(T,2);
 end
 
+%% Modify matrix Q_T to include the contribution of the 1-norm orthogonality regularizer
 if opts.lamb_orth_L1
     Q_T = Q_T + opts.lamb_orth_L1*(opts.hilf);
 end
 
+%% Generate a function handle that computes the contribution of the spatial Total Variation regularizer
 if opts.lamb_spat_TV
     lb_spat_TV =@(X) opts.lamb_spat_TV*reshape(convn(reshape(X',opts.rank,opts.size(1),...
         opts.size(2)),laplace,'same'),opts.rank,[])';
@@ -170,10 +166,17 @@ else
     lb_spat_TV =@(X) 0;
 end
 
+%% Assemble gradient from its components
 df_S = -q_S + S*Q_T + lb_spat_TV(S) + opts.lamb_spat;
 
+%% Generate the direction v in which the update shall be performed
+% v is generated from the gradient by projecting along the normalization constraint 
+% that is imposed when useing an orthogonality regularizer, 
+% and by projecting onto the surface of the non-negativity constraint
 if (opts.lamb_orth_L1 + opts.lamb_orth_L2)
     if opts.lamb_orth_L2
+        % Final assembly of the gradient for the 2-norm orthogonality regularizer 
+        % (indirectly, via modification of the direction v)
         v = df_S + opts.lamb_orth_L2*(S*(opts.hilf*(S'*S)));
     else
         v = df_S;
@@ -186,7 +189,11 @@ else
     passive_S = max(S>0,df_S<0);
     v = passive_S.*df_S;
 end
-    
+
+%% Exact line search for the direction v
+% In the case of the 2-norm orthogonality regularizer, the exact line search is approximated by exact line search for the residual gradient only. 
+% If this results in a value that leads into the opposing direction of the negative gradient, the learning rate is set to a fixed value 1e-6. 
+% This is done since the corresponding regularizer leads to a non-quadratic problem.
 if opts.pointwise
     alpha_S = sum(v.*df_S,2)./sum(v.*(v*Q_T + lb_spat_TV(v)),2);
 else
@@ -199,8 +206,10 @@ end
 alpha_S(isnan(alpha_S))=0;
 alpha_S(isinf(alpha_S))=0;
 
+%% Update S
 S = S - alpha_S.*v;
 
+%% Project onto constraints
 S(S<0)=0;
 
 if opts.lamb_orth_L1 + opts.lamb_orth_L2
@@ -209,6 +218,7 @@ if opts.lamb_orth_L1 + opts.lamb_orth_L2
         S = S./platz;
 end
 
+%% Output diagnostic info
 if opts.diagnostic
     figure(1);
     clf('reset')
@@ -222,7 +232,7 @@ if opts.diagnostic
     drawnow expose
 end
 
-
 end
+
 ##### SOURCE END #####
 --></body></html>
