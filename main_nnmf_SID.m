@@ -188,6 +188,12 @@ else
     Input.do_crop = true;
 end
 
+if isfield(optional_args, 'delta')
+    Input.delta = optional_args.delta;
+else
+    Input.delta = 100;
+end
+
 % Width of borders to crop, in units of microlenses. Set to empty array to
 % disable. When giving a value of floor([ix1_lo_border_width ix1_hi_border_width ix2_hi_border_width
 % ix2_hi_border_width] / Nnum)
@@ -658,7 +664,7 @@ else
     opts.image_size = SID_output.movie_size(1:2);
     opts.axial = Input.axial;
     opts.neur_rad = Input.neur_rad;
-    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,round(Input.neur_id),psf_ballistic,opts);
+    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,round(SID_output.neur_id),psf_ballistic,opts);
 end
 
 %% generate template
@@ -726,9 +732,9 @@ for iter=1:Input.num_iter
     if isfield(Input, 'update_template') && Input.update_template
         if iter>=2
             for neuron=1:size(template_,1)
-                crop=zeros(size(SID_output.std_image));
-                crop(SID_output.idx)=template_(neuron,:);
-                img=reshape(crop,size(SID_output.std_image));
+                cropp=zeros(size(SID_output.std_image));
+                cropp(SID_output.idx)=template_(neuron,:);
+                img=reshape(cropp,size(SID_output.std_image));
                 img=conv2(img,ones(2*Nnum),'same')>0;
                 img=img(:);
                 template_(neuron,:)=(img(SID_output.idx)>0.1);

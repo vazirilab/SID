@@ -1,0 +1,212 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>generate_data</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="generate_data.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> gt_struct = generate_data(psf_ballistic,vol_movie_size,num_neurons,radius,dim, Ca_decay,noiselevel, bleach_decay, border_no_neurons)
+
+
+<span class="keyword">if</span> max(mod(vol_movie_size(1:2),size(psf_ballistic.H,3)))&amp;&amp;(vol_movie_size(3)==size(psf_ballistic.H,5))
+    disp(<span class="string">'dimensions do not match psf_ballistic.'</span>);
+    <span class="keyword">return</span>
+<span class="keyword">end</span>
+
+id=true(num_neurons,1);
+msize = vol_movie_size(1:3);
+border_no_neurons = border_no_neurons*[1 1 0];
+border_no_neurons(3)=6;
+msize=msize-2*border_no_neurons;
+gt_struct.centers = border_no_neurons+ ceil(msize.*rand(num_neurons,3));
+<span class="keyword">while</span> sum(id)
+    id=false(num_neurons,1);
+    <span class="keyword">for</span> k=1:num_neurons
+        <span class="keyword">for</span> j=1:k-1
+            <span class="keyword">if</span> norm(gt_struct.centers(k,:)-gt_struct.centers(j,:))&lt;radius+10
+                id(k)=true;
+                disp(k)
+                <span class="keyword">break</span>
+            <span class="keyword">else</span>
+                id(k)=false;
+            <span class="keyword">end</span>
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+    gt_struct.centers(id,:) = border_no_neurons+ ceil(msize.*rand(sum(id),3));
+
+<span class="keyword">end</span>
+
+gt_struct.frwd_model=generate_LFM_library_CPU(gt_struct.centers, psf_ballistic, radius, [1 1 4], vol_movie_size(1:3));
+gt_struct.kernel = generate_kernel(<span class="string">'ball'</span>,ceil(radius*[1 1/4]));
+
+spiketimes = randperm(vol_movie_size(end));
+spiketimes = spiketimes(1:dim);
+
+gt_struct.spikes = zeros(num_neurons,vol_movie_size(end));
+
+<span class="keyword">for</span> ii=1:num_neurons
+   SP = spiketimes + round(ceil(log(1000)/Ca_decay)*randn(size(spiketimes)));
+   SP = SP(SP&gt;0);
+   SP = SP(SP&lt;vol_movie_size(end));
+   sample = rand(1,length(SP))&gt;1-3/dim;
+   sample(ceil(rand(1)*length(sample)))=true;
+   gt_struct.spikes(ii,SP(logical(sample)))=1;
+<span class="keyword">end</span>
+
+gt_struct.Ca_kernel = generate_Ca_kernel(Ca_decay);
+
+gt_struct.timeseries_noisefree = conv2(gt_struct.spikes,gt_struct.Ca_kernel,<span class="string">'same'</span>) + 1 + ceil(9*rand(num_neurons,1));
+
+gt_struct.timeseries = gt_struct.timeseries_noisefree + noiselevel * rand(size(gt_struct.timeseries_noisefree));
+
+
+gt_struct.Volume = zeros(vol_movie_size(1:3));
+
+<span class="keyword">for</span> ii=1:num_neurons
+    gt_struct.Volume(gt_struct.centers(ii,1),gt_struct.centers(ii,2),gt_struct.centers(ii,3))=1;
+<span class="keyword">end</span>
+
+gt_struct.Volume = gather(convn(gpuArray(gt_struct.Volume),gpuArray(gt_struct.kernel),<span class="string">'same'</span>));
+
+gt_struct.movie = gt_struct.frwd_model'*gt_struct.timeseries;
+
+gt_struct.movie = gt_struct.movie/max(gt_struct.movie(:));
+
+gt_struct.movie = gt_struct.movie.*(exp(-bleach_decay*[0:size(gt_struct.movie,2)-1])+300);
+
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function gt_struct = generate_data(psf_ballistic,vol_movie_size,num_neurons,radius,dim, Ca_decay,noiselevel, bleach_decay, border_no_neurons)
+
+
+if max(mod(vol_movie_size(1:2),size(psf_ballistic.H,3)))&&(vol_movie_size(3)==size(psf_ballistic.H,5))
+    disp('dimensions do not match psf_ballistic.');
+    return
+end
+
+id=true(num_neurons,1);
+msize = vol_movie_size(1:3);
+border_no_neurons = border_no_neurons*[1 1 0];
+border_no_neurons(3)=6;
+msize=msize-2*border_no_neurons;
+gt_struct.centers = border_no_neurons+ ceil(msize.*rand(num_neurons,3));
+while sum(id)
+    id=false(num_neurons,1);
+    for k=1:num_neurons
+        for j=1:k-1
+            if norm(gt_struct.centers(k,:)-gt_struct.centers(j,:))<radius+10
+                id(k)=true;
+                disp(k)
+                break
+            else
+                id(k)=false;
+            end
+        end
+    end
+    gt_struct.centers(id,:) = border_no_neurons+ ceil(msize.*rand(sum(id),3));
+    
+end
+
+gt_struct.frwd_model=generate_LFM_library_CPU(gt_struct.centers, psf_ballistic, radius, [1 1 4], vol_movie_size(1:3));
+gt_struct.kernel = generate_kernel('ball',ceil(radius*[1 1/4]));
+
+spiketimes = randperm(vol_movie_size(end));
+spiketimes = spiketimes(1:dim);
+
+gt_struct.spikes = zeros(num_neurons,vol_movie_size(end));
+
+for ii=1:num_neurons
+   SP = spiketimes + round(ceil(log(1000)/Ca_decay)*randn(size(spiketimes)));
+   SP = SP(SP>0);
+   SP = SP(SP<vol_movie_size(end));
+   sample = rand(1,length(SP))>1-3/dim;
+   sample(ceil(rand(1)*length(sample)))=true;
+   gt_struct.spikes(ii,SP(logical(sample)))=1;
+end
+
+gt_struct.Ca_kernel = generate_Ca_kernel(Ca_decay);
+
+gt_struct.timeseries_noisefree = conv2(gt_struct.spikes,gt_struct.Ca_kernel,'same') + 1 + ceil(9*rand(num_neurons,1));
+
+gt_struct.timeseries = gt_struct.timeseries_noisefree + noiselevel * rand(size(gt_struct.timeseries_noisefree));
+
+
+gt_struct.Volume = zeros(vol_movie_size(1:3));
+
+for ii=1:num_neurons
+    gt_struct.Volume(gt_struct.centers(ii,1),gt_struct.centers(ii,2),gt_struct.centers(ii,3))=1;
+end
+
+gt_struct.Volume = gather(convn(gpuArray(gt_struct.Volume),gpuArray(gt_struct.kernel),'same'));
+
+gt_struct.movie = gt_struct.frwd_model'*gt_struct.timeseries;
+
+gt_struct.movie = gt_struct.movie/max(gt_struct.movie(:));
+
+gt_struct.movie = gt_struct.movie.*(exp(-bleach_decay*[0:size(gt_struct.movie,2)-1])+300);
+
+end
+##### SOURCE END #####
+--></body></html>

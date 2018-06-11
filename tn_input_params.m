@@ -971,9 +971,14 @@ Input.output_name='2017-09-14_lintrack_m65_zm350';
 Input.x_offset = 1283.0;
 Input.y_offset = 1082.6;
 Input.dx = 17.75;
-Input.psf_filename_ballistic='/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-252_to-100_zspacing4_Nnum15_lambda520_OSR3.mat';
-%'/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-100_to100_zspacing4_Nnum15_lambda520_OSR3_pdfnorm.mat';
+
+
+Input.psf_filename_ballistic='/dev/shm/PSFmatrix_nikon_16x_08NA_water__10FN__on_scientifica__touching_circles_from-252_to_4_zspacing4_Nnum15_lambda520_OSR3_uncompressed.mat';
+Input.psf_cache_dir = '';
+
 Input.do_crop = 0;
+Input.crop_border_microlenses = [0 0 0 floor(400/15)];
+
 Input.detrend = true;
 
 Input.rank = 30;
@@ -983,7 +988,7 @@ Input.nnmf_opts.lambda_orth = 4; % maybe try 40
 Input.nnmf_opts.max_iter = 300;
 
 Input.thres = 20;
-Input.gpu_ids = [2]; %1-based! so 1,2,4,5 are valid
+Input.gpu_ids = [4]; %1-based! so 1,2,4,5 are valid
 Input.optimize_kernel = 0;
 
 % Input.recon_opts.p=2;

@@ -1,0 +1,327 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>read_sensor_movie</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="read_sensor_movie.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> [sensor_movie, movie_size] = read_sensor_movie(in_folder, x_offset, y_offset, dx, Nnum, do_rectify, frames, mask, crop_border_microlenses)
+<span class="comment">% READ_SENSOR_MOVIE: Algorithm loads the frames, specified in the struct</span>
+<span class="comment">% "frames" of the movie contained in the folder "in_folder" into the</span>
+<span class="comment">% working memory.</span>
+<span class="comment">%</span>
+<span class="comment">% Input:</span>
+<span class="comment">% x_offset, y_offset, dx... Lenslet-parameters for rectification.</span>
+<span class="comment">% Nnum...                   number of pixels behind microlens.</span>
+<span class="comment">% do_rectification...       boolean that determines wether the raw movie</span>
+<span class="comment">%                           frames ought to be rectified.</span>
+<span class="comment">% struct frames:</span>
+<span class="comment">%   frames.start...         First frame to be loaded.</span>
+<span class="comment">%   frames.step...          algorithm only loads frames with increments</span>
+<span class="comment">%                           of 'step' between them.</span>
+<span class="comment">%   frames.end...           Final frame to be loaded.</span>
+<span class="comment">%   frames.mean...          boolean that determines wether to load just the</span>
+<span class="comment">%                           frames specified by the struct "frames" or if</span>
+<span class="comment">%                           the algorithm loads all frames, and</span>
+<span class="comment">%                           computes the mean of the junks of frames in</span>
+<span class="comment">%                           between the frames specified by the struct</span>
+<span class="comment">%                           'frames'.</span>
+<span class="comment">%   frames.list             Vector of frame indices to be loaded by</span>
+<span class="comment">%                           algorithm; if this field exists frames.start,</span>
+<span class="comment">%                           frames.step,frames.end is ignored.</span>
+<span class="comment">%</span>
+<span class="comment">% Output:</span>
+<span class="comment">% sensor_movie...           Resulting framewise linearized movie</span>
+<span class="comment">% num_frames_total...       dimensions of the movie in 'in_folder'</span>
+
+<span class="keyword">if</span> nargin &lt; 8
+    mask = true;
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> nargin &lt; 9
+    crop_border_microlenses = [0 0 0 0];
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> exist(in_folder, <span class="string">'dir'</span>)
+    infiles_struct = dir(fullfile(in_folder, <span class="string">'/*.tif*'</span>));
+    [~, order] = sort({infiles_struct(:).name});
+    infiles_struct = infiles_struct(order);
+<span class="keyword">else</span>
+    infiles_struct = dir(fullfile(in_folder));
+    [in_folder, ~, ~] = fileparts(in_folder);
+    disp(<span class="string">'LFM_folder does not exist'</span>);
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> nargin &lt; 7 || isempty(frames)
+    frames.start = 1;
+    frames.step = 1;
+    frames.end = size(infiles_struct, 1);
+    frames.mean = 0; <span class="comment">% disable moving average</span>
+<span class="keyword">end</span>
+
+<span class="keyword">if</span> isfield(frames,<span class="string">'list'</span>)
+    frames_=frames.list(frames&lt;=size(infiles_struct,1));
+<span class="keyword">else</span>
+    frames_=frames.start:frames.step:min(frames.end,size(infiles_struct,1));
+<span class="keyword">end</span>
+
+movie_size(3)=size(infiles_struct,1);
+<span class="keyword">if</span> frames.mean
+    <span class="keyword">for</span> frame=1:length(frames_)-1
+        <span class="keyword">for</span> frame_=[frames_(frame):frames_(frame+1)]
+            <span class="keyword">if</span> do_rectify
+                img_rect = ImageRect(double(imread(fullfile(in_folder, <span class="keyword">...</span>
+                    infiles_struct(frame_).name), <span class="string">'tiff'</span>)), x_offset, <span class="keyword">...</span>
+                    y_offset, dx, Nnum, true, crop_border_microlenses(1),<span class="keyword">...</span>
+                    crop_border_microlenses(2), crop_border_microlenses(3),<span class="keyword">...</span>
+                    crop_border_microlenses(4));
+            <span class="keyword">else</span>
+                img_rect = single(imread(fullfile(in_folder, infiles_struct(frame_).name), <span class="string">'tiff'</span>));
+                img_rect = img_rect(crop_border_microlenses(3)*Nnum + 1 : <span class="keyword">...</span>
+                    end - crop_border_microlenses(4)*Nnum, crop_border_microlenses(1)*Nnum + 1, <span class="keyword">...</span>
+                    end - crop_border_microlenses(2)*Nnum);
+            <span class="keyword">end</span>
+            <span class="keyword">if</span> frame_==frames_(frame)
+                sens = ones(numel(img_rect),length([frames_(frame):frames_(frame+1)]) , <span class="string">'single'</span>);
+                <span class="keyword">if</span> frame==1
+                    sensor_movie=ones(numel(img_rect), length(frames_)-1, <span class="string">'single'</span>);
+                    movie_size(1:2)=size(img_rect);
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+            sens(:,frame_-frames_(frame)+1) = img_rect(:);
+
+        <span class="keyword">end</span>
+        <span class="keyword">if</span> mod(frame, 20) == 1
+            fprintf([num2str(frames_(frame)) <span class="string">' '</span>]);
+        <span class="keyword">end</span>
+        sensor_movie(:,frame)=mean(sens,2);
+    <span class="keyword">end</span>
+<span class="keyword">else</span>
+    infiles_struct = infiles_struct(frames_);
+    <span class="keyword">for</span> frame = 1:size(infiles_struct,1)
+        <span class="keyword">if</span> mod(frame, 20) == 1
+            fprintf([num2str(frame) <span class="string">' '</span>]);
+        <span class="keyword">end</span>
+        <span class="keyword">if</span> do_rectify
+            img_rect = ImageRect(double(imread(fullfile(in_folder, <span class="keyword">...</span>
+                infiles_struct(frame).name), <span class="string">'tiff'</span>)) .* mask, x_offset,<span class="keyword">...</span>
+                y_offset, dx, Nnum, true, crop_border_microlenses(3), <span class="keyword">...</span>
+                crop_border_microlenses(4), crop_border_microlenses(1),<span class="keyword">...</span>
+                crop_border_microlenses(2));
+        <span class="keyword">else</span>
+            img_rect = single(imread(fullfile(in_folder, infiles_struct(frame).name), <span class="keyword">...</span>
+                <span class="string">'tiff'</span>)) .* mask;
+            img_rect = img_rect(crop_border_microlenses(1)*Nnum + 1 : end -<span class="keyword">...</span>
+                crop_border_microlenses(2)*Nnum, crop_border_microlenses(3)*Nnum <span class="keyword">...</span>
+                + 1 : end - crop_border_microlenses(4)*Nnum);
+        <span class="keyword">end</span>
+        <span class="keyword">if</span> frame == 1
+            <span class="comment">%         sensor_movie = ones(size(img_rect, 1), size(img_rect, 2), ...</span>
+            <span class="comment">%           size(infiles_struct,1), 'double');</span>
+            sensor_movie = ones(numel(img_rect), size(infiles_struct,1), <span class="string">'single'</span>);
+            movie_size(1:2)=size(img_rect);
+        <span class="keyword">end</span>
+        <span class="keyword">if</span> size(infiles_struct)==1
+            <span class="comment">%         sensor_movie(:, :) = img_rect;</span>
+            sensor_movie= img_rect(:);
+        <span class="keyword">else</span>
+            <span class="comment">%         sensor_movie(:, :, img_ix) = img_rect;</span>
+            sensor_movie(:, frame) = img_rect(:);
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+fprintf(<span class="string">'\n'</span>);
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function [sensor_movie, movie_size] = read_sensor_movie(in_folder, x_offset, y_offset, dx, Nnum, do_rectify, frames, mask, crop_border_microlenses)
+% READ_SENSOR_MOVIE: Algorithm loads the frames, specified in the struct 
+% "frames" of the movie contained in the folder "in_folder" into the 
+% working memory.
+%
+% Input:
+% x_offset, y_offset, dx... Lenslet-parameters for rectification.
+% Nnum...                   number of pixels behind microlens.
+% do_rectification...       boolean that determines wether the raw movie
+%                           frames ought to be rectified.
+% struct frames:
+%   frames.start...         First frame to be loaded.
+%   frames.step...          algorithm only loads frames with increments
+%                           of 'step' between them.
+%   frames.end...           Final frame to be loaded.
+%   frames.mean...          boolean that determines wether to load just the
+%                           frames specified by the struct "frames" or if 
+%                           the algorithm loads all frames, and
+%                           computes the mean of the junks of frames in 
+%                           between the frames specified by the struct 
+%                           'frames'.
+%   frames.list             Vector of frame indices to be loaded by
+%                           algorithm; if this field exists frames.start, 
+%                           frames.step,frames.end is ignored.
+%
+% Output:
+% sensor_movie...           Resulting framewise linearized movie
+% num_frames_total...       dimensions of the movie in 'in_folder'
+
+if nargin < 8
+    mask = true;
+end
+
+if nargin < 9
+    crop_border_microlenses = [0 0 0 0];
+end
+
+if exist(in_folder, 'dir')
+    infiles_struct = dir(fullfile(in_folder, '/*.tif*'));
+    [~, order] = sort({infiles_struct(:).name});
+    infiles_struct = infiles_struct(order);
+else
+    infiles_struct = dir(fullfile(in_folder));
+    [in_folder, ~, ~] = fileparts(in_folder);
+    disp('LFM_folder does not exist');
+end
+
+if nargin < 7 || isempty(frames)
+    frames.start = 1;
+    frames.step = 1;
+    frames.end = size(infiles_struct, 1);
+    frames.mean = 0; % disable moving average
+end
+
+if isfield(frames,'list')
+    frames_=frames.list(frames<=size(infiles_struct,1));
+else
+    frames_=frames.start:frames.step:min(frames.end,size(infiles_struct,1));
+end
+
+movie_size(3)=size(infiles_struct,1);
+if frames.mean
+    for frame=1:length(frames_)-1        
+        for frame_=[frames_(frame):frames_(frame+1)]
+            if do_rectify
+                img_rect = ImageRect(double(imread(fullfile(in_folder, ...
+                    infiles_struct(frame_).name), 'tiff')), x_offset, ...
+                    y_offset, dx, Nnum, true, crop_border_microlenses(1),...
+                    crop_border_microlenses(2), crop_border_microlenses(3),...
+                    crop_border_microlenses(4));
+            else
+                img_rect = single(imread(fullfile(in_folder, infiles_struct(frame_).name), 'tiff'));
+                img_rect = img_rect(crop_border_microlenses(3)*Nnum + 1 : ...
+                    end - crop_border_microlenses(4)*Nnum, crop_border_microlenses(1)*Nnum + 1, ...
+                    end - crop_border_microlenses(2)*Nnum);
+            end
+            if frame_==frames_(frame)
+                sens = ones(numel(img_rect),length([frames_(frame):frames_(frame+1)]) , 'single');
+                if frame==1
+                    sensor_movie=ones(numel(img_rect), length(frames_)-1, 'single');
+                    movie_size(1:2)=size(img_rect);
+                end
+            end
+            sens(:,frame_-frames_(frame)+1) = img_rect(:);
+
+        end
+        if mod(frame, 20) == 1
+            fprintf([num2str(frames_(frame)) ' ']);
+        end
+        sensor_movie(:,frame)=mean(sens,2);
+    end
+else
+    infiles_struct = infiles_struct(frames_);
+    for frame = 1:size(infiles_struct,1)
+        if mod(frame, 20) == 1
+            fprintf([num2str(frame) ' ']);
+        end
+        if do_rectify
+            img_rect = ImageRect(double(imread(fullfile(in_folder, ...
+                infiles_struct(frame).name), 'tiff')) .* mask, x_offset,...
+                y_offset, dx, Nnum, true, crop_border_microlenses(3), ...
+                crop_border_microlenses(4), crop_border_microlenses(1),...
+                crop_border_microlenses(2));
+        else
+            img_rect = single(imread(fullfile(in_folder, infiles_struct(frame).name), ...
+                'tiff')) .* mask;
+            img_rect = img_rect(crop_border_microlenses(1)*Nnum + 1 : end -...
+                crop_border_microlenses(2)*Nnum, crop_border_microlenses(3)*Nnum ...
+                + 1 : end - crop_border_microlenses(4)*Nnum);
+        end
+        if frame == 1
+            %         sensor_movie = ones(size(img_rect, 1), size(img_rect, 2), ...
+            %           size(infiles_struct,1), 'double');
+            sensor_movie = ones(numel(img_rect), size(infiles_struct,1), 'single');
+            movie_size(1:2)=size(img_rect);
+        end
+        if size(infiles_struct)==1
+            %         sensor_movie(:, :) = img_rect;
+            sensor_movie= img_rect(:);
+        else
+            %         sensor_movie(:, :, img_ix) = img_rect;
+            sensor_movie(:, frame) = img_rect(:);
+        end
+    end
+end
+fprintf('\n');
+end
+
+##### SOURCE END #####
+--></body></html>

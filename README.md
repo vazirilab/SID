@@ -1,2 +1,4 @@
-# sid_nmf
-Seeded iterative demixing with NMF before reconstruction (optimized for zebrafish)
+# Seeded Iterative Demixing
+
+## Documentation
+- https://github.com/vazirilab/sid_nmf/wiki
