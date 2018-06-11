@@ -16,21 +16,40 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % avoid that the detrending smoothes out true Ca transients.
 
 %% NMF
-% Input.nnmf_opts.rank
+% Input.LFM_folder
+% Input.psf_filename_ballistic
+% Input.output_folder
+% Input.x_offset
+% Input.y_offset
+% Input.dx
 % Input.SID_output_name
-% Input.tmp_dir
+% Input.template_threshold
 % Input.bg_iter
-% Input.rectify
+% Input.rectify 
 % Input.Junk_size
 % Input.bg_sub
+% Input.SID_optimization_args
+% Input.segmentation
+% Input.frames
+% Input.optimize_kernel
 % Input.gpu_ids
 % Input.num_iter
 % Input.native_focal_plane
-% Input.neur_rad
-% Input.nnmf_opts
+% Input.neur_rad 
 % Input.recon_opts
+% Input.filter
+% Input.do_crop
+% Input.cluster_iter
+% Input.use_std
+% Input.detrend
 % Input.update_template
-% Input.fluoslide_fn
+% Input.nnmf_opts
+% Input.axial
+% Input.cluster_iter
+% Input.psf_cache_dir
+% Input.crop_border_microlenses
+% Input.nnmf_opts.rank
+% Input.tmp_dir
 
 % Input.frames.start = 1;%frames_for_model_optimization
 % Input.frames.step = 10;
