@@ -25,7 +25,7 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % Input.SID_output_name
 % Input.template_threshold
 % Input.bg_iter
-% Input.rectify 
+% Input.rectify
 % Input.Junk_size
 % Input.bg_sub
 % Input.SID_optimization_args
@@ -35,7 +35,7 @@ function main_nnmf_SID(indir, outdir, psffile, x_offset, y_offset, dx, optional_
 % Input.gpu_ids
 % Input.num_iter
 % Input.native_focal_plane
-% Input.neur_rad 
+% Input.neur_rad
 % Input.recon_opts
 % Input.filter
 % Input.do_crop
@@ -74,7 +74,7 @@ end
 if isfield(optional_args, 'tmp_dir')
     Input.tmp_dir = optional_args.tmp_dir;
 else
-    Input.SID_output_name = tempdir();
+    Input.tmp_dir = tempdir();
 end
 
 if isfield(optional_args, 'template_threshold')
@@ -347,7 +347,7 @@ if Input.detrend
     SID_output.baseline = smooth(SID_output.baseline_raw, smooth_window_span, 'sgolay', 3);
     figure; hold on; plot(SID_output.baseline_raw); plot(SID_output.baseline); title('Frame means (post bg subtract), raw + trend fit'); hold off;
     print(fullfile(Input.output_folder, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
-    
+
     %fit_t_rng = Input.frames.start : Input.frames.step : ((size(sensor_movie,2)-1) * Input.frames.step + Input.frames.start);
     %SID_output.baseline_fit_params = exp2fit(fit_t_rng, base, 1);
     %SID_output.baseline_fit = SID_output.baseline_fit_params(1) + SID_output.baseline_fit_params(2) * exp(- (1 : num_frames) / SID_output.baseline_fit_params(3));
@@ -401,7 +401,7 @@ else
 end
 
 while max(~flag1,max(~flag2,flag))
-    
+
     if Input.bg_sub
         img = SID_output.bg_spatial;
     else
@@ -722,13 +722,13 @@ disp('---');
 
 for iter=1:Input.num_iter
     disp([num2str(iter) '. iteration started']);
-    
+
     [SID_output.timeseries_iterated,SID_output.forward_model_iterated,template_,...
         SID_output.indices_in_orig] = spatial_SID_update(...
         sensor_movie,SID_output.timeseries_iterated,...
         SID_output.forward_model_iterated,template_,...
         SID_output.indices_in_orig,opts_spat);
-    
+
     if isfield(Input, 'update_template') && Input.update_template
         if iter>=2
             for neuron=1:size(template_,1)
@@ -742,12 +742,12 @@ for iter=1:Input.num_iter
             end
         end
     end
-    
+
     [SID_output.forward_model_iterated,SID_output.timeseries_iterated,template_...
         ,SID_output.indices_in_orig] = temporal_SID_update(...
         sensor_movie,SID_output.forward_model_iterated,SID_output.timeseries_iterated...
         ,template_,SID_output.indices_in_orig,opts_temp);
-    
+
 
     [SID_output.forward_model_iterated,SID_output.timeseries_iterated,template_...
         ,SID_output.indices_in_orig] = merge_filters(...
@@ -798,7 +798,7 @@ SID_output.indices_in_orig = SID_output.indices_in_orig(n);
 %% save SID_output
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Saving result'])
 SID_output.Input = Input;
-save(fullfile(Input.output_folder, Input.output_name), 'Input', 'SID_output', '-v7.3');
+save(fullfile(Input.output_folder, Input.SID_output_name), 'Input', 'SID_output', '-v7.3');
 
 %% Summary figure: NNMF MIPs, with centers overlaid
 timestr = datestr(now, 'YYmmddTHHMM');
