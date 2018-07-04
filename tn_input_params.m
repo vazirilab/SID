@@ -1140,10 +1140,85 @@ Input.recon_opts.mode='basic';
 Input.recon_opts.lambda=0;
 Input.recon_opts.lambda_=0.0;
 
+%% C. elegans
+indir = '~/vazirilab_medium_data/tobias_noebauer/data_menachem_lfm/2018-05-18_menachem_celegans/1088-WT-1-Tstim_1/Pos0/';
+outdir = '/ssd_raid_4TB/tobias/menachem_celegans_sid/1088-WT-1-Tstim_1/';
+psffile = '/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_zeiss_63x_09NA_water__20FN__on_zeiss_from-18_to18_zspacing2_Nnum15_lambda520_OSR3.mat';
+x_offset = 1288.4;
+y_offset = 1093.8;
+dx = 22.13;
 
+optional_args = struct;
+optional_args.frames.step = 2;
+optional_args.delta = 20;  % detrending sliding window
+optional_args.axial = 12.6;  % on F#20 MLA, ML pitch is 150um. M=63x. Nnum=15. So 1 px is 0.159 um laterally, and 2 um axially
+optional_args.neur_rad = 40;
+optional_args.native_focal_plane = 10;
+optional_args.SID_output_name = '1088-WT-1-Tstim_1';
+optional_args.gpu_ids = [4 5];
+optional_args.crop_border_microlenses = [0 0 33 29];
+optional_args.nnmf_opts.xval.enable = false;
+optional_args.ts_extract_chunk_size = 200;
 
+%% C. elegans
+indir = '/ssd_raid_4TB/tobias/data_cache_celegans/1088-glt1-1-Tstim_1/Pos0/';
+outdir = '/ssd_raid_4TB/tobias/menachem_celegans_sid/1088-glt1-1-Tstim_1/';
+psffile = '/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_zeiss_63x_09NA_water__20FN__on_zeiss_from-18_to18_zspacing2_Nnum15_lambda520_OSR3.mat';
+x_offset = 1288.4;
+y_offset = 1093.8;
+dx = 22.13;
 
+optional_args = struct;
+optional_args.frames.start = 1;
+optional_args.frames.step = 2;
+optional_args.frames.end = inf;
+optional_args.frames.mean = true;
+optional_args.delta = 20;  % detrending sliding window
+optional_args.axial = 12.6;  % on F#20 MLA, ML pitch is 150um. M=63x. Nnum=15. So 1 px is 0.159 um laterally, and 2 um axially
+optional_args.neur_rad = 40;
+optional_args.native_focal_plane = 10;
+optional_args.SID_output_name = '1088-glt1-1-Tstim_1';
+optional_args.gpu_ids = [4 5];
+optional_args.crop_params = [0.4 0.8];
+optional_args.crop_border_microlenses = [43 19 0 0 ];
+%optional_args.nnmf_opts.xval_enable = false;
+optional_args.ts_extract_chunk_size = 200;
 
+%% C. elegans, new param struct
+config_in = struct;
+
+config_in.indir = '/ssd_raid_4TB/tobias/data_cache_celegans/1088-glt1-5-Tstim_2/Pos0';
+config_in.outdir = '/ssd_raid_4TB/tobias/menachem_celegans_sid/1088-glt1-5-Tstim_2/';
+config_in.psffile = '/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_zeiss_63x_09NA_water__20FN__on_zeiss_from-18_to18_zspacing2_Nnum15_lambda520_OSR3.mat';
+config_in.x_offset = 1288.4;
+config_in.y_offset = 1093.8;
+config_in.dx = 22.13;
+
+config_in.frames.start = 1;
+config_in.frames.step = 3;
+config_in.frames.end = inf;
+
+config_in.axial = 12.6;  % on F#20 MLA, ML pitch is 150um. M=63x. Nnum=15. So 1 px is 0.159 um laterally, and 2 um axially
+config_in.neur_rad = 25;
+config_in.delta = 100;
+config_in.native_focal_plane = 10;
+config_in.gpu_ids = [2 4 5];
+config_in.crop_border_microlenses = floor([840 2560-2000 900 0] / config_in.dx);
+config_in.crop_params = [0.5 0.8];
+
+%Input.optimize_kernel = true;
+%Input.recon_opts.lamb_L1 = 1;
+%Input.filter = true;
+
+Input.optimize_kernel = false;
+Input.recon_opts.lamb_L1 = 0.1;
+Input.recon_opts.lamb_TV_L2 = [0.1 0.1 4];
+Input.filter = true;
+
+config_in.recon_final_spatial_filters = false;
+
+%%
+main_nnmf_SID(config_in)
 
 
 %%

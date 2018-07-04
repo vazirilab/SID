@@ -1,22 +1,24 @@
-function option=xval(Y,opts)
+function option = xval(Y, opts)
 % XVAL: algorithm performs cross-validation for one lagrangian multiplier
 % for the nnmf problem defined by Y,n and opts.
 %
 % Input:
-% opts...               options to be modified by xval
-% Y...                  movie
+% opts                  options to be modified by xval
+% Y                     movie
 % struct opts.xval:
 % opts.xval.im_size     size of the std_image of Y
 % opts.xval.max_iter    maximal number of iterations of the nnmf inside xval
 % opts.xval.num_part    number of partitions in which the data is decomposed
+% opts.xval.std_image   required; standard deviation image of Y
 % opts.multiplier       string; name of the lagrangian multiplier
 %                       example opts.multiplier='lamb_orth_L2'
-% param                 paramter range of the multiplier that needs to be
+% opts.param            paramter range of the multiplier that needs to be
 %                       scanned by xval
 %
 % Output:
-% options...           output options
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% options               output options
+
+%%
 if nargin<2
     opts=struct;
     opts.xval=struct;
@@ -66,8 +68,8 @@ switch opts.xval.multiplier
         disp('lamb_temp_TV');
 end
 
-if ~isfield(opts.xval,'param')
-    opts.xval.param = lambda*exp(-2*[0:4]);
+if ~isfield(opts.xval,'param') || isempty(opts.xval.param)
+    opts.xval.param = lambda * exp(-2 * (0:4));
 end
 
 map = conv2(opts.xval.std_image.^2,ones(opts.xval.im_size+1),'valid');

@@ -84,9 +84,9 @@ while num>0
             Q=Q*forward_model;
             clear forward_model;
             if ~isempty(opts.gpu_id)
-                sensor_movie=gpuArray(sensor_movie);
+                sensor_movie = gpuArray(sensor_movie);
             end
-            timeseries(:,mig)=Q*sensor_movie;
+            timeseries(:,mig) = gather(Q*sensor_movie);
         end
         flag=0;
     else
@@ -94,9 +94,9 @@ while num>0
             [timeseries(:,mig)]=LS_nnls(forward_model,sensor_movie,opts,Q,[],h);
         else
             if ~isempty(opts.gpu_id)
-                sensor_movie=gpuArray(sensor_movie);
+                sensor_movie = gpuArray(sensor_movie);
             end
-            timeseries(:,mig)=Q*sensor_movie;
+            timeseries(:,mig) = gather(Q*sensor_movie);
         end
     end
     if isfield(opts, 'outfile')

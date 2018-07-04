@@ -56,9 +56,9 @@ if max(opts.lamb_TV_L2)
     filter([1 3],2,2)=opts.lamb_TV_L2(1);
     filter(2,2,2)=-sum(opts.lamb_TV_L2);
     if isempty(opts.gpu_ids)
-        lb_TV_L2 = @(X) opts.lamb_TV_L2*convn(X,filter,'same');
+        lb_TV_L2 = @(X) convn(X,filter,'same');
     else
-        lb_TV_L2 = @(X) opts.lamb_TV_L2*convn(X,gpuArray(filter),'same');
+        lb_TV_L2 = @(X) convn(X,gpuArray(filter),'same');
     end
 else
     lb_TV_L2 = @(X) 0;

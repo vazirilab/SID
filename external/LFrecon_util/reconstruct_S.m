@@ -1,11 +1,11 @@
-function recon_nnmf=reconstruct_S(S,psf_ballistic,opts)
+function recon_nnmf = reconstruct_S(S, psf_ballistic, opts)
 % RECONSTRUCT_S: algorithm performs LFM reconstruction with a kernel of the
 % component of S with optional help of GPUs.
 %
 %       LFM-image ~ psf_ballistic.H*conv(recon_nnmf,kernel,'same')
 %
 % Input:
-% S...              Vector of LFM images
+% S                 Vector of LFM images
 % struct opts
 %   opts.ker_shape  shape of the kernel
 %       'gaussian'  gaussian kernel
@@ -35,10 +35,10 @@ function recon_nnmf=reconstruct_S(S,psf_ballistic,opts)
 %   lamb_TV_L2,
 %   lamb_L1,         
 %   lamb_L2         See help of deconv-algorithm
-% q...              Quantile of the image, where it should be thresholded.
+% q                 Quantile of the image, where it should be thresholded.
 %
 % Output:
-%   recon_nnmf...   cell-array of reconstructed Volumes
+%   recon_nnmf      cell-array of reconstructed Volumes
 
 
 if nargin<3

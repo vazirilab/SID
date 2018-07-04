@@ -1,5 +1,5 @@
 function [ ret ] = is_in_existing_dir( filename )
-[pathstr,name,ext] = fileparts(filename);
+[pathstr,~,~] = fileparts(strip(filename, 'right', '/'));
 if exist(pathstr, 'dir')
     ret = 1;
 else

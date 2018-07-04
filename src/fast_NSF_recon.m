@@ -1,4 +1,4 @@
-function [recon_NSF, x,y,z]=fast_NSF_recon(forward_model,centers,psf_ballistic, size_std,options)
+function [recon_NSF, x, y, z] = fast_NSF_recon(forward_model, centers, psf_ballistic, size_std, options)
 
 %% NSF reconstruction
 
@@ -60,8 +60,8 @@ for kk=1:options.num_Workers:size(centers,1)
         xx{2}{worker} = min(size_std(1),centers(k,1)+size(psf_ballistic.H,1));
         yy{1}{worker} = max(1,centers(k,2)-size(psf_ballistic.H,1));
         yy{2}{worker} = min(size_std(2),centers(k,2)+size(psf_ballistic.H,1));
-        zz{1}{worker} = max(1,round(centers(k,3))-5);
-        zz{2}{worker} = min(size(psf_ballistic.H,5),round(centers(k,3))+5);
+        zz{1}{worker} = max(1, round(centers(k,3))-5);
+        zz{2}{worker} = min(size(psf_ballistic.H,5), round(centers(k,3))+5);
         
         xx{1}{worker}=floor(xx{1}{worker}/Nnum)*Nnum+1;
         yy{1}{worker}=floor(yy{1}{worker}/Nnum)*Nnum+1;
@@ -71,9 +71,9 @@ for kk=1:options.num_Workers:size(centers,1)
         img_ = img_-mean(img_(logical(img_)));
         img_(img_<0)=0;
         
-        psf{worker}.H=psf_ballistic.H(:,:,:,:,zz{1}{worker}:zz{2}{worker});
-        psf{worker}.CAindex=psf_ballistic.CAindex(zz{1}{worker}:zz{2}{worker});
-        psf{worker}.Nnum=Nnum;
+        psf{worker}.H = psf_ballistic.H(:,:,:,:, zz{1}{worker} : zz{2}{worker});
+        psf{worker}.CAindex = psf_ballistic.CAindex(zz{1}{worker} : zz{2}{worker}, :);
+        psf{worker}.Nnum = Nnum;
         
         
         img{worker}=full(img_)/max(img_(:));
@@ -88,7 +88,7 @@ for kk=1:options.num_Workers:size(centers,1)
         opts{worker}.gpu_ids=mod((worker-1),length(gimp))+1;
         opts{worker}.gpu_ids=gimp(opts{worker}.gpu_ids);
         
-        recon{worker}= reconstruction_new(infile, psf{worker}, opts{worker});
+        recon{worker}= reconstruct_S(infile, psf{worker}, opts{worker});
         gpuDevice([]);
     end
     for kp=1:min(options.num_Workers,size(centers,1)-(kk-1))
