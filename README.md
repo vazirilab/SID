@@ -10,7 +10,7 @@ Skocek*, O., Nöbauer*, T., Weilguny, L., Martínez Traub, F., Xia, C. N., Molod
 Nature Methods 15, 429–432 (2018).
 
 ## Documentation
-- [Input argument reference](http://htmlpreview.github.com/?https://raw.githubusercontent.com/vazirilab/sid/master/docs/published_m_files/sid_config_manage.html)
+- [Input argument reference](https://cdn.rawgit.com/vazirilab/sid/master/docs/published_m_files/sid_config_manage.html)
 - [Discussion of input arguments and general usage (Wiki)](https://github.com/vazirilab/sid/wiki/Description-and-usage)
 - [Function documenation (generated from source code)](https://github.com/vazirilab/sid/tree/master/docs/published_m_files)
 - A demonstration example will be added shortly.
