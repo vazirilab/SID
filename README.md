@@ -17,16 +17,14 @@ Nature Methods 15, 429–432 (2018).
 
 ## System requirements
 - Matlab Base
-- Matlab Parallel computing toolbox
-- Matlab Image processing toolbox
-- Matlab Statistics and machine learning toolbox
-- Matlab Curve fitting toolbox
+- Matlab Parallel Computing Toolbox
+- Matlab Image Processing Toolbox
+- Matlab Statistics and Machine Learning Toolbox
+- Matlab Curve Fitting Toolbox
 
 Tested with Matlab R2017b on Red Hat Enterprise Linux 6.
 
-A multi-core workstation is recommended, with enough RAM to hold the input data.
-
-One or more Tesla-grade GPUs with several GB of RAM are highly recommended for fast execution (see Matlab documentation for supported GPU models).
+A multi-core workstation is recommended, with enough RAM to hold the input data. One or more Tesla-grade GPUs with several GB of RAM are highly recommended for fast execution (see Matlab documentation for supported GPU models).
 
 ## Installation in Matlab
 Clone/download and add the base folder and the `src/` and `external/` folders to Matlab path recursively.
