@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>read_sensor_movie</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="read_sensor_movie.m"><style type="text/css">
+      --><title>read_sensor_movie</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-07-19"><meta name="DC.source" content="read_sensor_movie.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -120,7 +120,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
     frames.mean = 0; <span class="comment">% disable moving average</span>
 <span class="keyword">end</span>
 
-<span class="keyword">if</span> isfield(frames,<span class="string">'list'</span>)
+<span class="keyword">if</span> isfield(frames,<span class="string">'list'</span>) &amp;&amp; ~isempty(frames.list)
     frames_=frames.list(frames&lt;=size(infiles_struct,1));
 <span class="keyword">else</span>
     frames_=frames.start:frames.step:min(frames.end,size(infiles_struct,1));
@@ -131,11 +131,10 @@ movie_size(3)=size(infiles_struct,1);
     <span class="keyword">for</span> frame=1:length(frames_)-1
         <span class="keyword">for</span> frame_=[frames_(frame):frames_(frame+1)]
             <span class="keyword">if</span> do_rectify
-                img_rect = ImageRect(double(imread(fullfile(in_folder, <span class="keyword">...</span>
-                    infiles_struct(frame_).name), <span class="string">'tiff'</span>)), x_offset, <span class="keyword">...</span>
-                    y_offset, dx, Nnum, true, crop_border_microlenses(1),<span class="keyword">...</span>
-                    crop_border_microlenses(2), crop_border_microlenses(3),<span class="keyword">...</span>
-                    crop_border_microlenses(4));
+                img_rect = ImageRect(<span class="keyword">...</span>
+                    double(imread(fullfile(in_folder, infiles_struct(frame_).name), <span class="string">'tiff'</span>)), <span class="keyword">...</span>
+                    x_offset, y_offset, dx, Nnum, true, <span class="keyword">...</span>
+                    crop_border_microlenses(1), crop_border_microlenses(2), crop_border_microlenses(3), crop_border_microlenses(4));
             <span class="keyword">else</span>
                 img_rect = single(imread(fullfile(in_folder, infiles_struct(frame_).name), <span class="string">'tiff'</span>));
                 img_rect = img_rect(crop_border_microlenses(3)*Nnum + 1 : <span class="keyword">...</span>
@@ -249,7 +248,7 @@ if nargin < 7 || isempty(frames)
     frames.mean = 0; % disable moving average
 end
 
-if isfield(frames,'list')
+if isfield(frames,'list') && ~isempty(frames.list)
     frames_=frames.list(frames<=size(infiles_struct,1));
 else
     frames_=frames.start:frames.step:min(frames.end,size(infiles_struct,1));
@@ -260,11 +259,10 @@ if frames.mean
     for frame=1:length(frames_)-1        
         for frame_=[frames_(frame):frames_(frame+1)]
             if do_rectify
-                img_rect = ImageRect(double(imread(fullfile(in_folder, ...
-                    infiles_struct(frame_).name), 'tiff')), x_offset, ...
-                    y_offset, dx, Nnum, true, crop_border_microlenses(1),...
-                    crop_border_microlenses(2), crop_border_microlenses(3),...
-                    crop_border_microlenses(4));
+                img_rect = ImageRect(...
+                    double(imread(fullfile(in_folder, infiles_struct(frame_).name), 'tiff')), ...
+                    x_offset, y_offset, dx, Nnum, true, ...
+                    crop_border_microlenses(1), crop_border_microlenses(2), crop_border_microlenses(3), crop_border_microlenses(4));
             else
                 img_rect = single(imread(fullfile(in_folder, infiles_struct(frame_).name), 'tiff'));
                 img_rect = img_rect(crop_border_microlenses(3)*Nnum + 1 : ...

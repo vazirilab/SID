@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>generate_template</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="generate_template.m"><style type="text/css">
+      --><title>generate_template</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-07-19"><meta name="DC.source" content="generate_template.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -68,22 +68,22 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
   </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> template=generate_template(centers,H,std_image,thres,shape)
 <span class="comment">% GENERATE_TEMPLATE computes for each center of a putative neuron its</span>
-<span class="comment">% template, a binary image fixing the area, where the LFM signature of the</span>
-<span class="comment">%putative neuron is to be expected.</span>
+<span class="comment">% template, a binary image that defines the area where the LFM signature of the</span>
+<span class="comment">% putative neuron is to be expected.</span>
 <span class="comment">%</span>
 <span class="comment">% Input:</span>
-<span class="comment">% centers...        centroid of the putative neurons</span>
-<span class="comment">% H...              point spread function of the LFM</span>
-<span class="comment">% std_image...      standard deviation image of the LFM_movie</span>
-<span class="comment">% thres...          threshold for the estimation of the radius in which an</span>
-<span class="comment">%                   LFM signature is to be expected. The smaller 'thres'</span>
-<span class="comment">%                   the greater the radius.</span>
-<span class="comment">% shape...          boolean; if true the shape of the area, where the LFM</span>
-<span class="comment">%                   signature of the putative neuron is to be expected, has</span>
-<span class="comment">%                   the shape of a disk, otherwise the shape of a square.</span>
+<span class="comment">% centers           Centroids of the putative neurons</span>
+<span class="comment">% H                 Point spread function of the LFM</span>
+<span class="comment">% std_image         Standard deviation image of the LFM_movie</span>
+<span class="comment">% thres             Threshold for the estimation of the radius in which an</span>
+<span class="comment">%                       LFM signature is to be expected. The smaller 'thres'</span>
+<span class="comment">%                       the greater the radius.</span>
+<span class="comment">% shape             boolean; if true the shape of the area, where the LFM</span>
+<span class="comment">%                       signature of the putative neuron is to be expected, has</span>
+<span class="comment">%                       the shape of a disk, otherwise the shape of a square.</span>
 <span class="comment">%</span>
 <span class="comment">% Output:</span>
-<span class="comment">% template...       Library of templates of the putative neurons</span>
+<span class="comment">% template          Library of templates of the putative neurons</span>
 
 <span class="keyword">if</span> nargin&lt;4
     thres=0.03;
@@ -128,22 +128,22 @@ disp([num2str(size(centers,1)) <span class="string">' templates generated'</span
 ##### SOURCE BEGIN #####
 function template=generate_template(centers,H,std_image,thres,shape)
 % GENERATE_TEMPLATE computes for each center of a putative neuron its 
-% template, a binary image fixing the area, where the LFM signature of the 
-%putative neuron is to be expected.
+% template, a binary image that defines the area where the LFM signature of the 
+% putative neuron is to be expected.
 %
 % Input: 
-% centers...        centroid of the putative neurons
-% H...              point spread function of the LFM
-% std_image...      standard deviation image of the LFM_movie
-% thres...          threshold for the estimation of the radius in which an
-%                   LFM signature is to be expected. The smaller 'thres'
-%                   the greater the radius.
-% shape...          boolean; if true the shape of the area, where the LFM 
-%                   signature of the putative neuron is to be expected, has
-%                   the shape of a disk, otherwise the shape of a square.
+% centers           Centroids of the putative neurons
+% H                 Point spread function of the LFM
+% std_image         Standard deviation image of the LFM_movie
+% thres             Threshold for the estimation of the radius in which an
+%                       LFM signature is to be expected. The smaller 'thres'
+%                       the greater the radius.
+% shape             boolean; if true the shape of the area, where the LFM 
+%                       signature of the putative neuron is to be expected, has
+%                       the shape of a disk, otherwise the shape of a square.
 %
 % Output:
-% template...       Library of templates of the putative neurons
+% template          Library of templates of the putative neurons
 
 if nargin<4
     thres=0.03;

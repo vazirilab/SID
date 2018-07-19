@@ -10,16 +10,31 @@ end
 config_definition = {
     % first column is param name
     % second colum is validator function handle
-    % third colum is default value; leave empty to indicate required value
+    % third colum is default value; left empty to indicate required value
 
     
 %%% REQUIRED PARAMS
 
+    % Input directory containing raw LFM frames in single-page tiff files
     {'indir',                       @isfolder                              'required'};
+    
+    % Directory to place output files in
     {'outdir',                      @is_in_existing_dir                    'required'};
+    
+    % LFM PSF file as generated using LFrecon package 
+    % (https://media.nature.com/original/nature-assets/nmeth/journal/v11/n7/extref/nmeth.2964-S2.zip)
     {'psffile',                     @is_existing_file                      'required'};
+    
+    % Horizontal position of center of central microlens in LFM raw frames
+    % (determine using http://graphics.stanford.edu/software/LFDisplay/)
     {'x_offset',                    @is_double                             'required'};
+    
+    % Vertical position of center of central microlens in LFM raw frames
+    % (determine using http://graphics.stanford.edu/software/LFDisplay/)
     {'y_offset',                    @is_double                             'required'};
+    
+    % Microlens pitch in LFM raw frames
+    % (determine using http://graphics.stanford.edu/software/LFDisplay/)
     {'dx',                          @is_double                             'required'};
     
 
@@ -130,78 +145,89 @@ config_definition = {
     % input frames
     {'crop_mask',                   @ismatrix,                             true};
 
- %%% Low-rank NNMF
+ %%% Low-rank NMF 
+ % for more detailed docs on all options, see fast_NMF.m and
+ % https://github.com/vazirilab/sid/wiki/Description-and-usage#low-rank-nnmf
  
-    % 
+    % NMF rank
     {'nnmf_opts.rank',              @isinteger,                            30};
     
-    %
+    % Max. number of iterations to perform when computing the NMF
     {'nnmf_opts.max_iter',          @isinteger,                            600};
     
-    %
+    % Initialization for NMF. For options, see fast_NMF.m
     {'nnmf_opts.ini_method',        @isstring,                            'pca'};
     
-    %
+    % Lagrange multiplier for spatial sparsity (L1 norm of spatial component matrix S)
     {'nnmf_opts.lamb_spat',         @isfloat,                              0};
     
-    %
+    % Lagrange multiplier for temporal sparsity (L1 norm of temporal component matrix T)
     {'nnmf_opts.lamb_temp',         @isfloat,                              0};
     
-    %
+    % Lagrange multiplier for temporal correlation (L2 norm of covariance matrix)
     {'nnmf_opts.lamb_corr',         @isfloat,                              0};
     
-    %
+    % Lagrange multiplier for L1 norm of Gramian of S
     {'nnmf_opts.lamb_orth_L1',      @isfloat,                              5e-4};
     
-    %
+    % Lagrange multiplier for L2 norm of Gramian of S
     {'nnmf_opts.lamb_orth_L2',      @isfloat,                              0};
     
-    %
+    % Lagrange multiplier for L2 norm of Total Variation of S
     {'nnmf_opts.lamb_spat_TV',      @isfloat,                              0};
     
-    %
+    % Lagrange multiplier for L2 norm of Total Variation of T
     {'nnmf_opts.lamb_temp_TV',      @isfloat,                              0};
     
-    % enable xval
+    % Enable cross-validation
     {'nnmf_opts.xval_enable',       @islogical,                            false};
     
-    % number of partitions in which the data is decomposed
+    % Number of partitions in which the data is decomposed for cross-validation
     {'nnmf_opts.xval_num_part',     @isinteger,                            5};
     
-    % paramter range of the multiplier that needs to be scanned by xval. For default, see xval.m
+    % Paramter range of the multiplier that needs to be scanned by xval. 
+    % For default, see xval.m
     {'nnmf_opts.xval_param',        @islogical,                            []};
 
  %%% LFM reconstruction
+ % for more detailed docs on all options, see reconstruct_S.m and
+ % https://github.com/vazirilab/sid/wiki/Description-and-usage#lfm-reconstruction
  
-    % TODO: make sure this actually gets used
+    % Number of iterations of Richardson-Lucy updates for LFM deconvolution
     {'recon_opts.maxIter',          @isinteger,                            8};
     
-    %
+    % Lagrange multiplier for L1-norm of reconstructed LFM volume
     {'recon_opts.lamb_L1',          @isfloat,                              0.1};
     
-    %
+    % Lagrange multiplier for L2-norm of reconstructed LFM volume
     {'recon_opts.lamb_L2',          @isfloat,                              0};
     
-    %
+    % Lagrange multiplier for Total Variation of reconstructed LFM volume
     {'recon_opts.lamb_TV_L2',       @isfloat,                              0};
     
-    %
+    % Neuron shape to allow during reconstruction
     {'recon_opts.ker_shape',        @isstring,                             'user'};
     
-    %
+    % Enable automatic learning of neuron shape kernel my iteratively comparing
+    % a convolution of current kernel shape with neuron centroids of reconstructed volume with
+    % actual reconstructed volume
     {'optimize_kernel',             @islogical,                            true};
     
-    % band-pass filter the reconstructed NMF componet volumes. Warning: this can take tens of minutes per component and GPU
+    % Band-pass filter the reconstructed NMF componet volumes. Warning: this can take tens of minutes per component and GPU
     {'filter',                      @islogical,                            false};    
 
  %%% Segmentation
  
-    %
+    % Threshold for accepting local maxima as neuron candidates 
+    % (increase to reduce over-segmentation)
     {'segmentation.threshold',      @isfloat,                              0.01};
     
-    %
+    % Smallest z-plane index from which to accept segmentation centers as neuron condidates
+    % (increase to exclude artefacts at top of volume)
     {'segmentation.top_cutoff',     @isinteger,                            1};
     
+    % Largest z-plane index from which to accept segmentation centers as neuron condidates
+    % (decrease to exclude artefacts at bottom of volume)
     % if left [], defaults to size(psf_ballistic.H,5)
     {'segmentation.bottom_cutoff',  @isinteger,                            []};
     
@@ -212,37 +238,43 @@ config_definition = {
 
  %%% Neuron footprint dictionary generation
  
-    %
+    % If GPU support is enabled and this flag is set to true, generate_LFM_library_CPU.m 
+    % is used for neuron footprint dictionary generation. Otherwise, generate_LFM_library_GPU.m 
+    % is used. If GPU support is disabled, generate_LFM_library_CPU.m is used regardless of this flag.
+    % (see https://github.com/vazirilab/sid/wiki/Description-and-usage#lfm-footprint-dictionary-generation)
     {'use_std_GLL',                 @islogical,                            false};
 
  %%% Template generation
  
-    % 
+    % Threshold that determines size of template radius for each neuron candidate.
+    % Increase to generate larger templates
     {'template_threshold',          @isfloat,                              0.01};
 
- %%% Bi-convex optimization
+ %%% Bi-convex optimization (main SID demixing)
  
-    % number of iterations, where one iteration consist of a spatial and a temporal update
+    % Number of bi-convex SID demixing iterations, 
+    % where one iteration consist of a spatial and a temporal update
     {'num_iter',                    @isinteger,                            4};
     
-    % used in reg_nnls.m
+    % Lagrange multiplier for L1-norm (sparsity) regularizer of spatial components during SID demixing
     {'SID_optimization_args.spatial_lamb_L1', @isfloat,                    0};
     
-    % used in reg_nnls.m
+    % Lagrange multiplier for L2-norm regularizer of spatial components during SID demixing
     {'SID_optimization_args.spatial_lamb_L2', @isfloat,                    0};
     
-    % used in reg_nnls.m
+    % Lagrange multiplier for L1-norm of Gramian matrix of spatial components during SID demixing
     {'SID_optimization_args.spatial_lamb_orth_L1', @isfloat,               1e-4};
     
-    % used in LS_nnls.m
+    % Lagrange multiplier for L1-norm (sparsity) regularizer of temporal components during SID demixing
     {'SID_optimization_args.temporal_lambda', @isfloat,                    1e-4};
     
-    % 
+    % Increase size of templates after each iteration (enable to merge components and thus avoid false positive neurons)
     {'update_template',                       @islogical,                  true};
     
  %%% Timeseries extraction
  
-    % TODO: unclear purpose, used in incremental_temporal_update_gpu()
+    % Number of frames to extract timeseries from in one chunk (see incremental_temporal_update_gpu.m)
+    % Decrease to avoid out-of-memory errors
     {'ts_extract_chunk_size',       @isinteger,                            200};
     
  %%% Reconstruct final (SID-demixed) neuron spatial filters
@@ -254,11 +286,8 @@ config_definition = {
 
 
 %% Loop over fields in config_definition. Check if it exists in config_in. If yes, use that value. Else, use default
-% TODO: support two input modes: varargin, and a struct
-% TODO: how to handle sub-structs for varargin?
-% option 1) convert them to structs explicitly wherever they are used
-% option 2) convert them to structs explicitly here
-% option 3) convert them to structs automatically here: detect dots in arg names, and interpret (up to two levels!)
+% TODO: add support for varargin input instead of struct
+% TODO: add support for key-value pairs of strings as input (for compiled command line use)
 config_out = struct;
 config_valid = true;
 for i = 1:size(config_definition, 1)

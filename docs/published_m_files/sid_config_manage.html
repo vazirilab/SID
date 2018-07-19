@@ -1,0 +1,651 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>sid_config_manage</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-07-19"><meta name="DC.source" content="sid_config_manage.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h2>Contents</h2><div><ul><li><a href="#3">REQUIRED PARAMS</a></li><li><a href="#4">OPTIONAL PARAMS</a></li><li><a href="#5">Frames to include</a></li><li><a href="#6">Mask for valid pixels</a></li><li><a href="#7">Physical parameters, neuron size</a></li><li><a href="#8">LFM frame rectification</a></li><li><a href="#9">Other global options</a></li><li><a href="#10">Background subtraction</a></li><li><a href="#11">Detrending</a></li><li><a href="#12">Cropping</a></li><li><a href="#13">Low-rank NMF</a></li><li><a href="#14">LFM reconstruction</a></li><li><a href="#15">Segmentation</a></li><li><a href="#16">Neuron footprint dictionary generation</a></li><li><a href="#17">Template generation</a></li><li><a href="#18">Bi-convex optimization (main SID demixing)</a></li><li><a href="#19">Timeseries extraction</a></li><li><a href="#20">Reconstruct final (SID-demixed) neuron spatial filters</a></li><li><a href="#21">Loop over fields in config_definition. Check if it exists in config_in. If yes, use that value. Else, use default</a></li></ul></div><pre class="codeinput"><span class="keyword">function</span> [config_valid, config_out] = sid_config_manage(config_in)
+</pre><pre class="codeinput"><span class="comment">%SID_CONFIG_MANAGER Summary of this function goes here</span>
+<span class="comment">%   Detailed explanation goes here</span>
+<span class="keyword">if</span> isunix()
+    psf_cache_dir_default = <span class="string">'/dev/shm'</span>;
+<span class="keyword">else</span>
+    psf_cache_dir_default = tempdir();
+<span class="keyword">end</span>
+
+config_definition = {
+    <span class="comment">% first column is param name</span>
+    <span class="comment">% second colum is validator function handle</span>
+    <span class="comment">% third colum is default value; left empty to indicate required value</span>
+</pre><h2 id="3">REQUIRED PARAMS</h2><pre class="codeinput">    <span class="comment">% Input directory containing raw LFM frames in single-page tiff files</span>
+    {<span class="string">'indir'</span>,                       @isfolder                              <span class="string">'required'</span>};
+
+    <span class="comment">% Directory to place output files in</span>
+    {<span class="string">'outdir'</span>,                      @is_in_existing_dir                    <span class="string">'required'</span>};
+
+    <span class="comment">% LFM PSF file as generated using LFrecon package</span>
+    <span class="comment">% (https://media.nature.com/original/nature-assets/nmeth/journal/v11/n7/extref/nmeth.2964-S2.zip)</span>
+    {<span class="string">'psffile'</span>,                     @is_existing_file                      <span class="string">'required'</span>};
+
+    <span class="comment">% Horizontal position of center of central microlens in LFM raw frames</span>
+    <span class="comment">% (determine using http://graphics.stanford.edu/software/LFDisplay/)</span>
+    {<span class="string">'x_offset'</span>,                    @is_double                             <span class="string">'required'</span>};
+
+    <span class="comment">% Vertical position of center of central microlens in LFM raw frames</span>
+    <span class="comment">% (determine using http://graphics.stanford.edu/software/LFDisplay/)</span>
+    {<span class="string">'y_offset'</span>,                    @is_double                             <span class="string">'required'</span>};
+
+    <span class="comment">% Microlens pitch in LFM raw frames</span>
+    <span class="comment">% (determine using http://graphics.stanford.edu/software/LFDisplay/)</span>
+    {<span class="string">'dx'</span>,                          @is_double                             <span class="string">'required'</span>};
+</pre><h2 id="4">OPTIONAL PARAMS</h2><h2 id="5">Frames to include</h2><pre class="codeinput">    <span class="comment">% start:step:end indices of frames to use for demixing</span>
+    {<span class="string">'frames.start'</span>,                @is_positive_integer_or_zero,          1};
+    {<span class="string">'frames.step'</span>,                 @is_positive_integer_or_zero,          1};
+    {<span class="string">'frames.end'</span>,                  @is_positive_integer_or_zero,          inf};
+
+    <span class="comment">% Alternative: give explicit list</span>
+    {<span class="string">'frames.list'</span>,                 @isvector,                             []};
+
+    <span class="comment">% Set to true to average over frames in between that ones specified by</span>
+    <span class="comment">% start:step:end</span>
+    {<span class="string">'frames.mean'</span>,                 @islogical,                            true};
+</pre><h2 id="6">Mask for valid pixels</h2><pre class="codeinput">    <span class="comment">% Image file, in which pixels that should be ignored  are set to 0,</span>
+    <span class="comment">% others to 1. Use this to ignore irrelevant areas in the input frames.</span>
+    {<span class="string">'mask_file'</span>,                   @is_existing_file,                     <span class="string">''</span>};
+</pre><h2 id="7">Physical parameters, neuron size</h2><pre class="codeinput">    <span class="comment">% Ratio between the physical length of a voxel in the axial direction vs.</span>
+    <span class="comment">% the physical length in the lateral direction</span>
+    {<span class="string">'axial'</span>,                       @is_double,                            4};
+
+    <span class="comment">% Typical neuron radius in px. Typically 6 for fish using 20x/0.5NA</span>
+    <span class="comment">% objective, 9-12 for mouse cortex and 16x/0.8NA</span>
+    {<span class="string">'neur_rad'</span>,                    @is_double,                            8};
+
+    <span class="comment">% Index of native focal plane (=resolution breakdown plane) in</span>
+    <span class="comment">% reconstructed LFM stack</span>
+    {<span class="string">'native_focal_plane'</span>,          @isinteger,                            26};
+</pre><h2 id="8">LFM frame rectification</h2><pre class="codeinput">    <span class="comment">% Whether or not to rectify the input frames. Set to false if input</span>
+    <span class="comment">% frames are pre-rectified.</span>
+    {<span class="string">'rectify'</span>,                     @islogical,                            true};
+</pre><h2 id="9">Other global options</h2><pre class="codeinput">    <span class="comment">% Output filename prefix for all generated files</span>
+    {<span class="string">'SID_output_name'</span>,             @isstring,                             [<span class="string">'sid_result_'</span> datestr(now, <span class="string">'YY-mm-ddTHHMM'</span>) <span class="string">'.mat'</span>]};
+
+    <span class="comment">% Directory with very high access speed for PSF file caching</span>
+    <span class="comment">% (ideally, use a RAM-disk such as /dev/shm)</span>
+    {<span class="string">'psf_cache_dir'</span>,               @is_in_existing_dir,                   psf_cache_dir_default};
+
+    <span class="comment">% Directory for temporary files</span>
+    {<span class="string">'tmp_dir'</span>,                     @is_in_existing_dir,                   tempdir()};
+
+    <span class="comment">% List of GPU IDs to use throughout SID. default: [].</span>
+    <span class="comment">% (Note that in Matlab, gpu_ids start with 1, not 0, as in the output of nvidia-smi)</span>
+    {<span class="string">'gpu_ids'</span>,                     @isvector,                             []};
+
+    <span class="comment">% Whether or not to use standard deviation instead of 2-norm of</span>
+    <span class="comment">% residual in merit functions of all optimizers</span>
+    {<span class="string">'use_std'</span>,                     @islogical,                            false};
+</pre><h2 id="10">Background subtraction</h2><pre class="codeinput">    <span class="comment">% Number of iterations for low-rank matrix factorization during</span>
+    <span class="comment">% background subtraction</span>
+    {<span class="string">'bg_iter'</span>,                     @isinteger,                            2};
+
+    <span class="comment">% Enable background subtraction</span>
+    {<span class="string">'bg_sub'</span>,                      @islogical,                            true};
+</pre><h2 id="11">Detrending</h2><pre class="codeinput">    <span class="comment">% Whether to perform detrending prior to NNMF</span>
+    {<span class="string">'detrend'</span>,                     @islogical,                            true};
+
+    <span class="comment">% Half width of sliding window (in units of frames) for low-pass filtering</span>
+    <span class="comment">% the frame means prior to detrending. Set this to a value that is large</span>
+    <span class="comment">% compared to the duration of a Ca transient (e.g. 10 times as large),</span>
+    <span class="comment">% to avoid that the detrending smoothes out true Ca transients.</span>
+    {<span class="string">'delta'</span>,                       @isinteger,                            100};
+</pre><h2 id="12">Cropping</h2><pre class="codeinput">    <span class="comment">% Number of microlenses to crop from input frames on each side</span>
+    <span class="comment">% [left right top bottom], to avoid border artefacts</span>
+    <span class="comment">% When giving a value of</span>
+    <span class="comment">% floor([ix1_lo_border_width ix1_hi_border_width ix2_hi_border_width ix2_hi_border_width] / Nnum)</span>
+    <span class="comment">% that means that</span>
+    <span class="comment">% cropped_img = full_img(ix1_lo_border_width + 1 : end - ix1_hi_border_width, ix2_lo_border_width + 1 : end - ix2_hi_border_width)</span>
+    {<span class="string">'crop_border_microlenses'</span>,     @isvector,                             [0 0 0 0]};
+
+    <span class="comment">% Whether to crop frames based on threasholds on standard deviation and</span>
+    <span class="comment">% background</span>
+    {<span class="string">'do_crop'</span>,                     @islogical,                            true};
+
+    <span class="comment">% Two-element vector, first element is threshold on standard deviation</span>
+    <span class="comment">% used to crop frames. Second is cut-off threshold on background</span>
+    <span class="comment">% between microlenses.</span>
+    <span class="comment">% NOTE: If not given or empty, user is asked for interactive input</span>
+    {<span class="string">'crop_params'</span>,                 @isvector,                             []};
+
+    <span class="comment">% User-defined crop mask, given as an array of the same size as the</span>
+    <span class="comment">% input frames</span>
+    {<span class="string">'crop_mask'</span>,                   @ismatrix,                             true};
+</pre><h2 id="13">Low-rank NMF</h2><p>for more detailed docs on all options, see fast_NMF.m and https://github.com/vazirilab/sid/wiki/Description-and-usage#low-rank-nnmf</p><pre class="codeinput">    <span class="comment">% NMF rank</span>
+    {<span class="string">'nnmf_opts.rank'</span>,              @isinteger,                            30};
+
+    <span class="comment">% Max. number of iterations to perform when computing the NMF</span>
+    {<span class="string">'nnmf_opts.max_iter'</span>,          @isinteger,                            600};
+
+    <span class="comment">% Initialization for NMF. For options, see fast_NMF.m</span>
+    {<span class="string">'nnmf_opts.ini_method'</span>,        @isstring,                            <span class="string">'pca'</span>};
+
+    <span class="comment">% Lagrange multiplier for spatial sparsity (L1 norm of spatial component matrix S)</span>
+    {<span class="string">'nnmf_opts.lamb_spat'</span>,         @isfloat,                              0};
+
+    <span class="comment">% Lagrange multiplier for temporal sparsity (L1 norm of temporal component matrix T)</span>
+    {<span class="string">'nnmf_opts.lamb_temp'</span>,         @isfloat,                              0};
+
+    <span class="comment">% Lagrange multiplier for temporal correlation (L2 norm of covariance matrix)</span>
+    {<span class="string">'nnmf_opts.lamb_corr'</span>,         @isfloat,                              0};
+
+    <span class="comment">% Lagrange multiplier for L1 norm of Gramian of S</span>
+    {<span class="string">'nnmf_opts.lamb_orth_L1'</span>,      @isfloat,                              5e-4};
+
+    <span class="comment">% Lagrange multiplier for L2 norm of Gramian of S</span>
+    {<span class="string">'nnmf_opts.lamb_orth_L2'</span>,      @isfloat,                              0};
+
+    <span class="comment">% Lagrange multiplier for L2 norm of Total Variation of S</span>
+    {<span class="string">'nnmf_opts.lamb_spat_TV'</span>,      @isfloat,                              0};
+
+    <span class="comment">% Lagrange multiplier for L2 norm of Total Variation of T</span>
+    {<span class="string">'nnmf_opts.lamb_temp_TV'</span>,      @isfloat,                              0};
+
+    <span class="comment">% Enable cross-validation</span>
+    {<span class="string">'nnmf_opts.xval_enable'</span>,       @islogical,                            false};
+
+    <span class="comment">% Number of partitions in which the data is decomposed for cross-validation</span>
+    {<span class="string">'nnmf_opts.xval_num_part'</span>,     @isinteger,                            5};
+
+    <span class="comment">% Paramter range of the multiplier that needs to be scanned by xval.</span>
+    <span class="comment">% For default, see xval.m</span>
+    {<span class="string">'nnmf_opts.xval_param'</span>,        @islogical,                            []};
+</pre><h2 id="14">LFM reconstruction</h2><p>for more detailed docs on all options, see reconstruct_S.m and https://github.com/vazirilab/sid/wiki/Description-and-usage#lfm-reconstruction</p><pre class="codeinput">    <span class="comment">% Number of iterations of Richardson-Lucy updates for LFM deconvolution</span>
+    {<span class="string">'recon_opts.maxIter'</span>,          @isinteger,                            8};
+
+    <span class="comment">% Lagrange multiplier for L1-norm of reconstructed LFM volume</span>
+    {<span class="string">'recon_opts.lamb_L1'</span>,          @isfloat,                              0.1};
+
+    <span class="comment">% Lagrange multiplier for L2-norm of reconstructed LFM volume</span>
+    {<span class="string">'recon_opts.lamb_L2'</span>,          @isfloat,                              0};
+
+    <span class="comment">% Lagrange multiplier for Total Variation of reconstructed LFM volume</span>
+    {<span class="string">'recon_opts.lamb_TV_L2'</span>,       @isfloat,                              0};
+
+    <span class="comment">% Neuron shape to allow during reconstruction</span>
+    {<span class="string">'recon_opts.ker_shape'</span>,        @isstring,                             <span class="string">'user'</span>};
+
+    <span class="comment">% Enable automatic learning of neuron shape kernel my iteratively comparing</span>
+    <span class="comment">% a convolution of current kernel shape with neuron centroids of reconstructed volume with</span>
+    <span class="comment">% actual reconstructed volume</span>
+    {<span class="string">'optimize_kernel'</span>,             @islogical,                            true};
+
+    <span class="comment">% Band-pass filter the reconstructed NMF componet volumes. Warning: this can take tens of minutes per component and GPU</span>
+    {<span class="string">'filter'</span>,                      @islogical,                            false};
+</pre><h2 id="15">Segmentation</h2><pre class="codeinput">    <span class="comment">% Threshold for accepting local maxima as neuron candidates</span>
+    <span class="comment">% (increase to reduce over-segmentation)</span>
+    {<span class="string">'segmentation.threshold'</span>,      @isfloat,                              0.01};
+
+    <span class="comment">% Smallest z-plane index from which to accept segmentation centers as neuron condidates</span>
+    <span class="comment">% (increase to exclude artefacts at top of volume)</span>
+    {<span class="string">'segmentation.top_cutoff'</span>,     @isinteger,                            1};
+
+    <span class="comment">% Largest z-plane index from which to accept segmentation centers as neuron condidates</span>
+    <span class="comment">% (decrease to exclude artefacts at bottom of volume)</span>
+    <span class="comment">% if left [], defaults to size(psf_ballistic.H,5)</span>
+    {<span class="string">'segmentation.bottom_cutoff'</span>,  @isinteger,                            []};
+
+    <span class="comment">% Number of iterations to perform when attempting to merge closely spaced</span>
+    <span class="comment">% neuron candidates from different NMF components by spatial clustering.</span>
+    <span class="comment">% Maximal size of clusters is determined by parameter neur_rad.</span>
+    {<span class="string">'cluster_iter'</span>,                @isinteger,                            40};
+</pre><h2 id="16">Neuron footprint dictionary generation</h2><pre class="codeinput">    <span class="comment">% If GPU support is enabled and this flag is set to true, generate_LFM_library_CPU.m</span>
+    <span class="comment">% is used for neuron footprint dictionary generation. Otherwise, generate_LFM_library_GPU.m</span>
+    <span class="comment">% is used. If GPU support is disabled, generate_LFM_library_CPU.m is used regardless of this flag.</span>
+    <span class="comment">% (see https://github.com/vazirilab/sid/wiki/Description-and-usage#lfm-footprint-dictionary-generation)</span>
+    {<span class="string">'use_std_GLL'</span>,                 @islogical,                            false};
+</pre><h2 id="17">Template generation</h2><pre class="codeinput">    <span class="comment">% Threshold that determines size of template radius for each neuron candidate.</span>
+    <span class="comment">% Increase to generate larger templates</span>
+    {<span class="string">'template_threshold'</span>,          @isfloat,                              0.01};
+</pre><h2 id="18">Bi-convex optimization (main SID demixing)</h2><pre class="codeinput">    <span class="comment">% Number of bi-convex SID demixing iterations,</span>
+    <span class="comment">% where one iteration consist of a spatial and a temporal update</span>
+    {<span class="string">'num_iter'</span>,                    @isinteger,                            4};
+
+    <span class="comment">% Lagrange multiplier for L1-norm (sparsity) regularizer of spatial components during SID demixing</span>
+    {<span class="string">'SID_optimization_args.spatial_lamb_L1'</span>, @isfloat,                    0};
+
+    <span class="comment">% Lagrange multiplier for L2-norm regularizer of spatial components during SID demixing</span>
+    {<span class="string">'SID_optimization_args.spatial_lamb_L2'</span>, @isfloat,                    0};
+
+    <span class="comment">% Lagrange multiplier for L1-norm of Gramian matrix of spatial components during SID demixing</span>
+    {<span class="string">'SID_optimization_args.spatial_lamb_orth_L1'</span>, @isfloat,               1e-4};
+
+    <span class="comment">% Lagrange multiplier for L1-norm (sparsity) regularizer of temporal components during SID demixing</span>
+    {<span class="string">'SID_optimization_args.temporal_lambda'</span>, @isfloat,                    1e-4};
+
+    <span class="comment">% Increase size of templates after each iteration (enable to merge components and thus avoid false positive neurons)</span>
+    {<span class="string">'update_template'</span>,                       @islogical,                  true};
+</pre><h2 id="19">Timeseries extraction</h2><pre class="codeinput">    <span class="comment">% Number of frames to extract timeseries from in one chunk (see incremental_temporal_update_gpu.m)</span>
+    <span class="comment">% Decrease to avoid out-of-memory errors</span>
+    {<span class="string">'ts_extract_chunk_size'</span>,       @isinteger,                            200};
+</pre><h2 id="20">Reconstruct final (SID-demixed) neuron spatial filters</h2><pre class="codeinput">    <span class="comment">% Whether to reconstruct final (SID-demixed) neuron spatial filters</span>
+    <span class="comment">% (entirely optional; not required for time series extraction)s</span>
+    {<span class="string">'recon_final_spatial_filters'</span>, @islogical,                            false};
+};
+</pre><h2 id="21">Loop over fields in config_definition. Check if it exists in config_in. If yes, use that value. Else, use default</h2><p>TODO: add support for varargin input instead of struct TODO: add support for key-value pairs of strings as input (for compiled command line use)</p><pre class="codeinput">config_out = struct;
+config_valid = true;
+<span class="keyword">for</span> i = 1:size(config_definition, 1)
+    field_name = config_definition{i}{1};
+    substruct_dot_index = strfind(field_name, <span class="string">'.'</span>);
+    validator = config_definition{i}{2};
+    default = config_definition{i}{3};
+
+    <span class="keyword">if</span> isempty(substruct_dot_index)
+        <span class="keyword">if</span> isfield(config_in, field_name) &amp;&amp; validator(config_in.(field_name))
+            config_out.(field_name) = config_in.(field_name);
+        <span class="keyword">elseif</span> ~strcmp(default, <span class="string">'required'</span>)
+            config_out.(field_name) = default;
+        <span class="keyword">else</span>
+            config_valid = false;
+            disp([<span class="string">'Required argument not given:'</span> field_name]);
+        <span class="keyword">end</span>
+    <span class="keyword">else</span>
+        substruct_name = field_name(1:substruct_dot_index-1);
+        substruct_field_name = field_name(substruct_dot_index + 1 : end);
+        <span class="keyword">if</span> isfield(config_in, substruct_name) &amp;&amp; isfield(config_in.(substruct_name), substruct_field_name) &amp;&amp; validator(config_in.(substruct_name).(substruct_field_name))
+            config_out.(substruct_name).(substruct_field_name) = config_in.(substruct_name).(substruct_field_name);
+        <span class="keyword">else</span>
+            config_out.(substruct_name).(substruct_field_name) = default;
+        <span class="keyword">end</span>
+        <span class="keyword">if</span> strcmp(default, <span class="string">'required'</span>)
+            error(<span class="string">'Required arguments cannot be sub-structs. Make it a top-level argument.'</span>);
+        <span class="keyword">end</span>
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+function [config_valid, config_out] = sid_config_manage(config_in)
+%SID_CONFIG_MANAGER Summary of this function goes here
+%   Detailed explanation goes here
+if isunix()
+    psf_cache_dir_default = '/dev/shm';
+else
+    psf_cache_dir_default = tempdir();
+end
+
+config_definition = {
+    % first column is param name
+    % second colum is validator function handle
+    % third colum is default value; left empty to indicate required value
+
+    
+%%% REQUIRED PARAMS
+
+    % Input directory containing raw LFM frames in single-page tiff files
+    {'indir',                       @isfolder                              'required'};
+    
+    % Directory to place output files in
+    {'outdir',                      @is_in_existing_dir                    'required'};
+    
+    % LFM PSF file as generated using LFrecon package 
+    % (https://media.nature.com/original/nature-assets/nmeth/journal/v11/n7/extref/nmeth.2964-S2.zip)
+    {'psffile',                     @is_existing_file                      'required'};
+    
+    % Horizontal position of center of central microlens in LFM raw frames
+    % (determine using http://graphics.stanford.edu/software/LFDisplay/)
+    {'x_offset',                    @is_double                             'required'};
+    
+    % Vertical position of center of central microlens in LFM raw frames
+    % (determine using http://graphics.stanford.edu/software/LFDisplay/)
+    {'y_offset',                    @is_double                             'required'};
+    
+    % Microlens pitch in LFM raw frames
+    % (determine using http://graphics.stanford.edu/software/LFDisplay/)
+    {'dx',                          @is_double                             'required'};
+    
+
+    
+%%% OPTIONAL PARAMS
+    
+ %%% Frames to include
+    
+    % start:step:end indices of frames to use for demixing
+    {'frames.start',                @is_positive_integer_or_zero,          1};
+    {'frames.step',                 @is_positive_integer_or_zero,          1};
+    {'frames.end',                  @is_positive_integer_or_zero,          inf};
+    
+    % Alternative: give explicit list
+    {'frames.list',                 @isvector,                             []};
+    
+    % Set to true to average over frames in between that ones specified by 
+    % start:step:end
+    {'frames.mean',                 @islogical,                            true};
+    
+ %%% Mask for valid pixels
+    
+    % Image file, in which pixels that should be ignored  are set to 0, 
+    % others to 1. Use this to ignore irrelevant areas in the input frames.
+    {'mask_file',                   @is_existing_file,                     ''};
+    
+ %%% Physical parameters, neuron size
+    
+    % Ratio between the physical length of a voxel in the axial direction vs. 
+    % the physical length in the lateral direction
+    {'axial',                       @is_double,                            4};
+    
+    % Typical neuron radius in px. Typically 6 for fish using 20x/0.5NA 
+    % objective, 9-12 for mouse cortex and 16x/0.8NA
+    {'neur_rad',                    @is_double,                            8};
+    
+    % Index of native focal plane (=resolution breakdown plane) in
+    % reconstructed LFM stack
+    {'native_focal_plane',          @isinteger,                            26};
+    
+ %%% LFM frame rectification
+ 
+    % Whether or not to rectify the input frames. Set to false if input
+    % frames are pre-rectified.
+    {'rectify',                     @islogical,                            true};
+    
+ %%% Other global options
+ 
+    % Output filename prefix for all generated files
+    {'SID_output_name',             @isstring,                             ['sid_result_' datestr(now, 'YY-mm-ddTHHMM') '.mat']};
+ 
+    % Directory with very high access speed for PSF file caching
+    % (ideally, use a RAM-disk such as /dev/shm)
+    {'psf_cache_dir',               @is_in_existing_dir,                   psf_cache_dir_default};
+    
+    % Directory for temporary files
+    {'tmp_dir',                     @is_in_existing_dir,                   tempdir()};
+    
+    % List of GPU IDs to use throughout SID. default: [].  
+    % (Note that in Matlab, gpu_ids start with 1, not 0, as in the output of nvidia-smi)
+    {'gpu_ids',                     @isvector,                             []};
+    
+    % Whether or not to use standard deviation instead of 2-norm of 
+    % residual in merit functions of all optimizers
+    {'use_std',                     @islogical,                            false};
+    
+ %%% Background subtraction
+ 
+    % Number of iterations for low-rank matrix factorization during
+    % background subtraction
+    {'bg_iter',                     @isinteger,                            2};
+    
+    % Enable background subtraction
+    {'bg_sub',                      @islogical,                            true};
+
+ %%% Detrending
+ 
+    % Whether to perform detrending prior to NNMF
+    {'detrend',                     @islogical,                            true};
+    
+    % Half width of sliding window (in units of frames) for low-pass filtering 
+    % the frame means prior to detrending. Set this to a value that is large 
+    % compared to the duration of a Ca transient (e.g. 10 times as large), 
+    % to avoid that the detrending smoothes out true Ca transients.
+    {'delta',                       @isinteger,                            100};
+
+ %%% Cropping
+ 
+    % Number of microlenses to crop from input frames on each side 
+    % [left right top bottom], to avoid border artefacts
+    % When giving a value of 
+    % floor([ix1_lo_border_width ix1_hi_border_width ix2_hi_border_width ix2_hi_border_width] / Nnum)
+    % that means that
+    % cropped_img = full_img(ix1_lo_border_width + 1 : end - ix1_hi_border_width, ix2_lo_border_width + 1 : end - ix2_hi_border_width)
+    {'crop_border_microlenses',     @isvector,                             [0 0 0 0]};
+    
+    % Whether to crop frames based on threasholds on standard deviation and
+    % background
+    {'do_crop',                     @islogical,                            true};
+    
+    % Two-element vector, first element is threshold on standard deviation 
+    % used to crop frames. Second is cut-off threshold on background 
+    % between microlenses.
+    % NOTE: If not given or empty, user is asked for interactive input
+    {'crop_params',                 @isvector,                             []};
+    
+    % User-defined crop mask, given as an array of the same size as the
+    % input frames
+    {'crop_mask',                   @ismatrix,                             true};
+
+ %%% Low-rank NMF 
+ % for more detailed docs on all options, see fast_NMF.m and
+ % https://github.com/vazirilab/sid/wiki/Description-and-usage#low-rank-nnmf
+ 
+    % NMF rank
+    {'nnmf_opts.rank',              @isinteger,                            30};
+    
+    % Max. number of iterations to perform when computing the NMF
+    {'nnmf_opts.max_iter',          @isinteger,                            600};
+    
+    % Initialization for NMF. For options, see fast_NMF.m
+    {'nnmf_opts.ini_method',        @isstring,                            'pca'};
+    
+    % Lagrange multiplier for spatial sparsity (L1 norm of spatial component matrix S)
+    {'nnmf_opts.lamb_spat',         @isfloat,                              0};
+    
+    % Lagrange multiplier for temporal sparsity (L1 norm of temporal component matrix T)
+    {'nnmf_opts.lamb_temp',         @isfloat,                              0};
+    
+    % Lagrange multiplier for temporal correlation (L2 norm of covariance matrix)
+    {'nnmf_opts.lamb_corr',         @isfloat,                              0};
+    
+    % Lagrange multiplier for L1 norm of Gramian of S
+    {'nnmf_opts.lamb_orth_L1',      @isfloat,                              5e-4};
+    
+    % Lagrange multiplier for L2 norm of Gramian of S
+    {'nnmf_opts.lamb_orth_L2',      @isfloat,                              0};
+    
+    % Lagrange multiplier for L2 norm of Total Variation of S
+    {'nnmf_opts.lamb_spat_TV',      @isfloat,                              0};
+    
+    % Lagrange multiplier for L2 norm of Total Variation of T
+    {'nnmf_opts.lamb_temp_TV',      @isfloat,                              0};
+    
+    % Enable cross-validation
+    {'nnmf_opts.xval_enable',       @islogical,                            false};
+    
+    % Number of partitions in which the data is decomposed for cross-validation
+    {'nnmf_opts.xval_num_part',     @isinteger,                            5};
+    
+    % Paramter range of the multiplier that needs to be scanned by xval. 
+    % For default, see xval.m
+    {'nnmf_opts.xval_param',        @islogical,                            []};
+
+ %%% LFM reconstruction
+ % for more detailed docs on all options, see reconstruct_S.m and
+ % https://github.com/vazirilab/sid/wiki/Description-and-usage#lfm-reconstruction
+ 
+    % Number of iterations of Richardson-Lucy updates for LFM deconvolution
+    {'recon_opts.maxIter',          @isinteger,                            8};
+    
+    % Lagrange multiplier for L1-norm of reconstructed LFM volume
+    {'recon_opts.lamb_L1',          @isfloat,                              0.1};
+    
+    % Lagrange multiplier for L2-norm of reconstructed LFM volume
+    {'recon_opts.lamb_L2',          @isfloat,                              0};
+    
+    % Lagrange multiplier for Total Variation of reconstructed LFM volume
+    {'recon_opts.lamb_TV_L2',       @isfloat,                              0};
+    
+    % Neuron shape to allow during reconstruction
+    {'recon_opts.ker_shape',        @isstring,                             'user'};
+    
+    % Enable automatic learning of neuron shape kernel my iteratively comparing
+    % a convolution of current kernel shape with neuron centroids of reconstructed volume with
+    % actual reconstructed volume
+    {'optimize_kernel',             @islogical,                            true};
+    
+    % Band-pass filter the reconstructed NMF componet volumes. Warning: this can take tens of minutes per component and GPU
+    {'filter',                      @islogical,                            false};    
+
+ %%% Segmentation
+ 
+    % Threshold for accepting local maxima as neuron candidates 
+    % (increase to reduce over-segmentation)
+    {'segmentation.threshold',      @isfloat,                              0.01};
+    
+    % Smallest z-plane index from which to accept segmentation centers as neuron condidates
+    % (increase to exclude artefacts at top of volume)
+    {'segmentation.top_cutoff',     @isinteger,                            1};
+    
+    % Largest z-plane index from which to accept segmentation centers as neuron condidates
+    % (decrease to exclude artefacts at bottom of volume)
+    % if left [], defaults to size(psf_ballistic.H,5)
+    {'segmentation.bottom_cutoff',  @isinteger,                            []};
+    
+    % Number of iterations to perform when attempting to merge closely spaced 
+    % neuron candidates from different NMF components by spatial clustering. 
+    % Maximal size of clusters is determined by parameter neur_rad.
+    {'cluster_iter',                @isinteger,                            40};
+
+ %%% Neuron footprint dictionary generation
+ 
+    % If GPU support is enabled and this flag is set to true, generate_LFM_library_CPU.m 
+    % is used for neuron footprint dictionary generation. Otherwise, generate_LFM_library_GPU.m 
+    % is used. If GPU support is disabled, generate_LFM_library_CPU.m is used regardless of this flag.
+    % (see https://github.com/vazirilab/sid/wiki/Description-and-usage#lfm-footprint-dictionary-generation)
+    {'use_std_GLL',                 @islogical,                            false};
+
+ %%% Template generation
+ 
+    % Threshold that determines size of template radius for each neuron candidate.
+    % Increase to generate larger templates
+    {'template_threshold',          @isfloat,                              0.01};
+
+ %%% Bi-convex optimization (main SID demixing)
+ 
+    % Number of bi-convex SID demixing iterations, 
+    % where one iteration consist of a spatial and a temporal update
+    {'num_iter',                    @isinteger,                            4};
+    
+    % Lagrange multiplier for L1-norm (sparsity) regularizer of spatial components during SID demixing
+    {'SID_optimization_args.spatial_lamb_L1', @isfloat,                    0};
+    
+    % Lagrange multiplier for L2-norm regularizer of spatial components during SID demixing
+    {'SID_optimization_args.spatial_lamb_L2', @isfloat,                    0};
+    
+    % Lagrange multiplier for L1-norm of Gramian matrix of spatial components during SID demixing
+    {'SID_optimization_args.spatial_lamb_orth_L1', @isfloat,               1e-4};
+    
+    % Lagrange multiplier for L1-norm (sparsity) regularizer of temporal components during SID demixing
+    {'SID_optimization_args.temporal_lambda', @isfloat,                    1e-4};
+    
+    % Increase size of templates after each iteration (enable to merge components and thus avoid false positive neurons)
+    {'update_template',                       @islogical,                  true};
+    
+ %%% Timeseries extraction
+ 
+    % Number of frames to extract timeseries from in one chunk (see incremental_temporal_update_gpu.m)
+    % Decrease to avoid out-of-memory errors
+    {'ts_extract_chunk_size',       @isinteger,                            200};
+    
+ %%% Reconstruct final (SID-demixed) neuron spatial filters
+ 
+    % Whether to reconstruct final (SID-demixed) neuron spatial filters
+    % (entirely optional; not required for time series extraction)s
+    {'recon_final_spatial_filters', @islogical,                            false};
+};
+
+
+%% Loop over fields in config_definition. Check if it exists in config_in. If yes, use that value. Else, use default
+% TODO: add support for varargin input instead of struct
+% TODO: add support for key-value pairs of strings as input (for compiled command line use)
+config_out = struct;
+config_valid = true;
+for i = 1:size(config_definition, 1)
+    field_name = config_definition{i}{1};
+    substruct_dot_index = strfind(field_name, '.');
+    validator = config_definition{i}{2};
+    default = config_definition{i}{3};
+    
+    if isempty(substruct_dot_index)
+        if isfield(config_in, field_name) && validator(config_in.(field_name))
+            config_out.(field_name) = config_in.(field_name);
+        elseif ~strcmp(default, 'required')
+            config_out.(field_name) = default;
+        else
+            config_valid = false;
+            disp(['Required argument not given:' field_name]);
+        end
+    else
+        substruct_name = field_name(1:substruct_dot_index-1);
+        substruct_field_name = field_name(substruct_dot_index + 1 : end);
+        if isfield(config_in, substruct_name) && isfield(config_in.(substruct_name), substruct_field_name) && validator(config_in.(substruct_name).(substruct_field_name))               
+            config_out.(substruct_name).(substruct_field_name) = config_in.(substruct_name).(substruct_field_name);
+        else 
+            config_out.(substruct_name).(substruct_field_name) = default;
+        end
+        if strcmp(default, 'required')
+            error('Required arguments cannot be sub-structs. Make it a top-level argument.');
+        end
+    end
+end
+
+end
+
+##### SOURCE END #####
+--></body></html>

@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>xval</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="xval.m"><style type="text/css">
+      --><title>xval</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-07-19"><meta name="DC.source" content="xval.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -66,26 +66,26 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> option=xval(Y,opts)
-<span class="comment">% XVAL: algorithm performs cross-validation for one lagrangian multiplier</span>
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> option = xval(Y, opts)
+</pre><pre class="codeinput"><span class="comment">% XVAL: algorithm performs cross-validation for one lagrangian multiplier</span>
 <span class="comment">% for the nnmf problem defined by Y,n and opts.</span>
 <span class="comment">%</span>
 <span class="comment">% Input:</span>
-<span class="comment">% opts...               options to be modified by xval</span>
-<span class="comment">% Y...                  movie</span>
+<span class="comment">% opts                  options to be modified by xval</span>
+<span class="comment">% Y                     movie</span>
 <span class="comment">% struct opts.xval:</span>
 <span class="comment">% opts.xval.im_size     size of the std_image of Y</span>
 <span class="comment">% opts.xval.max_iter    maximal number of iterations of the nnmf inside xval</span>
 <span class="comment">% opts.xval.num_part    number of partitions in which the data is decomposed</span>
+<span class="comment">% opts.xval.std_image   required; standard deviation image of Y</span>
 <span class="comment">% opts.multiplier       string; name of the lagrangian multiplier</span>
 <span class="comment">%                       example opts.multiplier='lamb_orth_L2'</span>
-<span class="comment">% param                 paramter range of the multiplier that needs to be</span>
+<span class="comment">% opts.param            paramter range of the multiplier that needs to be</span>
 <span class="comment">%                       scanned by xval</span>
 <span class="comment">%</span>
 <span class="comment">% Output:</span>
-<span class="comment">% options...           output options</span>
-<span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
-<span class="keyword">if</span> nargin&lt;2
+<span class="comment">% options               output options</span>
+</pre><pre class="codeinput"><span class="keyword">if</span> nargin&lt;2
     opts=struct;
     opts.xval=struct;
 <span class="keyword">end</span>
@@ -134,8 +134,8 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
         disp(<span class="string">'lamb_temp_TV'</span>);
 <span class="keyword">end</span>
 
-<span class="keyword">if</span> ~isfield(opts.xval,<span class="string">'param'</span>)
-    opts.xval.param = lambda*exp(-2*[0:4]);
+<span class="keyword">if</span> ~isfield(opts.xval,<span class="string">'param'</span>) || isempty(opts.xval.param)
+    opts.xval.param = lambda * exp(-2 * (0:4));
 <span class="keyword">end</span>
 
 map = conv2(opts.xval.std_image.^2,ones(opts.xval.im_size+1),<span class="string">'valid'</span>);
@@ -244,28 +244,30 @@ option = opts;
 
 figure(5);title(<span class="string">'Generalization error'</span>);plot(opts.xval.param,E_)
 drawnow <span class="string">expose</span>
-<span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
 </pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
 ##### SOURCE BEGIN #####
-function option=xval(Y,opts)
+function option = xval(Y, opts)
 % XVAL: algorithm performs cross-validation for one lagrangian multiplier
 % for the nnmf problem defined by Y,n and opts.
 %
 % Input:
-% opts...               options to be modified by xval
-% Y...                  movie
+% opts                  options to be modified by xval
+% Y                     movie
 % struct opts.xval:
 % opts.xval.im_size     size of the std_image of Y
 % opts.xval.max_iter    maximal number of iterations of the nnmf inside xval
 % opts.xval.num_part    number of partitions in which the data is decomposed
+% opts.xval.std_image   required; standard deviation image of Y
 % opts.multiplier       string; name of the lagrangian multiplier
 %                       example opts.multiplier='lamb_orth_L2'
-% param                 paramter range of the multiplier that needs to be
+% opts.param            paramter range of the multiplier that needs to be
 %                       scanned by xval
 %
 % Output:
-% options...           output options
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% options               output options
+
+%%
 if nargin<2
     opts=struct;
     opts.xval=struct;
@@ -315,8 +317,8 @@ switch opts.xval.multiplier
         disp('lamb_temp_TV');
 end
 
-if ~isfield(opts.xval,'param')
-    opts.xval.param = lambda*exp(-2*[0:4]);
+if ~isfield(opts.xval,'param') || isempty(opts.xval.param)
+    opts.xval.param = lambda * exp(-2 * (0:4));
 end
 
 map = conv2(opts.xval.std_image.^2,ones(opts.xval.im_size+1),'valid');

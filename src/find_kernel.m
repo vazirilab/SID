@@ -1,5 +1,5 @@
-function [kernel, neur_rad]=find_kernel(Volume,border,neur_rad,native_focal_plane, axial, gpu_id)
-
+function [kernel, neur_rad] = find_kernel(Volume, border, neur_rad, native_focal_plane, axial, gpu_id)
+%%
 opts=struct;
 opts.border = border;
 if nargin==6
@@ -8,6 +8,8 @@ end
 opts.axial=axial;
 opts.neur_rad = neur_rad;
 opts.native_focal_plane = native_focal_plane;
+
+%%
 rr{1}=Volume;
 segmm=filter_recon(rr,opts);
 segmm=max(segmm{1}-mean(segmm{1}(segmm{1}>0)),0);

@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>incremental_temporal_update_gpu</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="incremental_temporal_update_gpu.m"><style type="text/css">
+      --><title>incremental_temporal_update_gpu</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-07-19"><meta name="DC.source" content="incremental_temporal_update_gpu.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -148,9 +148,9 @@ forward_model=forward_model';
             Q=Q*forward_model;
             clear <span class="string">forward_model</span>;
             <span class="keyword">if</span> ~isempty(opts.gpu_id)
-                sensor_movie=gpuArray(sensor_movie);
+                sensor_movie = gpuArray(sensor_movie);
             <span class="keyword">end</span>
-            timeseries(:,mig)=Q*sensor_movie;
+            timeseries(:,mig) = gather(Q*sensor_movie);
         <span class="keyword">end</span>
         flag=0;
     <span class="keyword">else</span>
@@ -158,9 +158,9 @@ forward_model=forward_model';
             [timeseries(:,mig)]=LS_nnls(forward_model,sensor_movie,opts,Q,[],h);
         <span class="keyword">else</span>
             <span class="keyword">if</span> ~isempty(opts.gpu_id)
-                sensor_movie=gpuArray(sensor_movie);
+                sensor_movie = gpuArray(sensor_movie);
             <span class="keyword">end</span>
-            timeseries(:,mig)=Q*sensor_movie;
+            timeseries(:,mig) = gather(Q*sensor_movie);
         <span class="keyword">end</span>
     <span class="keyword">end</span>
     <span class="keyword">if</span> isfield(opts, <span class="string">'outfile'</span>)
@@ -266,9 +266,9 @@ while num>0
             Q=Q*forward_model;
             clear forward_model;
             if ~isempty(opts.gpu_id)
-                sensor_movie=gpuArray(sensor_movie);
+                sensor_movie = gpuArray(sensor_movie);
             end
-            timeseries(:,mig)=Q*sensor_movie;
+            timeseries(:,mig) = gather(Q*sensor_movie);
         end
         flag=0;
     else
@@ -276,9 +276,9 @@ while num>0
             [timeseries(:,mig)]=LS_nnls(forward_model,sensor_movie,opts,Q,[],h);
         else
             if ~isempty(opts.gpu_id)
-                sensor_movie=gpuArray(sensor_movie);
+                sensor_movie = gpuArray(sensor_movie);
             end
-            timeseries(:,mig)=Q*sensor_movie;
+            timeseries(:,mig) = gather(Q*sensor_movie);
         end
     end
     if isfield(opts, 'outfile')

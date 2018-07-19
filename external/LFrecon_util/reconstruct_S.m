@@ -107,7 +107,7 @@ for l=1:size(S,1)
 end
 
 if isfield(opts,'ker_param')
-    kernel = generate_kernel(opts.ker_shape,opts.ker_param);
+    kernel = generate_kernel(opts.ker_shape, opts.ker_param);
 else
     kernel = [];
 end

@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>temporal_SID_update</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-29"><meta name="DC.source" content="temporal_SID_update.m"><style type="text/css">
+      --><title>temporal_SID_update</title><meta name="generator" content="MATLAB 9.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-07-19"><meta name="DC.source" content="temporal_SID_update.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -66,47 +66,53 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
 
-  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> [forward_model,timeseries,template,indices_in_orig] = temporal_SID_update(<span class="keyword">...</span>
-    Y,forward_model,timeseries,template,indices_in_orig,opts)
+  </style></head><body><div class="content"><pre class="codeinput"><span class="keyword">function</span> [forward_model, timeseries, template, indices_in_orig] = <span class="keyword">...</span>
+    temporal_SID_update(Y, forward_model, timeseries, template, indices_in_orig, opts)
 
-<span class="keyword">if</span> nargin&lt;6
-    opts=struct;
+<span class="keyword">if</span> nargin &lt; 6
+    opts = struct;
 <span class="keyword">end</span>
 
-<span class="keyword">if</span> ~isfield(opts,<span class="string">'tolerance'</span>)
+<span class="keyword">if</span> ~isfield(opts, <span class="string">'tolerance'</span>)
     opts.tolerance = 1e-12;
 <span class="keyword">end</span>
 
-<span class="keyword">if</span> ~isfield(opts,<span class="string">'display'</span>)
-    opts.display=false;
+<span class="keyword">if</span> ~isfield(opts, <span class="string">'display'</span>)
+    opts.display = true;
 <span class="keyword">end</span>
 
 <span class="keyword">if</span> opts.display
-    disp([datestr(now, <span class="string">'YYYY-mm-dd HH:MM:SS'</span>) <span class="string">': '</span> <span class="string">'Pruning neurons'</span>]);
+    disp([datestr(now, <span class="string">'YYYY-mm-dd HH:MM:SS'</span>) <span class="string">': '</span> <span class="string">'Pruning neuron candidates with neglibible values in spatial component'</span>]);
 <span class="keyword">end</span>
 
 id2=[];
 <span class="keyword">for</span> k=1:size(forward_model,1)
-    trace=forward_model(k,opts.microlenses(opts.idx)&gt;0)&gt;opts.tolerance;
-    <span class="keyword">if</span> sum(trace)&gt;0<span class="comment">%(opts.Nnum^2)/3</span>
-        id2=[id2 k];
-    <span class="keyword">end</span>
-    <span class="keyword">if</span> opts.display
-        disp([datestr(now, <span class="string">'YYYY-mm-dd HH:MM:SS'</span>) <span class="string">': '</span> k]);
+    trace = forward_model(k, opts.microlenses(opts.idx)&gt;0) &gt; opts.tolerance;
+    <span class="keyword">if</span> sum(trace) &gt; 0  <span class="comment">% (opts.Nnum^2)/3</span>
+        id2 = [id2 k]; <span class="comment">%#ok&lt;AGROW&gt;</span>
+    <span class="keyword">elseif</span> opts.display
+        disp([datestr(now, <span class="string">'YYYY-mm-dd HH:MM:SS'</span>) <span class="string">': Discarding neuron candidate '</span> num2str(k)]);
     <span class="keyword">end</span>
 <span class="keyword">end</span>
-indices_in_orig=indices_in_orig(id2);
-timeseries=timeseries(id2,:);
-forward_model=forward_model(id2,:);
-template=template(id2(1:end-opts.bg_sub),:);
-tic
-forward_model=(1./(sqrt(sum(forward_model.^2,2)))).*forward_model;
+indices_in_orig = indices_in_orig(id2);
+timeseries = timeseries(id2, :);
+forward_model = forward_model(id2, :);
+template = template(id2(1:end-opts.bg_sub), :);
+
 <span class="keyword">if</span> opts.display
-    disp([datestr(now, <span class="string">'YYYY-mm-dd HH:MM:SS'</span>) <span class="string">': '</span> <span class="string">'Starting Temporal update'</span>]);
+    disp([datestr(now, <span class="string">'YYYY-mm-dd HH:MM:SS'</span>) <span class="string">': '</span> <span class="string">'Pruning completed'</span>]);
 <span class="keyword">end</span>
-opts.warm_start=timeseries;
-timeseries = fast_nnls(forward_model(:,opts.microlenses(opts.idx)&gt;0)',<span class="keyword">...</span>
-    Y(opts.microlenses(opts.idx)&gt;0,:), opts);
+
+<span class="keyword">if</span> opts.display
+    disp([datestr(now, <span class="string">'YYYY-mm-dd HH:MM:SS'</span>) <span class="string">': '</span> <span class="string">'Starting temporal update'</span>]);
+<span class="keyword">end</span>
+tic
+forward_model = (1./ sqrt(sum(forward_model .^ 2, 2))) .* forward_model;
+opts.warm_start = timeseries;
+
+timeseries = fast_nnls(forward_model(:, opts.microlenses(opts.idx) &gt; 0)', <span class="keyword">...</span>
+                       Y(opts.microlenses(opts.idx) &gt; 0, :), <span class="keyword">...</span>
+                       opts);
 
 <span class="keyword">if</span> opts.display
     disp([datestr(now, <span class="string">'YYYY-mm-dd HH:MM:SS'</span>) <span class="string">': '</span> <span class="string">'Temporal update completed'</span>]);
@@ -115,47 +121,53 @@ timeseries = fast_nnls(forward_model(:,opts.microlenses(opts.idx)&gt;0)',<span c
 <span class="keyword">end</span>
 </pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2017b</a><br></p></div><!--
 ##### SOURCE BEGIN #####
-function [forward_model,timeseries,template,indices_in_orig] = temporal_SID_update(...
-    Y,forward_model,timeseries,template,indices_in_orig,opts)
+function [forward_model, timeseries, template, indices_in_orig] = ...
+    temporal_SID_update(Y, forward_model, timeseries, template, indices_in_orig, opts)
 
-if nargin<6
-    opts=struct;
+if nargin < 6
+    opts = struct;
 end
 
-if ~isfield(opts,'tolerance')
+if ~isfield(opts, 'tolerance')
     opts.tolerance = 1e-12;
 end
 
-if ~isfield(opts,'display')
-    opts.display=false;
+if ~isfield(opts, 'display')
+    opts.display = true;
 end
 
 if opts.display
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Pruning neurons']);
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Pruning neuron candidates with neglibible values in spatial component']);
 end
 
 id2=[];
 for k=1:size(forward_model,1)
-    trace=forward_model(k,opts.microlenses(opts.idx)>0)>opts.tolerance;
-    if sum(trace)>0%(opts.Nnum^2)/3
-        id2=[id2 k];
-    end
-    if opts.display
-        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' k]);
+    trace = forward_model(k, opts.microlenses(opts.idx)>0) > opts.tolerance;
+    if sum(trace) > 0  % (opts.Nnum^2)/3
+        id2 = [id2 k]; %#ok<AGROW>
+    elseif opts.display
+        disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Discarding neuron candidate ' num2str(k)]);
     end
 end
-indices_in_orig=indices_in_orig(id2);
-timeseries=timeseries(id2,:);
-forward_model=forward_model(id2,:);
-template=template(id2(1:end-opts.bg_sub),:);
-tic
-forward_model=(1./(sqrt(sum(forward_model.^2,2)))).*forward_model;
+indices_in_orig = indices_in_orig(id2);
+timeseries = timeseries(id2, :);
+forward_model = forward_model(id2, :);
+template = template(id2(1:end-opts.bg_sub), :);
+
 if opts.display
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting Temporal update']);
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Pruning completed']);
 end
-opts.warm_start=timeseries;
-timeseries = fast_nnls(forward_model(:,opts.microlenses(opts.idx)>0)',...
-    Y(opts.microlenses(opts.idx)>0,:), opts);
+
+if opts.display
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update']);
+end
+tic
+forward_model = (1./ sqrt(sum(forward_model .^ 2, 2))) .* forward_model;
+opts.warm_start = timeseries;
+
+timeseries = fast_nnls(forward_model(:, opts.microlenses(opts.idx) > 0)', ...
+                       Y(opts.microlenses(opts.idx) > 0, :), ...
+                       opts);
 
 if opts.display
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
