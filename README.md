@@ -24,7 +24,7 @@ Nature Methods 15, 429–432 (2018).
 
 Tested with Matlab R2017b on Red Hat Enterprise Linux 6.
 
-A multi-core workstation with >32 GB is required.
+A multi-core workstation is recommended, with enough RAM to hold the input data.
 
 One or more Tesla-grade GPUs with several GB of RAM are highly recommended for fast execution (see Matlab documentation for supported GPU models).
 
