@@ -1184,7 +1184,7 @@ optional_args.crop_border_microlenses = [43 19 0 0 ];
 %optional_args.nnmf_opts.xval_enable = false;
 optional_args.ts_extract_chunk_size = 200;
 
-%% C. elegans, new param struct
+%% C. elegans, second mutant
 config_in = struct;
 
 config_in.indir = '/ssd_raid_4TB/tobias/data_cache_celegans/1088-glt1-5-Tstim_2/Pos0';
@@ -1210,12 +1210,186 @@ config_in.crop_params = [0.5 0.8];
 %Input.recon_opts.lamb_L1 = 1;
 %Input.filter = true;
 
-Input.optimize_kernel = false;
-Input.recon_opts.lamb_L1 = 0.1;
-Input.recon_opts.lamb_TV_L2 = [0.1 0.1 4];
-Input.filter = true;
+config_in.optimize_kernel = false;
+config_in.recon_opts.lamb_L1 = 0.01;
+config_in.recon_opts.lamb_TV_L2 = [0.1 0.1 4];
+config_in.filter = true;
 
 config_in.recon_final_spatial_filters = false;
+
+%% C. elegans, third mutant
+config_in = struct;
+
+config_in.indir = '/ssd_raid_4TB/tobias/data_cache_celegans/1088-glt1-9-Tstim_1/Pos0';
+config_in.outdir = '/ssd_raid_4TB/tobias/menachem_celegans_sid/1088-glt1-9-Tstim_1/';
+config_in.psffile = '/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_zeiss_63x_09NA_water__20FN__on_zeiss_from-18_to18_zspacing2_Nnum15_lambda520_OSR3.mat';
+config_in.x_offset = 1283.7;
+config_in.y_offset = 1092.4;
+config_in.dx = 22.13;
+
+config_in.frames.start = 1;
+config_in.frames.step = 3;
+config_in.frames.end = inf;
+
+config_in.axial = 12.6;  % on F#20 MLA, ML pitch is 150um. M=63x. Nnum=15. So 1 px is 0.159 um laterally, and 2 um axially
+config_in.neur_rad = 25;
+config_in.delta = 100;
+config_in.native_focal_plane = 10;
+config_in.gpu_ids = [2 4 5];
+config_in.crop_border_microlenses = floor([750 2560-1500 580 0] / config_in.dx); %left right top bottom as in fiji
+config_in.crop_params = [0.4 0.8];
+
+%Input.optimize_kernel = true;
+%Input.recon_opts.lamb_L1 = 1;
+%Input.filter = true;
+
+config_in.optimize_kernel = false;
+config_in.recon_opts.lamb_L1 = 0.01;
+config_in.recon_opts.lamb_TV_L2 = [0 0 0];
+config_in.filter = true;
+
+config_in.recon_final_spatial_filters = false;
+
+%% back to first mutant, with new params
+config_in.indir = '/ssd_raid_4TB/tobias/data_cache_celegans/1088-glt1-1-Tstim_1/Pos0/';
+config_in.outdir = '/ssd_raid_4TB/tobias/menachem_celegans_sid/1088-glt1-1-Tstim_1_run2/';
+config_in.psffile = '/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_zeiss_63x_09NA_water__20FN__on_zeiss_from-18_to18_zspacing2_Nnum15_lambda520_OSR3.mat';
+config_in.x_offset = 1289.5;
+config_in.y_offset = 1091.3;
+config_in.dx = 22.13;
+
+config_in.frames.start = 1;
+config_in.frames.step = 3;
+config_in.frames.end = inf;
+
+config_in.axial = 12.6;  % on F#20 MLA, ML pitch is 150um. M=63x. Nnum=15. So 1 px is 0.159 um laterally, and 2 um axially
+config_in.neur_rad = 25;
+config_in.delta = 100;
+config_in.native_focal_plane = 10;
+config_in.gpu_ids = [2 4 5];
+%config_in.crop_params = [0.4 0.8];
+config_in.crop_border_microlenses = [43 19 0 0 ];
+
+%Input.optimize_kernel = true;
+%Input.recon_opts.lamb_L1 = 1;
+%Input.filter = true;
+
+config_in.optimize_kernel = false;
+config_in.recon_opts.lamb_L1 = 0.01;
+config_in.recon_opts.lamb_TV_L2 = [0 0 0];
+config_in.filter = true;
+
+config_in.recon_final_spatial_filters = false;
+
+%% back to second mutant, with new params
+config_in = struct;
+config_in.indir = '/ssd_raid_4TB/tobias/data_cache_celegans/1088-glt1-5-Tstim_2/Pos0';
+config_in.outdir = '/ssd_raid_4TB/tobias/menachem_celegans_sid/1088-glt1-5-Tstim_2_run2/';
+config_in.psffile = '/ssd_raid_4TB/lfm_reconstruction_PSFs/PSFmatrix_zeiss_63x_09NA_water__20FN__on_zeiss_from-18_to18_zspacing2_Nnum15_lambda520_OSR3.mat';
+config_in.x_offset = 1274.8;
+config_in.y_offset = 1091.9;
+config_in.dx = 22.13;
+
+config_in.frames.start = 1;
+config_in.frames.step = 3;
+config_in.frames.end = inf;
+
+config_in.axial = 12.6;  % on F#20 MLA, ML pitch is 150um. M=63x. Nnum=15. So 1 px is 0.159 um laterally, and 2 um axially
+config_in.neur_rad = 25;
+config_in.delta = 100;
+config_in.native_focal_plane = 10;
+config_in.gpu_ids = [2 4 5];
+config_in.crop_border_microlenses = floor([840 2560-2000 900 0] / config_in.dx);
+config_in.crop_params = [0.6 0.8];
+
+%Input.optimize_kernel = true;
+%Input.recon_opts.lamb_L1 = 1;
+%Input.filter = true;
+
+config_in.optimize_kernel = false;
+config_in.recon_opts.lamb_L1 = 0.01;
+config_in.recon_opts.lamb_TV_L2 = [0 0 0];
+config_in.filter = true;
+
+config_in.recon_final_spatial_filters = false;
+
+
+%%
+% for testing
+o.gpu_ids = [5];
+o.lamb_L1 = 0.01;
+o.lamb_TV_L2 = [0 0 0];
+o.S_ix = 6;
+o.microlenses = SID_output.microlenses;
+test_recon = reconstruct_S(SID_output.S(o.S_ix,:,:), psf_ballistic, o);
+test_options1{end+1} = o;
+test_recons1{end+1} = test_recon;
+
+o.gpu_ids = [5];
+o.lamb_L1 = 0.01;
+o.lamb_TV_L2 = [0 0 1];
+o.S_ix = 6;
+o.microlenses = SID_output.microlenses;
+test_recon = reconstruct_S(SID_output.S(o.S_ix,:,:), psf_ballistic, o);
+test_options1{end+1} = o;
+test_recons1{end+1} = test_recon;
+
+o.gpu_ids = [5];
+o.lamb_L1 = 0.01;
+o.lamb_TV_L2 = [1 1 1];
+o.S_ix = 6;
+o.microlenses = SID_output.microlenses;
+test_recon = reconstruct_S(SID_output.S(o.S_ix,:,:), psf_ballistic, o);
+test_options1{end+1} = o;
+test_recons1{end+1} = test_recon;
+
+o.gpu_ids = [5];
+o.lamb_L1 = 0.1;
+o.lamb_TV_L2 = [0 0 0];
+o.S_ix = 6;
+o.microlenses = SID_output.microlenses;
+test_recon = reconstruct_S(SID_output.S(o.S_ix,:,:), psf_ballistic, o);
+test_options1{end+1} = o;
+test_recons1{end+1} = test_recon;
+
+o.gpu_ids = [5];
+o.lamb_L1 = 0;
+o.lamb_TV_L2 = [0 0 0];
+o.S_ix = 6;
+o.microlenses = SID_output.microlenses;
+test_recon = reconstruct_S(SID_output.S(o.S_ix,:,:), psf_ballistic, o);
+test_options1{end+1} = o;
+test_recons1{end+1} = test_recon;
+
+o.gpu_ids = [5];
+o.lamb_L1 = 0.001;
+o.lamb_TV_L2 = [0 0 0];
+o.S_ix = 6;
+o.microlenses = SID_output.microlenses;
+test_recon = reconstruct_S(SID_output.S(o.S_ix,:,:), psf_ballistic, o);
+test_options1{end+1} = o;
+test_recons1{end+1} = test_recon;
+
+%%
+i = 6
+r = test_recons1{i};
+op = test_options1{i};
+%r = test_recon_l1001;
+figure; 
+imagesc(max(r{1}(:,:,:), [], 3), [0 0.1]);
+desc = evalc('disp(op)');
+text(700, 500, desc);
+axis image;
+colorbar
+
+%%
+figure; imagesc(max(r{1}(:,:,3), [], 3), [0 0.1]); axis image; colorbar
+figure; imagesc(max(r{1}(:,:,6), [], 3), [0 0.1]); axis image; colorbar
+figure; imagesc(max(r{1}(:,:,9), [], 3), [0 0.1]); axis image; colorbar
+figure; imagesc(max(r{1}(:,:,11), [], 3), [0 0.1]); axis image; colorbar
+figure; imagesc(max(r{1}(:,:,13), [], 3), [0 0.1]); axis image; colorbar
+figure; imagesc(max(r{1}(:,:,15), [], 3), [0 0.1]); axis image; colorbar
+figure; imagesc(max(r{1}(:,:,17), [], 3), [0 0.1]); axis image; colorbar
 
 %%
 main_nnmf_SID(config_in)

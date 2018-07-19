@@ -1,23 +1,20 @@
-function [forward_model,timeseries,template,indices_in_orig]...
-    =merge_filters(forward_model,timeseries...
-        ,template,indices_in_orig,opts)
-% MERGE_FILTERS merges components of the SID-nnmf, that overlap over 30% in
-% their templates and have a correlation of more than opts.limit (default:
-% 0.9).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [forward_model, timeseries, template, indices_in_orig] = ...
+    merge_filters(forward_model, timeseries, template, indices_in_orig, opts)
+% MERGE_FILTERS merges components of the SID-nnmf, that overlap by more than 30% in
+% their templates and have a correlation of more than opts.limit in their temporal signals (default: 0.9)
 
- if nargin<5
-     opts=struct;
- end
- 
- if ~isfield(opts,'limit')
-     opts.limit=0.90;
- end
-    
-  if ~isfield(opts,'bg_sub')
-     opts.bg_sub=true;
- end
-    
+if nargin<5
+    opts=struct;
+end
+
+if ~isfield(opts,'limit')
+    opts.limit=0.90;
+end
+
+if ~isfield(opts,'bg_sub')
+    opts.bg_sub=true;
+end
+
 corr_m = corrcoef(timeseries')-eye(size(timeseries,1));
 corr_m = corr_m(1:end-opts.bg_sub,1:end-opts.bg_sub);
 

@@ -269,9 +269,6 @@ else
     SID_output.S = SID_output.S';
 end
 
-%% Crop sensor movie
-sensor_movie = sensor_movie(SID_output.idx,:);
-
 %% Plot NNMF results
 close all;
 timestr = datestr(now, 'YYmmddTHHMM');
@@ -347,7 +344,7 @@ for i = 1:size(SID_output.S, 1)
     colorbar;
     print(fullfile(Input.outdir, [timestr '_nnmf_component_recon_' num2str(i, '%03d') '.png']), '-dpng', '-r600');
 end
-pause(10);
+pause(2);
 close all;
 
 %% Save checkpoint
@@ -367,7 +364,7 @@ opts.native_focal_plane = Input.native_focal_plane;
 
 if Input.filter
     disp('Filtering reconstructed spatial filters');
-    SID_output.segmm = filter_recon(SID_output.recon,opts);
+    SID_output.segmm = filter_recon(SID_output.recon, opts);
 else
     SID_output.segmm = SID_output.recon;
 end
@@ -381,24 +378,29 @@ SID_output.neuron_centers_ini = [];
 for ii=1:size(SID_output.segmm,u)
     SID_output.neuron_centers_per_component{ii} = segment_component(SID_output.segmm{ii},Input.segmentation.threshold);
     num(ii) = size(SID_output.neuron_centers_per_component{ii},1); %#ok<AGROW>
-    disp(num(ii));
+    disp(['Component ' num2str(ii) ': Found ' num2str(num(ii)) ' neuron candidates']);
 end
 
 ids = isoutlier(num, 'ThresholdFactor', 10);
 ids = (num > mean(num)) .* ids;
+outlier_ixs = find(ids);
 
-for ii=find(ids)
+for i = 1 : numel(outlier_ixs)
+    ii = outlier_ixs(i);
     threshold = 0.1;
     SID_output.neuron_centers_per_component{ii} = segment_component(SID_output.segmm{ii}, threshold);
     num(ii) = size(SID_output.neuron_centers_per_component{ii},1);
-    disp(num(ii));
+    disp(['Re-segmenting component with overly many neurons with higher threshold: Component ' num2str(ii) ': Found ' num2str(num(ii)) ' neuron candidates']);
 end
 
-[SID_output.neuron_centers_ini,SID_output.neur_id]=iterate_cluster(SID_output.neuron_centers_per_component,Input.cluster_iter,Input.neur_rad,dim);
+% Merge closely spaced neuron candidates from different NNMF components by finding clusters of candidates that have an extent smaller than Input.neuron_rad
+[SID_output.neuron_centers_ini, SID_output.neur_id] = iterate_cluster(SID_output.neuron_centers_per_component, Input.cluster_iter, Input.neur_rad, dim);
 
-figure;plot(hist(SID_output.neuron_centers_ini(:,3),size(SID_output.recon{1},3)));
+figure; histogram(SID_output.neuron_centers_ini(:,3), -0.5 : 1 : size(SID_output.recon{1},3) + 0.5);
 xlabel('Z plane index');
 ylabel('Neuron frequency');
+print(fullfile(Input.outdir, [timestr '_segmm_z-hist.png']), '-dpng', '-r300');
+
 if ~isfield(Input.segmentation,'top_cutoff')
     disp('Check the axial distribution and remove top/bottom artefacts');
     Input.segmentation.top_cutoff = input('Input top cutoff \n');
@@ -439,6 +441,9 @@ end
 %%
 clearvars -except sensor_movie Input SID_output mean_signal psf_ballistic Hsize m sensor_movie_max sensor_movie_min dim;
 
+%% Crop sensor movie
+sensor_movie = sensor_movie(SID_output.idx,:);
+
 %% Initiate forward_model
 %TODO: check performance of generate_forward_model() with matfile
 %psf_ballistic = matfile(Input.psffile);
@@ -455,13 +460,14 @@ else
     opts.image_size = SID_output.movie_size(1:2);
     opts.axial = Input.axial;
     opts.neur_rad = Input.neur_rad;
-    SID_output.forward_model_ini=generate_LFM_library_GPU(SID_output.recon,SID_output.neuron_centers_ini,round(SID_output.neur_id),psf_ballistic,opts);
+    SID_output.forward_model_ini = generate_LFM_library_GPU(SID_output.recon, SID_output.neuron_centers_ini, ...
+                                                            round(SID_output.neur_id), psf_ballistic, opts);
 end
 
 %% Generate template
-SID_output.template=generate_template(SID_output.neuron_centers_ini,psf_ballistic.H,SID_output.std_image,Input.template_threshold);
+SID_output.template = generate_template(SID_output.neuron_centers_ini, psf_ballistic.H, SID_output.std_image, Input.template_threshold);
 
-%% Crop model
+%% Remove neuron templates that don't have positive weights inside of to the overall crop region determined further up (based on crop_mask and/or crop_params)
 neur = find(squeeze(max(SID_output.forward_model_ini(:, SID_output.idx), [], 2) > 0));
 SID_output.forward_model_iterated = SID_output.forward_model_ini(neur, SID_output.idx);
 SID_output.neuron_centers_iterated = SID_output.neuron_centers_ini(neur, :);
@@ -499,15 +505,15 @@ if ~isempty(Input.gpu_ids')
     opts_temp.gpu_id = Input.gpu_ids(1);
 end
 
-if isfield(Input, 'bg_sub') && Input.bg_sub% && ~Input.use_std
+if isfield(Input, 'bg_sub') && Input.bg_sub % && ~Input.use_std
     SID_output.forward_model_iterated(end+1,:) = SID_output.bg_spatial(SID_output.idx);
-    SID_output.indices_in_orig=[SID_output.indices_in_orig' length(SID_output.indices_in_orig)+1];
+    SID_output.indices_in_orig = [SID_output.indices_in_orig' length(SID_output.indices_in_orig) + 1];
 end
 
-sensor_movie =double(sensor_movie);
+sensor_movie = double(sensor_movie);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Starting temporal update']);
-SID_output.forward_model_iterated=(1./(sqrt(sum(SID_output.forward_model_iterated.^2....
-    ,2)))).*SID_output.forward_model_iterated;
+SID_output.forward_model_iterated = (1 ./ sqrt(sum(SID_output.forward_model_iterated .^ 2, 2))) ...
+                                    .* SID_output.forward_model_iterated;
 SID_output.timeseries_ini = LS_nnls(SID_output.forward_model_iterated(:,SID_output.microlenses(SID_output.idx)>0)', double(sensor_movie(SID_output.microlenses(SID_output.idx)>0,:)), opts_temp);
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Temporal update completed']);
 
@@ -541,22 +547,23 @@ for iter=1:Input.num_iter
         end
     end
 
-    [SID_output.forward_model_iterated,SID_output.timeseries_iterated,template_...
-        ,SID_output.indices_in_orig] = temporal_SID_update(...
-        sensor_movie,SID_output.forward_model_iterated,SID_output.timeseries_iterated...
-        ,template_,SID_output.indices_in_orig,opts_temp);
+    [SID_output.forward_model_iterated, ...
+     SID_output.timeseries_iterated, template_, ...
+     SID_output.indices_in_orig] = temporal_SID_update(sensor_movie, ...
+                                                       SID_output.forward_model_iterated, ...
+                                                       SID_output.timeseries_iterated, ...
+                                                       template_, SID_output.indices_in_orig, opts_temp);
 
-
-    [SID_output.forward_model_iterated,SID_output.timeseries_iterated,template_...
-        ,SID_output.indices_in_orig] = merge_filters(...
-        SID_output.forward_model_iterated,SID_output.timeseries_iterated...
-        ,template_,SID_output.indices_in_orig,opts_temp);
-    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Iteration ' num2str(iter) ' of ' num2str(num_iter) ' completed']);
+    [SID_output.forward_model_iterated, ...
+     SID_output.timeseries_iterated, template_, ...
+     SID_output.indices_in_orig] = merge_filters(SID_output.forward_model_iterated, ...
+                                                 SID_output.timeseries_iterated, ...
+                                                 template_, SID_output.indices_in_orig, opts_temp);
+    disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Iteration ' num2str(iter) ' of ' num2str(Input.num_iter) ' completed']);
 end
-SID_output.neuron_centers_iterated=SID_output.neuron_centers_ini(SID_output.indices_in_orig(1:end-1),:);
-
-SID_output.template_iterated=template_;
-opts_temp.warm_start=[];
+SID_output.neuron_centers_iterated = SID_output.neuron_centers_ini(SID_output.indices_in_orig(1:end-1), :);
+SID_output.template_iterated = template_;
+opts_temp.warm_start = [];
 clear sensor_movie;
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'SID model optimization completed']);
 
@@ -614,6 +621,7 @@ subplot(1, 4, 1:3);
 hold on;
 imagesc(squeeze(max(nmf_mip, [], 3)));
 scatter(SID_output.neuron_centers_iterated(:,2), SID_output.neuron_centers_iterated(:,1), 'r.');
+%scatter(SID_output.neuron_centers_ini(:,2), SID_output.neuron_centers_ini(:,1), 'r.');
 hold off;
 axis image;
 axis ij;
@@ -720,7 +728,7 @@ imagesc(forward_model_ix, [0 max(SID_output.forward_model_iterated(ix,:))]);
 axis image;
 colorbar();
 subplot(3,1,3);
-plot((1:size(SID_output.timeseries_iterated,2))/15, SID_output.timeseries_iterated(ix,:));
+plot((1:size(SID_output.timeseries_iterated,2)), SID_output.timeseries_iterated(ix,:));
 title(['Neuron candidate ' num2str(ix)]);
 
 %% Delete cached psf file
@@ -731,4 +739,6 @@ end
 
 %%
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'main_nnmf_SID() returning'])
-%end
+
+%%
+end

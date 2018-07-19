@@ -11,8 +11,10 @@ config_definition = {
     % first column is param name
     % second colum is validator function handle
     % third colum is default value; leave empty to indicate required value
+
     
-    %%% REQUIRED PARAMS
+%%% REQUIRED PARAMS
+
     {'indir',                       @isfolder                              'required'};
     {'outdir',                      @is_in_existing_dir                    'required'};
     {'psffile',                     @is_existing_file                      'required'};
@@ -20,149 +22,233 @@ config_definition = {
     {'y_offset',                    @is_double                             'required'};
     {'dx',                          @is_double                             'required'};
     
-    %%% OPTIONAL PARAMS
+
     
-    %%% Frames to include
+%%% OPTIONAL PARAMS
+    
+ %%% Frames to include
+    
+    % start:step:end indices of frames to use for demixing
     {'frames.start',                @is_positive_integer_or_zero,          1};
     {'frames.step',                 @is_positive_integer_or_zero,          1};
     {'frames.end',                  @is_positive_integer_or_zero,          inf};
-    % alternative: give explicit list
+    
+    % Alternative: give explicit list
     {'frames.list',                 @isvector,                             []};
-    % set to true to average over frames in between that ones specified by start:step:end or 
+    
+    % Set to true to average over frames in between that ones specified by 
+    % start:step:end
     {'frames.mean',                 @islogical,                            true};
     
-    %%% Mask for valid pixels
-    % image file, in which pixels that should be ignored  are set to 0, others to 1. Use this to ignore irrelevant areas in the input frames.
+ %%% Mask for valid pixels
+    
+    % Image file, in which pixels that should be ignored  are set to 0, 
+    % others to 1. Use this to ignore irrelevant areas in the input frames.
     {'mask_file',                   @is_existing_file,                     ''};
     
-    %%% Physical parameters, neuron size
-    % ratio between the physical length of a voxel in the axial direction vs. the physical length in the lateral direction
+ %%% Physical parameters, neuron size
+    
+    % Ratio between the physical length of a voxel in the axial direction vs. 
+    % the physical length in the lateral direction
     {'axial',                       @is_double,                            4};
-    % typical neuron radius in px. Typically 6 for fish using 20x/0.5NA objective, 9-12 for mouse cortex and 16x/0.8NA
+    
+    % Typical neuron radius in px. Typically 6 for fish using 20x/0.5NA 
+    % objective, 9-12 for mouse cortex and 16x/0.8NA
     {'neur_rad',                    @is_double,                            8};
-    %
+    
+    % Index of native focal plane (=resolution breakdown plane) in
+    % reconstructed LFM stack
     {'native_focal_plane',          @isinteger,                            26};
     
-    %%% LFM frame rectification
+ %%% LFM frame rectification
+ 
+    % Whether or not to rectify the input frames. Set to false if input
+    % frames are pre-rectified.
     {'rectify',                     @islogical,                            true};
     
-    %%% Other global options
-    % output filename prefix for all generated files
+ %%% Other global options
+ 
+    % Output filename prefix for all generated files
     {'SID_output_name',             @isstring,                             ['sid_result_' datestr(now, 'YY-mm-ddTHHMM') '.mat']};
-    %
+ 
+    % Directory with very high access speed for PSF file caching
+    % (ideally, use a RAM-disk such as /dev/shm)
     {'psf_cache_dir',               @is_in_existing_dir,                   psf_cache_dir_default};
-    %
+    
+    % Directory for temporary files
     {'tmp_dir',                     @is_in_existing_dir,                   tempdir()};
-    % default: []. List of GPU IDs to use throughout SID (Note that in Matlab, gpu_ids start with 1, not 0, as in the output of nvidia-smi)
+    
+    % List of GPU IDs to use throughout SID. default: [].  
+    % (Note that in Matlab, gpu_ids start with 1, not 0, as in the output of nvidia-smi)
     {'gpu_ids',                     @isvector,                             []};
-    % use standard deviation instead of 2-norm of residual in merit functions of all optimizers
+    
+    % Whether or not to use standard deviation instead of 2-norm of 
+    % residual in merit functions of all optimizers
     {'use_std',                     @islogical,                            false};
     
-    %%% Background subtraction
+ %%% Background subtraction
+ 
+    % Number of iterations for low-rank matrix factorization during
+    % background subtraction
     {'bg_iter',                     @isinteger,                            2};
+    
+    % Enable background subtraction
     {'bg_sub',                      @islogical,                            true};
 
-    %%% Detrending
-    % boolean, whether to perform detrending prior to NNMF
+ %%% Detrending
+ 
+    % Whether to perform detrending prior to NNMF
     {'detrend',                     @islogical,                            true};
-    % integer, half width of sliding window (in units of frames) for low-pass filtering the frame means prior to detrending. Set this to a value that is largecompared to the duration of a Ca transient (e.g. 10 times as large), to avoid that the detrending smoothes out true Ca transients.
+    
+    % Half width of sliding window (in units of frames) for low-pass filtering 
+    % the frame means prior to detrending. Set this to a value that is large 
+    % compared to the duration of a Ca transient (e.g. 10 times as large), 
+    % to avoid that the detrending smoothes out true Ca transients.
     {'delta',                       @isinteger,                            100};
 
-    %%% Cropping
-    % number of microlenses to crop from input frames on each side [left right top bottom], to avoid border artefacts
-    % When giving a value of floor([ix1_lo_border_width ix1_hi_border_width ix2_hi_border_width ix2_hi_border_width] / Nnum)
+ %%% Cropping
+ 
+    % Number of microlenses to crop from input frames on each side 
+    % [left right top bottom], to avoid border artefacts
+    % When giving a value of 
+    % floor([ix1_lo_border_width ix1_hi_border_width ix2_hi_border_width ix2_hi_border_width] / Nnum)
     % that means that
     % cropped_img = full_img(ix1_lo_border_width + 1 : end - ix1_hi_border_width, ix2_lo_border_width + 1 : end - ix2_hi_border_width)
     {'crop_border_microlenses',     @isvector,                             [0 0 0 0]};
-    %
+    
+    % Whether to crop frames based on threasholds on standard deviation and
+    % background
     {'do_crop',                     @islogical,                            true};
-    % two-element vector. If not given or empty, user is asked for interactive input
+    
+    % Two-element vector, first element is threshold on standard deviation 
+    % used to crop frames. Second is cut-off threshold on background 
+    % between microlenses.
+    % NOTE: If not given or empty, user is asked for interactive input
     {'crop_params',                 @isvector,                             []};
-    %
+    
+    % User-defined crop mask, given as an array of the same size as the
+    % input frames
     {'crop_mask',                   @ismatrix,                             true};
 
-    %%% Low-rank NNMF
+ %%% Low-rank NNMF
+ 
     % 
     {'nnmf_opts.rank',              @isinteger,                            30};
+    
     %
     {'nnmf_opts.max_iter',          @isinteger,                            600};
+    
     %
     {'nnmf_opts.ini_method',        @isstring,                            'pca'};
+    
     %
     {'nnmf_opts.lamb_spat',         @isfloat,                              0};
+    
     %
     {'nnmf_opts.lamb_temp',         @isfloat,                              0};
+    
     %
     {'nnmf_opts.lamb_corr',         @isfloat,                              0};
+    
     %
     {'nnmf_opts.lamb_orth_L1',      @isfloat,                              5e-4};
+    
     %
     {'nnmf_opts.lamb_orth_L2',      @isfloat,                              0};
+    
     %
     {'nnmf_opts.lamb_spat_TV',      @isfloat,                              0};
+    
     %
     {'nnmf_opts.lamb_temp_TV',      @isfloat,                              0};
+    
     % enable xval
     {'nnmf_opts.xval_enable',       @islogical,                            false};
+    
     % number of partitions in which the data is decomposed
     {'nnmf_opts.xval_num_part',     @isinteger,                            5};
+    
     % paramter range of the multiplier that needs to be scanned by xval. For default, see xval.m
     {'nnmf_opts.xval_param',        @islogical,                            []};
 
-    %%% LFM reconstruction
+ %%% LFM reconstruction
+ 
     % TODO: make sure this actually gets used
     {'recon_opts.maxIter',          @isinteger,                            8};
+    
     %
     {'recon_opts.lamb_L1',          @isfloat,                              0.1};
+    
     %
     {'recon_opts.lamb_L2',          @isfloat,                              0};
+    
     %
     {'recon_opts.lamb_TV_L2',       @isfloat,                              0};
+    
     %
     {'recon_opts.ker_shape',        @isstring,                             'user'};
+    
     %
     {'optimize_kernel',             @islogical,                            true};
-    % band-pass filter reconstructed volume
+    
+    % band-pass filter the reconstructed NMF componet volumes. Warning: this can take tens of minutes per component and GPU
     {'filter',                      @islogical,                            false};    
 
-    %%% Segmentation
+ %%% Segmentation
+ 
     %
     {'segmentation.threshold',      @isfloat,                              0.01};
+    
     %
     {'segmentation.top_cutoff',     @isinteger,                            1};
+    
     % if left [], defaults to size(psf_ballistic.H,5)
     {'segmentation.bottom_cutoff',  @isinteger,                            []};
-    %
+    
+    % Number of iterations to perform when attempting to merge closely spaced 
+    % neuron candidates from different NMF components by spatial clustering. 
+    % Maximal size of clusters is determined by parameter neur_rad.
     {'cluster_iter',                @isinteger,                            40};
 
-    %%% Neuron footprint dictionary generation
+ %%% Neuron footprint dictionary generation
+ 
     %
     {'use_std_GLL',                 @islogical,                            false};
 
-    %%% Template generation
-    %
+ %%% Template generation
+ 
+    % 
     {'template_threshold',          @isfloat,                              0.01};
 
-    %%% Bi-convex optimization
+ %%% Bi-convex optimization
+ 
     % number of iterations, where one iteration consist of a spatial and a temporal update
     {'num_iter',                    @isinteger,                            4};
+    
     % used in reg_nnls.m
     {'SID_optimization_args.spatial_lamb_L1', @isfloat,                    0};
+    
     % used in reg_nnls.m
     {'SID_optimization_args.spatial_lamb_L2', @isfloat,                    0};
+    
     % used in reg_nnls.m
     {'SID_optimization_args.spatial_lamb_orth_L1', @isfloat,               1e-4};
+    
     % used in LS_nnls.m
     {'SID_optimization_args.temporal_lambda', @isfloat,                    1e-4};
-    %
+    
+    % 
     {'update_template',                       @islogical,                  true};
     
-    %%% Timeseries extraction
-    % unclear purpose, used in incremental_temporal_update_gpu()
+ %%% Timeseries extraction
+ 
+    % TODO: unclear purpose, used in incremental_temporal_update_gpu()
     {'ts_extract_chunk_size',       @isinteger,                            200};
     
-    %%% Reconstruct final (SID-demixed) neuron spatial filters
-    %
+ %%% Reconstruct final (SID-demixed) neuron spatial filters
+ 
+    % Whether to reconstruct final (SID-demixed) neuron spatial filters
+    % (entirely optional; not required for time series extraction)s
     {'recon_final_spatial_filters', @islogical,                            false};
 };
 
