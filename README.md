@@ -1,5 +1,5 @@
 # Seeded Iterative Demixing
-The Seeded Iterative Demixing (SID) algorithm extracts neuronal activity signals (as reported by fluorescent indicators) from Light Field Microscopy (LFM) recordings in scattering brain tissue. SID was developed by the [Vaziri Lab](http://vaziria.com/) at [Rockefeller University](https://www.rockefeller.edu/), and is described in the following publications:
+The Seeded Iterative Demixing (SID) algorithm extracts neuronal activity signals (as reported by fluorescent indicators) from Light Field Microscopy (LFM) recordings in scattering brain tissue. SID was developed by the [Vaziri Lab](http://vaziria.com/) at [Rockefeller University](https://www.rockefeller.edu/), and is described and demonstrated in the following publications:
 
 Nöbauer*, T., Skocek*, O., Pernía-Andrade, A. J., Weilguny, L., Martínez Traub, F., Molodtsov, M. I. & Vaziri, A.  
 [*Video rate volumetric Ca2+ imaging across cortex using seeded iterative demixing (SID) microscopy.*](https://www.nature.com/articles/nmeth.4341)  
