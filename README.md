@@ -1,5 +1,5 @@
 # Seeded Iterative Demixing
-Matlab implementation of the Seeded Iterative Demixing (SID) algorithm for extracting neuronal signals from Light Field Microscopy (LFM) recordings in scattering media, as described in these publications:
+The Seeded Iterative Demixing (SID) algorithm extracts neuronal activity signals (as reported by fluorescent indicators) from Light Field Microscopy (LFM) recordings in scattering brain tissue. SID was developed by the [Vaziri Lab](http://vaziria.com/) at [Rockefeller University](https://www.rockefeller.edu/), and is described in the following publications:
 
 Nöbauer*, T., Skocek*, O., Pernía-Andrade, A. J., Weilguny, L., Martínez Traub, F., Molodtsov, M. I. & Vaziri, A.  
 [*Video rate volumetric Ca2+ imaging across cortex using seeded iterative demixing (SID) microscopy.*](https://www.nature.com/articles/nmeth.4341)  
@@ -13,6 +13,7 @@ Nature Methods 15, 429–432 (2018).
 - [Input argument reference](http://htmlpreview.github.com/?https://raw.githubusercontent.com/vazirilab/sid/master/docs/published_m_files/sid_config_manage.html)
 - [Discussion of input arguments and general usage (Wiki)](https://github.com/vazirilab/sid/wiki/Description-and-usage)
 - [Function documenation (generated from source code)](https://github.com/vazirilab/sid/tree/master/docs/published_m_files)
+- A demonstration example will be added shortly.
 
 ## System requirements
 - Matlab Base
@@ -32,3 +33,6 @@ Clone/download and add the base folder and the `src/` and `external/` folders to
 
 ## Binary builds
 Binaries for command-line usage will be provided in the `bin/` directory (the current binaries are not yet functional).
+
+## License
+See [LICENSE.md](LICENSE.md)
