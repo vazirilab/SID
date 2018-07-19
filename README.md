@@ -1,13 +1,13 @@
 # Seeded Iterative Demixing
 Matlab implementation of the Seeded Iterative Demixing (SID) algorithm for extracting neuronal signals from Light Field Microscopy (LFM) recordings in scattering media, as described in these publications:
 
-Nöbauer*, T., Skocek*, O., Pernía-Andrade, A. J., Weilguny, L., Martínez Traub, F., Molodtsov, M. I. & Vaziri, A.
-*Video rate volumetric Ca2+ imaging across cortex using seeded iterative demixing (SID) microscopy.* Nature Methods 14, 811–818 (2017).
-https://www.nature.com/articles/nmeth.4341
+Nöbauer*, T., Skocek*, O., Pernía-Andrade, A. J., Weilguny, L., Martínez Traub, F., Molodtsov, M. I. & Vaziri, A.  
+*Video rate volumetric Ca2+ imaging across cortex using seeded iterative demixing (SID) microscopy.*  
+Nature Methods 14, 811–818 (2017). https://www.nature.com/articles/nmeth.4341
 
-Skocek*, O., Nöbauer*, T., Weilguny, L., Traub, F. M., Xia, C. N., Molodtsov, M. I., Grama, A., Yamagata, M., Aharoni, D., Cox, D. D., Golshani, P. & Vaziri, A. 
-*High-speed volumetric imaging of neuronal activity in freely moving rodents.* Nature Methods 15, 429–432 (2018). 
-https://www.nature.com/articles/s41592-018-0008-0
+Skocek*, O., Nöbauer*, T., Weilguny, L., Traub, F. M., Xia, C. N., Molodtsov, M. I., Grama, A., Yamagata, M., Aharoni, D., Cox, D. D., Golshani, P. & Vaziri, A.  
+*High-speed volumetric imaging of neuronal activity in freely moving rodents.*  
+Nature Methods 15, 429–432 (2018). https://www.nature.com/articles/s41592-018-0008-0
 
 ## Documentation
 - [Input argument reference](http://htmlpreview.github.com/?https://raw.githubusercontent.com/vazirilab/sid/master/docs/published_m_files/sid_config_manage.html)
@@ -28,7 +28,7 @@ A multi-core workstation with >32GB is required.
 One or more Tesla-grade GPUs with several GB of RAM are highly recommended for fast execution (see Matlab documentation for supported GPU models).
 
 ## Installation in Matlab
-- Clone/download and add base folder, `src/` and `external/` folders to Matlab path recursively
+Clone/download and add the base folder and the `src/` and `external/` folders to Matlab path recursively.
 
 ## Binary builds
 Binaries for command-line usage will be provided in the `bin/` directory (the current binaries are not yet functional).
