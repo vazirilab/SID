@@ -13,7 +13,7 @@ Nature Methods 15, 429–432 (2018).
 - [Input argument reference](https://cdn.rawgit.com/vazirilab/sid/master/docs/published_m_files/sid_config_manage.html) for the main function, [`sid_main()`](sid_main.m)
 - [Discussion of input arguments and general usage (Wiki)](https://github.com/vazirilab/sid/wiki/Description-and-usage)
 - [Function documentation (generated from source code)](https://github.com/vazirilab/sid/tree/master/docs/published_m_files)
-- A demonstration example will be added shortly.
+- A demo example will be added shortly.
 
 ## System requirements
 - Matlab Base
@@ -30,7 +30,7 @@ A multi-core workstation is recommended, with enough RAM to hold the input data.
 Clone/download and add the base folder and the `src/` and `external/` folders to Matlab path recursively.
 
 ## Binary builds
-Binaries for command-line usage will be provided in the `bin/` directory (the current binaries are not yet functional).
+Binaries for command-line usage will be provided in the `bin/` directory (the current binaries are not yet functional; to be updated shortly).
 
 ## License
 See [LICENSE.md](LICENSE.md)
