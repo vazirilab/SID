@@ -12,7 +12,7 @@ Nature Methods 15, 429–432 (2018).
 ## Documentation
 - [Input argument reference](https://cdn.rawgit.com/vazirilab/sid/master/docs/published_m_files/sid_config_manage.html) for the main function, [`sid_main()`](sid_main.m)
 - [Discussion of input arguments and general usage (Wiki)](https://github.com/vazirilab/sid/wiki/Description-and-usage)
-- [Function documenation (generated from source code)](https://github.com/vazirilab/sid/tree/master/docs/published_m_files)
+- [Function documentation (generated from source code)](https://github.com/vazirilab/sid/tree/master/docs/published_m_files)
 - A demonstration example will be added shortly.
 
 ## System requirements
