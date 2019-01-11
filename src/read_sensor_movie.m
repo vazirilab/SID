@@ -115,7 +115,7 @@ else
         end
         if size(infiles_struct)==1
             %         sensor_movie(:, :) = img_rect;
-            sensor_movie= img_rect(:);
+            sensor_movie = img_rect(:);
         else
             %         sensor_movie(:, :, img_ix) = img_rect;
             sensor_movie(:, frame) = img_rect(:);

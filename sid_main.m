@@ -60,7 +60,7 @@ print(fullfile(Input.outdir, [datestr(now, 'YYmmddTHHMM') '_mask.pdf']), '-dpdf'
 %% load sensor movie
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
 tic;
-[sensor_movie,SID_output.movie_size] = read_sensor_movie(Input.indir, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, Input.rectify, Input.frames, Input.mask, Input.crop_border_microlenses);
+[sensor_movie, SID_output.movie_size] = read_sensor_movie(Input.indir, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, Input.rectify, Input.frames, Input.mask, Input.crop_border_microlenses);
 toc
 
 %% de-trend
@@ -261,6 +261,7 @@ SID_output.recon = reconstruct_S(SID_output.S, psf_ballistic, opts);
 SID_output.recon_opts = opts;
 
 clear opts
+
 %% Crop reconstructed image with eroded mask, to reduce border artefacts
 if numel(Input.mask) > 1 && any(Input.mask ~= 0)
     mask_dilated = imerode(Input.mask, strel('disk', 25));

@@ -105,6 +105,7 @@ recon_nnmf=cell(size(S,1),1);
 for l=1:size(S,1)
     recon_nnmf{l} = ones([size(S,2) size(S,3) size(psf_ballistic.H,5)],'single');
 end
+disp('Allocating memory: done.');
 
 if isfield(opts,'ker_param')
     kernel = generate_kernel(opts.ker_shape, opts.ker_param);

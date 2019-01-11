@@ -15,7 +15,7 @@ XresampleQ = Xresample(XqInit:end);
 YresampleQ = Yresample(YqInit:end);
 [Xqq,Yqq] = meshgrid( XresampleQ , YresampleQ );
 
-IMG_RESAMPLE = interp2( X, Y,  IMG_BW, Xqq, Yqq );
+IMG_RESAMPLE = interp2(X, Y, IMG_BW, Xqq, Yqq);
 IMG_RESAMPLE_crop1 = IMG_RESAMPLE( (1:1:M*floor((size(IMG_RESAMPLE,1)-YqInit)/M)), (1:1:M*floor((size(IMG_RESAMPLE,2)-XqInit)/M)) );
 
 %% Crop
