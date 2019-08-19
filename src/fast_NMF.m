@@ -120,11 +120,15 @@ if opts.lamb_spat_TV
     opts.laplace(1,2,3)=-1;
 end
 
+if isa(Y, 'single')
+    Y = double(Y);
+end
+
 if opts.use_std
-    Y=double(Y/sqrt(sum(var(Y,1,2))));
-    opts.Y = sum(Y,2);
+    Y = double(Y / sqrt(sum(var(Y, 1, 2))));
+    opts.Y = sum(Y, 2);
 else
-    Y = double(Y/norm(Y(:)));
+    Y = Y / norm(Y);
 end
 
 if ~opts.rank
@@ -132,7 +136,7 @@ if ~opts.rank
 end
 
 if nargin<3
-    [T_0,S_0] = initialize_nnmf(Y,opts.rank,opts);
+    [T_0, S_0] = initialize_nnmf(Y, opts.rank, opts);
 end
 
 if nargin==3
@@ -146,7 +150,7 @@ end
 
 %% Modify orthogonality regularizers
 % This includes normalization of S and generation of the variable opts.hilf. This variable will be needed when computing the gradients of either of the orthogonality regularizers.
-if opts.lamb_orth_L1 + opts.lamb_orth_L2
+if (opts.lamb_orth_L1 + opts.lamb_orth_L2) > 0
     for u=1:size(T_0,1)
         platz = norm(S_0(:,u));
         T_0(u,:) = T_0(u,:)*platz;
@@ -170,7 +174,7 @@ if isfield(opts,'xval')
     end
 end
 T = T_0;
-S =S_0;
+S = S_0;
 
 %% Iteratively update estimates of S and T
 % Actual updates are performed by *S\_update* and *T\_update*
@@ -180,14 +184,19 @@ E=[];
 for iter=1:opts.max_iter
     [S,T]=S_update(Y,S,T,opts);
     [S,T]=T_update(Y,T,S,opts);
-    if opts.diagnostic&&opts.display
+    if opts.diagnostic && opts.display
         if opts.use_std
             E(iter)=sum(var(Y-S*T,1,2),1);
         else
             E(iter)=sum(reshape(Y-S*T,1,[]).^2);
         end
 %         P(iter)=norm(reshape(S'*S-eye(size(S,2)),1,[]),1);
-        figure(3);
+        fh = findobj('Type', 'Figure', 'Name', 'Objective function');
+        if isempty(fh)
+            figure('Name', 'Objective function');
+        else
+            set(0, 'CurrentFigure', fh);
+        end
 %         subplot(1,4,1);
         plot(E);
 %         axis square
@@ -216,5 +225,6 @@ for u=1:size(T,1)
     T(u,:) = T(u,:)/platz;
     S(:,u) = S(:,u)*platz;
 end
-
+S = gather(S);
+T = gather(T);
 end

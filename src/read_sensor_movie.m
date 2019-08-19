@@ -1,4 +1,4 @@
-function [sensor_movie, movie_size] = read_sensor_movie(in_folder, x_offset, y_offset, dx, Nnum, do_rectify, frames, mask, crop_border_microlenses)
+function [sensor_movie, movie_size] = read_sensor_movie(in_folder, x_offset, y_offset, dx, Nnum, do_rectify, frames, mask, crop_border_microlenses, gpu_device)
 % READ_SENSOR_MOVIE: Algorithm loads the frames, specified in the struct 
 % "frames" of the movie contained in the folder "in_folder" into the 
 % working memory.
@@ -35,6 +35,10 @@ if nargin < 9
     crop_border_microlenses = [0 0 0 0];
 end
 
+if nargin < 10
+    gpu_device = false;
+end
+
 if exist(in_folder, 'dir')
     infiles_struct = dir(fullfile(in_folder, '/*.tif*'));
     [~, order] = sort({infiles_struct(:).name});
@@ -66,7 +70,7 @@ if frames.mean
                 img_rect = ImageRect(...
                     double(imread(fullfile(in_folder, infiles_struct(frame_).name), 'tiff')), ...
                     x_offset, y_offset, dx, Nnum, true, ...
-                    crop_border_microlenses(1), crop_border_microlenses(2), crop_border_microlenses(3), crop_border_microlenses(4));
+                    crop_border_microlenses(1), crop_border_microlenses(2), crop_border_microlenses(3), crop_border_microlenses(4), gpu_device);
             else
                 img_rect = single(imread(fullfile(in_folder, infiles_struct(frame_).name), 'tiff'));
                 img_rect = img_rect(crop_border_microlenses(3)*Nnum + 1 : ...
@@ -95,11 +99,11 @@ else
             fprintf([num2str(frame) ' ']);
         end
         if do_rectify
-            img_rect = ImageRect(double(imread(fullfile(in_folder, ...
+            img_rect = ImageRect(single(imread(fullfile(in_folder, ...
                 infiles_struct(frame).name), 'tiff')) .* mask, x_offset,...
-                y_offset, dx, Nnum, true, crop_border_microlenses(3), ...
-                crop_border_microlenses(4), crop_border_microlenses(1),...
-                crop_border_microlenses(2));
+                y_offset, dx, Nnum, true, crop_border_microlenses(1), ...
+                crop_border_microlenses(2), crop_border_microlenses(3),...
+                crop_border_microlenses(4), gpu_device);
         else
             img_rect = single(imread(fullfile(in_folder, infiles_struct(frame).name), ...
                 'tiff')) .* mask;

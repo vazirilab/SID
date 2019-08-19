@@ -51,19 +51,22 @@ delete(gcp('nocreate'));
 %% Load mask image
 if isfield(Input, 'mask_file') && ~isempty(Input.mask_file)
     Input.mask = logical(imread(Input.mask_file));
+    figure; imagesc(double(Input.mask), [0 1]); axis image; title('Mask image'); colorbar;
+    print(fullfile(Input.outdir, [datestr(now, 'YYmmddTHHMM') '_mask.pdf']), '-dpdf', '-r300');
 else
     Input.mask = true;
 end
-figure; imagesc(double(Input.mask), [0 1]); axis image; title('Mask image'); colorbar;
-print(fullfile(Input.outdir, [datestr(now, 'YYmmddTHHMM') '_mask.pdf']), '-dpdf', '-r300');
 
 %% load sensor movie
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Loading LFM movie']);
+if ~isempty(Input.gpu_ids')
+    gpu_device = gpuDevice(Input.gpu_ids(1));
+end
 tic;
-[sensor_movie, SID_output.movie_size] = read_sensor_movie(Input.indir, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, Input.rectify, Input.frames, Input.mask, Input.crop_border_microlenses);
+[sensor_movie, SID_output.movie_size] = read_sensor_movie(Input.indir, Input.x_offset, Input.y_offset, Input.dx, psf_ballistic.Nnum, Input.rectify, Input.frames, Input.mask, Input.crop_border_microlenses, gpu_device);
 toc
 
-%% de-trend
+%% Fit trend
 tic
 if Input.detrend
     disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Detrending LFM movie']);
@@ -76,7 +79,10 @@ if Input.detrend
     SID_output.baseline = smooth(SID_output.baseline_raw, smooth_window_span, 'sgolay', 3);
     figure; hold on; plot(SID_output.baseline_raw); plot(SID_output.baseline); title('Frame means (post bg subtract), raw + trend fit'); hold off;
     print(fullfile(Input.outdir, [datestr(now, 'YYmmddTHHMM') '_trend_fit.pdf']), '-dpdf', '-r300');
+end
 
+%% De-trend and normalize
+if Input.detrend
     sensor_movie = sensor_movie./SID_output.baseline';
     %TODO: check if trend fit worked, i.e. residuals are mostly gaussian
 end
@@ -201,9 +207,11 @@ elseif isfield(opts, 'xval')
 end
 opts.active = SID_output.microlenses > 0;
 opts.use_std = Input.use_std;
+opts.diagnostic = true; opts.display = true;
+low_clip_val = quantile(reshape(gather(sensor_movie(SID_output.microlenses==0, 1:10:end)),1,[]), movie_clip_quantile);
 
 [SID_output.S, SID_output.T] = fast_NMF(...
-    max(sensor_movie - quantile(reshape(sensor_movie(SID_output.microlenses==0,:),1,[]), movie_clip_quantile), 0), ...
+    max(sensor_movie - low_clip_val, 0), ...
     opts);
 SID_output.S = SID_output.S(:, ~isoutlier(sum(SID_output.S,1), 'ThresholdFactor', 10));
 
@@ -226,7 +234,7 @@ for i=1:size(SID_output.S, 1)
     plot(SID_output.T(i,:));
     print(fullfile(Input.outdir, [timestr '_nnmf_component_' num2str(i, '%03d') '.png']), '-dpng', '-r600');
 end
-close all;
+%close all;
 
 %% Save checkpoint
 disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': Saving pre-nmf-recon checkpoint']);
@@ -237,7 +245,7 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': ' 'Reconstructing spatial filters']
 opts = Input.recon_opts;
 opts.gpu_ids = Input.gpu_ids;
 opts.microlenses = SID_output.microlenses;
-SID_output.S = reshape(SID_output.S,[size(SID_output.S,1) SID_output.movie_size(1:2)]);
+SID_output.S = reshape(SID_output.S, [size(SID_output.S,1) SID_output.movie_size(1:2)]);
 
 if Input.optimize_kernel
     if isfield(opts,'ker_param')
@@ -253,8 +261,8 @@ if Input.optimize_kernel
             Input.neur_rad, Input.native_focal_plane, ...
             Input.axial, Input.gpu_ids(1));
     end
-    opts.ker_shape='user';
-    opts.ker_param=kernel;
+    opts.ker_shape = 'user';
+    opts.ker_param = kernel;
 end
 
 SID_output.recon = reconstruct_S(SID_output.S, psf_ballistic, opts);
@@ -319,6 +327,7 @@ disp([datestr(now, 'YYYY-mm-dd HH:MM:SS') ': generate initial brain model'])
 
 dim = [1 1 Input.axial];
 SID_output.neuron_centers_ini = [];
+SID_output.neuron_centers_per_component = {};
 [~,u] = max([size(SID_output.segmm,1),size(SID_output.segmm,2)]);
 for ii=1:size(SID_output.segmm,u)
     SID_output.neuron_centers_per_component{ii} = segment_component(SID_output.segmm{ii},Input.segmentation.threshold);
@@ -398,7 +407,7 @@ if isempty(Input.gpu_ids)||Input.use_std_GLL
     SID_output.forward_model_ini=generate_LFM_library_CPU(SID_output.neuron_centers_ini, psf_ballistic, round(SID_output.neur_rad), dim, size(SID_output.recon{1}));
 else
     opts = SID_output.recon_opts;
-    opts.NumWorkers=10;
+    opts.NumWorkers = 10;
     opts.image_size = SID_output.movie_size(1:2);
     opts.axial = Input.axial;
     opts.neur_rad = Input.neur_rad;

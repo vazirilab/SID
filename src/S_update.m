@@ -33,9 +33,9 @@ df_S = -q_S + S*Q_T + lb_spat_TV(S) + opts.lamb_spat;
 
 %% Generate the direction v in which the update shall be performed
 % v is generated from the gradient by projecting along the normalization constraint 
-% that is imposed when useing an orthogonality regularizer, 
+% that is imposed when using an orthogonality regularizer, 
 % and by projecting onto the surface of the non-negativity constraint
-if (opts.lamb_orth_L1 + opts.lamb_orth_L2)
+if (opts.lamb_orth_L1 + opts.lamb_orth_L2) > 0
     if opts.lamb_orth_L2
         % Final assembly of the gradient for the 2-norm orthogonality regularizer 
         % (indirectly, via modification of the direction v)
@@ -57,38 +57,42 @@ end
 % If this results in a value that leads into the opposing direction of the negative gradient, the learning rate is set to a fixed value 1e-6. 
 % This is done since the corresponding regularizer leads to a non-quadratic problem.
 if opts.pointwise
-    alpha_S = sum(v.*df_S,2)./sum(v.*(v*Q_T + lb_spat_TV(v)),2);
+    alpha_S = sum(v .* df_S, 2) ./ sum(v .* (v * Q_T + lb_spat_TV(v)), 2);
 else
-    alpha_S = (v(:)'*df_S(:))/sum(sum(v.*(v*Q_T + lb_spat_TV(v)),1),2);
-    if (alpha_S<0)&&(opts.lamb_orth_L2~=0)
-        alpha_S = 1e-6;
+    alpha_S = (v(:)' * df_S(:)) / sum(sum(v .* (v * Q_T + lb_spat_TV(v)), 1), 2);
+    if opts.lamb_orth_L2 ~= 0
+        alpha_S = max(alpha_S, 1e-6);
     end
 end
-
 alpha_S(isnan(alpha_S))=0;
 alpha_S(isinf(alpha_S))=0;
 
 %% Update S
-S = S - alpha_S.*v;
+S = S - alpha_S .* v;
 
 %% Project onto constraints
-S(S<0)=0;
+S(S<0) = 0;
 
-if opts.lamb_orth_L1 + opts.lamb_orth_L2
-        platz = sqrt(sum(S.^2,1));
-        T = platz'.*T;
-        S = S./platz;
+if (opts.lamb_orth_L1 + opts.lamb_orth_L2) > 0
+        platz = sqrt(sum(S .^ 2, 1));
+        T = platz' .* T;
+        S = S ./ platz;
 end
 
 %% Output diagnostic info
 if opts.diagnostic
-    figure(1);
-    clf('reset')
-    for i=1:min(10,opts.rank)
-        subplot(3,5,i);
-        title(['spat. comp: ' num2str(i)]);
+    fh = findobj('Type', 'Figure', 'Name', 'S update plot');
+    if isempty(fh)
+        figure('Name', 'S update plot', 'Position', [10 10 1500 1500]);
+    else
+        set(0, 'CurrentFigure', fh);
+    end
+    %clf('reset')
+    for i = 1:min(9, opts.rank)
+        subplot(3, 3, i);
         imagesc(reshape(S(:,i),size(opts.active)));
         axis image;
+        title(['spat. comp: ' num2str(i)]);
     end
     legend('boxoff');
     drawnow expose

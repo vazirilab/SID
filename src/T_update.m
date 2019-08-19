@@ -79,7 +79,8 @@ T(T<0)=0;
 
 %% Diagnostic output
 if opts.diagnostic
-    ts = zscore(T(1:10,:), 0, 2);
+    t_end = min([10 size(T,1)]);
+    ts = zscore(T(1:t_end,:), 0, 2);
     y_shift = 4;
     clip = true;
 
@@ -88,7 +89,12 @@ if opts.diagnostic
     nixs = 1:size(ts,1);
     sel_nixs = nixs(sel);
 
-    figure(2);
+    fh = findobj('Type', 'Figure', 'Name', 'T update plot');
+    if isempty(fh)
+        figure('Name', 'T update plot', 'Position', [10 50 1500 1000]);
+    else
+        set(0, 'CurrentFigure', fh);
+    end
     subplot(121);
     hold off
     for n_ix = 1:floor(numel(sel_nixs)/2)

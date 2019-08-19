@@ -16,7 +16,9 @@ function  [T,S] = initialize_nnmf(Y,n,opts)
 % T...              initial temporal components for nnmf
 % S...              initial spatial components for nnmf
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+if numel(Y) > 1e9
+    Y = tall(Y);
+end
 if strcmp(opts.ini_method,'rand')
     T=conv2(rand(n,size(Y,2)),ones(1,32),'same');
     option=opts;
@@ -30,4 +32,6 @@ elseif strcmp(opts.ini_method,'pca')
     T = abs(T(:,1:n))';
     S = abs(S(:,1:n));
 end
+T = gather(T);
+S = gather(S);
 end
