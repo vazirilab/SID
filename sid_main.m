@@ -263,6 +263,9 @@ if Input.optimize_kernel
     end
     opts.ker_shape = 'user';
     opts.ker_param = kernel;
+else
+    % no kernel optimization
+    SID_output.neur_rad = Input.neur_rad;
 end
 
 SID_output.recon = reconstruct_S(SID_output.S, psf_ballistic, opts);
